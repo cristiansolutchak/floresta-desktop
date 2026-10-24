@@ -1,0 +1,121 @@
+import 'package:equatable/equatable.dart';
+import 'package:fpdart/fpdart.dart';
+
+import '../../../core/errors/failure.dart';
+import 'bitcoin_network.dart';
+
+/// User-chosen configuration for launching and reaching florestad.
+///
+/// Contains no secrets by construction; it is safe to persist in plain
+/// preferences.
+class NodeSettings extends Equatable {
+  const NodeSettings({
+    this.onboardingComplete = false,
+    this.executablePath,
+    this.network = BitcoinNetwork.signet,
+    this.dataDir,
+    this.rpcPort,
+    this.logToFile = true,
+    this.disableCompactFilters = false,
+  });
+
+  final bool onboardingComplete;
+
+  /// Explicit florestad path. Null means auto-detect.
+  final String? executablePath;
+
+  /// Signet by default so a first-time user cannot touch real funds by
+  /// accident while learning the app.
+  final BitcoinNetwork network;
+
+  /// Base data directory passed as `--data-dir`. Null keeps florestad's own
+  /// default (`$HOME/.floresta`). Florestad appends the network subdirectory.
+  final String? dataDir;
+
+  /// Overrides the network's default RPC port. Null uses the default.
+  final int? rpcPort;
+
+  final bool logToFile;
+  final bool disableCompactFilters;
+
+  int get effectiveRpcPort => rpcPort ?? network.rpcPort;
+
+  Uri get rpcEndpoint => Uri.parse('http://127.0.0.1:$effectiveRpcPort/');
+
+  /// The directory florestad actually writes to, mirroring upstream
+  /// `datadir_path` in `bin/florestad/src/main.rs`.
+  String effectiveDataDir({required String? homeDir, String separator = '/'}) {
+    final base = dataDir ?? '${homeDir ?? '.'}$separator.floresta';
+    final sub = network.dataSubdir;
+    return sub == null ? base : '$base$separator$sub';
+  }
+
+  /// Validates user-editable fields before they are saved.
+  Either<Failure, NodeSettings> validate() {
+    final port = rpcPort;
+    if (port != null && (port < 1024 || port > 65535)) {
+      return const Left(
+        ValidationFailure(
+          'The RPC port must be between 1024 and 65535.',
+          recovery: 'Leave it empty to use the network default.',
+        ),
+      );
+    }
+    final dir = dataDir;
+    if (dir != null && !_isAbsolute(dir)) {
+      // Upstream: "The passed value should be an absolute path."
+      return const Left(
+        ValidationFailure(
+          'The data directory must be an absolute path.',
+          recovery:
+              'Choose a folder with the folder picker, or leave it '
+              'empty to use the default.',
+        ),
+      );
+    }
+    final exe = executablePath;
+    if (exe != null && !_isAbsolute(exe)) {
+      return const Left(
+        ValidationFailure('The executable path must be an absolute path.'),
+      );
+    }
+    return Right(this);
+  }
+
+  static bool _isAbsolute(String path) =>
+      path.startsWith('/') || RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path);
+
+  NodeSettings copyWith({
+    bool? onboardingComplete,
+    Option<String>? executablePath,
+    BitcoinNetwork? network,
+    Option<String>? dataDir,
+    Option<int>? rpcPort,
+    bool? logToFile,
+    bool? disableCompactFilters,
+  }) {
+    return NodeSettings(
+      onboardingComplete: onboardingComplete ?? this.onboardingComplete,
+      executablePath: executablePath == null
+          ? this.executablePath
+          : executablePath.toNullable(),
+      network: network ?? this.network,
+      dataDir: dataDir == null ? this.dataDir : dataDir.toNullable(),
+      rpcPort: rpcPort == null ? this.rpcPort : rpcPort.toNullable(),
+      logToFile: logToFile ?? this.logToFile,
+      disableCompactFilters:
+          disableCompactFilters ?? this.disableCompactFilters,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    onboardingComplete,
+    executablePath,
+    network,
+    dataDir,
+    rpcPort,
+    logToFile,
+    disableCompactFilters,
+  ];
+}

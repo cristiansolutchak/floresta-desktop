@@ -1,0 +1,141 @@
+import 'package:floresta_gui/core/errors/failure.dart';
+import 'package:floresta_gui/features/settings/data/shared_prefs_settings_repository.dart';
+import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_gui/features/settings/domain/node_settings.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  group('BitcoinNetwork', () {
+    test('mirrors upstream default ports and subdirectories', () {
+      expect(BitcoinNetwork.bitcoin.rpcPort, 8332);
+      expect(BitcoinNetwork.signet.rpcPort, 38332);
+      expect(BitcoinNetwork.testnet4.rpcPort, 48332);
+      expect(BitcoinNetwork.regtest.rpcPort, 18442);
+      expect(BitcoinNetwork.bitcoin.electrumPort, 50001);
+      expect(BitcoinNetwork.signet.electrumPort, 60001);
+      expect(BitcoinNetwork.bitcoin.dataSubdir, isNull);
+      expect(BitcoinNetwork.signet.dataSubdir, 'signet');
+    });
+
+    test('parses CLI values', () {
+      expect(BitcoinNetwork.fromCliValue('testnet4'), BitcoinNetwork.testnet4);
+      expect(BitcoinNetwork.fromCliValue('mainnet'), isNull);
+    });
+  });
+
+  group('NodeSettings', () {
+    test('defaults to signet so new users cannot touch real funds', () {
+      expect(const NodeSettings().network, BitcoinNetwork.signet);
+    });
+
+    test('computes the data directory like upstream datadir_path', () {
+      const s = NodeSettings(network: BitcoinNetwork.signet);
+      expect(
+        s.effectiveDataDir(homeDir: '/Users/a'),
+        '/Users/a/.floresta/signet',
+      );
+      expect(
+        const NodeSettings(
+          network: BitcoinNetwork.bitcoin,
+        ).effectiveDataDir(homeDir: '/Users/a'),
+        '/Users/a/.floresta',
+      );
+      expect(
+        const NodeSettings(
+          dataDir: '/data/f',
+          network: BitcoinNetwork.regtest,
+        ).effectiveDataDir(homeDir: '/Users/a'),
+        '/data/f/regtest',
+      );
+    });
+
+    test('uses the network default RPC port unless overridden', () {
+      expect(
+        const NodeSettings().rpcEndpoint,
+        Uri.parse('http://127.0.0.1:38332/'),
+      );
+      expect(const NodeSettings(rpcPort: 40000).effectiveRpcPort, 40000);
+    });
+
+    test('rejects invalid ports and relative paths', () {
+      expect(
+        const NodeSettings(rpcPort: 80).validate().getLeft().toNullable(),
+        isA<ValidationFailure>(),
+      );
+      expect(
+        const NodeSettings(dataDir: 'relative/dir').validate().isLeft(),
+        isTrue,
+      );
+      expect(
+        const NodeSettings(executablePath: 'florestad').validate().isLeft(),
+        isTrue,
+      );
+      expect(
+        const NodeSettings(dataDir: r'C:\floresta').validate().isRight(),
+        isTrue,
+      );
+    });
+
+    test('copyWith can clear optional values', () {
+      const s = NodeSettings(dataDir: '/d', rpcPort: 40000);
+      final cleared = s.copyWith(dataDir: const None(), rpcPort: const None());
+      expect(cleared.dataDir, isNull);
+      expect(cleared.rpcPort, isNull);
+      expect(s.copyWith().dataDir, '/d');
+    });
+  });
+
+  group('SharedPrefsSettingsRepository', () {
+    Future<SharedPrefsSettingsRepository> repo([
+      Map<String, Object> initial = const {},
+    ]) async {
+      SharedPreferences.setMockInitialValues(initial);
+      return SharedPrefsSettingsRepository(
+        await SharedPreferences.getInstance(),
+      );
+    }
+
+    test('round-trips settings', () async {
+      final r = await repo();
+      const s = NodeSettings(
+        onboardingComplete: true,
+        executablePath: '/bin/florestad',
+        network: BitcoinNetwork.regtest,
+        dataDir: '/data',
+        rpcPort: 19000,
+        logToFile: false,
+        disableCompactFilters: true,
+      );
+      expect(await r.save(s), const Right(unit));
+      expect(r.load(), s);
+    });
+
+    test('does not save invalid settings', () async {
+      final r = await repo();
+      final result = await r.save(const NodeSettings(rpcPort: 1));
+      expect(result.isLeft(), isTrue);
+      expect(r.load(), const NodeSettings());
+    });
+
+    test('drops corrupt stored values but keeps onboarding state', () async {
+      final r = await repo({
+        'settings.onboardingComplete': true,
+        'settings.network': 'regtest',
+        'settings.dataDir': 'not/absolute',
+        'settings.rpcPort': 5,
+      });
+      final s = r.load();
+      expect(s.onboardingComplete, isTrue);
+      expect(s.network, BitcoinNetwork.regtest);
+      expect(s.dataDir, isNull);
+      expect(s.rpcPort, isNull);
+    });
+
+    test('falls back to the default network for unknown values', () async {
+      final r = await repo({'settings.network': 'testnet3'});
+      expect(r.load().network, BitcoinNetwork.signet);
+    });
+  });
+}
