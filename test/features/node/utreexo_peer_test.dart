@@ -140,6 +140,55 @@ void main() {
     });
   });
 
+  group('shouldRestartStuckChainSelection (SYNC-09)', () {
+    final now = DateTime(2026, 10, 25, 9);
+    bool restart({
+      bool own = true,
+      int snapshot = 939969,
+      int validated = 0,
+      int headers = 973070,
+      int? tip = 973071,
+      Duration? idle = const Duration(minutes: 9),
+      int done = 0,
+      DateTime? last,
+    }) => shouldRestartStuckChainSelection(
+      ownNode: own,
+      snapshotHeight: snapshot,
+      validatedHeight: validated,
+      headerHeight: headers,
+      peerTip: tip,
+      sinceProgress: idle,
+      restartsSoFar: done,
+      lastRestart: last,
+      now: now,
+    );
+
+    test('restarts a node stuck after all headers (observed numbers)', () {
+      expect(restart(), isTrue);
+    });
+
+    test('not while headers download, validation runs, or briefly idle', () {
+      expect(restart(headers: 600000), isFalse);
+      expect(restart(validated: 939969), isFalse);
+      expect(restart(idle: const Duration(minutes: 2)), isFalse);
+      expect(restart(snapshot: 0), isFalse, reason: 'assume-utreexo off');
+      expect(restart(own: false), isFalse);
+      expect(restart(tip: null), isFalse);
+    });
+
+    test('at most 3 times, 15 minutes apart', () {
+      expect(restart(done: 3), isFalse);
+      expect(
+        restart(done: 1, last: now.subtract(const Duration(minutes: 5))),
+        isFalse,
+      );
+      expect(
+        restart(done: 1, last: now.subtract(const Duration(minutes: 16))),
+        isTrue,
+      );
+    });
+  });
+
   group('P2pVersionProbe wire format', () {
     test('a version message has the network magic and a valid header', () {
       final m = P2pVersionProbe.versionMessage(BitcoinNetwork.signet, nonce: 7);

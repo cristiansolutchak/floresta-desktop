@@ -151,3 +151,39 @@ List<String> stalledUtreexoPeersToDrop({
       if (!verified.contains(a)) a,
   ];
 }
+
+/// SYNC-09: florestad v0.9.1 can stay forever in its "checking if our peers
+/// agree" step after downloading all headers, without applying the
+/// assume-utreexo snapshot: it waits for *every* peer to answer with no new
+/// headers and re-asks them every few minutes (`chain_selector_ctx.rs`
+/// `empty_headers_message`, `LookingForForks`), so one peer that never
+/// gives that answer, or a block found meanwhile, keeps it there. Observed
+/// on mainnet 2026-10-25: 9 minutes at 973 070 headers with nothing
+/// validated; a restart on the same data applied the snapshot in 34 s.
+///
+/// True when the app should restart its node for that reason: snapshot on,
+/// nothing validated yet, headers within [tolerance] of the peers' tip, no
+/// progress for [stuckFor], and fewer than [maxRestarts] such restarts,
+/// the last one more than [every] ago.
+bool shouldRestartStuckChainSelection({
+  required bool ownNode,
+  required int snapshotHeight,
+  required int validatedHeight,
+  required int headerHeight,
+  required int? peerTip,
+  required Duration? sinceProgress,
+  required int restartsSoFar,
+  DateTime? lastRestart,
+  required DateTime now,
+  int tolerance = 6,
+  Duration stuckFor = const Duration(minutes: 5),
+  Duration every = const Duration(minutes: 15),
+  int maxRestarts = 3,
+}) {
+  if (!ownNode || snapshotHeight == 0 || validatedHeight != 0) return false;
+  if (peerTip == null || headerHeight + tolerance < peerTip) return false;
+  if (headerHeight <= snapshotHeight) return false;
+  if (sinceProgress == null || sinceProgress < stuckFor) return false;
+  if (restartsSoFar >= maxRestarts) return false;
+  return lastRestart == null || now.difference(lastRestart) >= every;
+}

@@ -19,6 +19,7 @@ class UtreexoPeerSearch extends Equatable {
     this.tried = 0,
     this.added = const [],
     this.dropped = const [],
+    this.restarts = const [],
   });
 
   final DateTime? lastAttempt;
@@ -30,20 +31,26 @@ class UtreexoPeerSearch extends Equatable {
   /// Unverified Utreexo peers disconnected while validation was stuck.
   final List<String> dropped;
 
+  /// When the app restarted the node because it never left header
+  /// selection (SYNC-09).
+  final List<DateTime> restarts;
+
   UtreexoPeerSearch copyWith({
     DateTime? lastAttempt,
     int? tried,
     List<String>? added,
     List<String>? dropped,
+    List<DateTime>? restarts,
   }) => UtreexoPeerSearch(
     lastAttempt: lastAttempt ?? this.lastAttempt,
     tried: tried ?? this.tried,
     added: added ?? this.added,
     dropped: dropped ?? this.dropped,
+    restarts: restarts ?? this.restarts,
   );
 
   @override
-  List<Object?> get props => [lastAttempt, tried, added, dropped];
+  List<Object?> get props => [lastAttempt, tried, added, dropped, restarts];
 }
 
 final utreexoPeerFinderProvider = Provider<UtreexoPeerFinder>(
@@ -76,8 +83,42 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
       lastAttempt: state.lastAttempt,
     );
     _maybeDrop(status, ready);
+    _maybeRestart(status);
     if (!seek || _inFlight) return;
     unawaited(_seek(status, network));
+  }
+
+  bool _restarting = false;
+
+  void _maybeRestart(NodeStatus status) {
+    final chain = status.chain;
+    final since = status.lastProgressAt;
+    if (chain == null || _restarting) return;
+    final now = DateTime.now();
+    final restart = shouldRestartStuckChainSelection(
+      ownNode:
+          status.process is ProcessRunning &&
+          status.api == ApiReachability.reachable &&
+          !status.isExternallyManaged,
+      snapshotHeight: ref.read(nodeReadinessProvider).snapshotHeight,
+      validatedHeight: chain.validatedHeight,
+      headerHeight: chain.headerHeight,
+      peerTip: ref.read(nodeReadinessProvider).peerTip,
+      sinceProgress: since == null ? null : now.difference(since),
+      restartsSoFar: state.restarts.length,
+      lastRestart: state.restarts.lastOrNull,
+      now: now,
+    );
+    if (!restart) return;
+    _restarting = true;
+    state = state.copyWith(restarts: [...state.restarts, now]);
+    unawaited(() async {
+      try {
+        await ref.read(nodeControllerProvider.notifier).restart();
+      } finally {
+        _restarting = false;
+      }
+    }());
   }
 
   void _maybeDrop(NodeStatus status, List<Peer> ready) {

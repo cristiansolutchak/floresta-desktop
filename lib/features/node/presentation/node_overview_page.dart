@@ -300,6 +300,12 @@ class _SyncPanel extends ConsumerWidget {
                   'the app added ${search.added.length} verified',
               ].join(' · '),
             ),
+          if (search.restarts.isNotEmpty)
+            KeyValueRow(
+              'Automatic restarts',
+              '${search.restarts.length}: Floresta had all headers but did '
+                  'not start verifying (a known Floresta 0.9.1 stall)',
+            ),
           if (status.disk case final disk?)
             KeyValueRow(
               'Data folder',
