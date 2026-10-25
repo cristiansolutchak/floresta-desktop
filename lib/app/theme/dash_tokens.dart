@@ -37,6 +37,13 @@ class DashTokens extends ThemeExtension<DashTokens> {
     required this.danger,
     required this.dangerBg,
     required this.dangerBorder,
+    this.codeBg = const Color(0xFF0A0A0A),
+    this.codeText = const Color(0xFFE4E7EC),
+    this.codeMuted = const Color(0xFF85888E),
+    this.codeKey = const Color(0xFF84CAFF),
+    this.codeString = const Color(0xFF75E0A7),
+    this.codeNumber = const Color(0xFFFDB022),
+    this.codeError = const Color(0xFFFDA29B),
   });
 
   final Color page;
@@ -77,6 +84,17 @@ class DashTokens extends ThemeExtension<DashTokens> {
   final Color danger;
   final Color dangerBg;
   final Color dangerBorder;
+
+  /// The dark code panels (RPC/Electrum response, logs) look the same in both
+  /// themes, as in Figma: near-black, light text, blue keys and tags, green
+  /// strings, orange numbers.
+  final Color codeBg;
+  final Color codeText;
+  final Color codeMuted;
+  final Color codeKey;
+  final Color codeString;
+  final Color codeNumber;
+  final Color codeError;
 
   static const light = DashTokens(
     page: Color(0xFFF8FAFC),

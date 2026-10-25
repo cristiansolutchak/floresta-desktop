@@ -9,7 +9,6 @@ import '../../features/installation/domain/next_action.dart';
 import '../../features/installation/presentation/installation_providers.dart';
 import '../../features/node/domain/node_status.dart';
 import '../../features/node/presentation/node_controller.dart';
-import '../../features/node/presentation/node_dialogs.dart';
 import '../../features/node/presentation/status_labels.dart';
 import '../../features/settings/presentation/settings_controller.dart';
 import '../../features/node/presentation/utreexo_peer_controller.dart';
@@ -22,16 +21,18 @@ class _Destination {
   const _Destination(this.path, this.label, this.key, {this.asset, this.icon});
   final String path;
   final String label;
-  final LogicalKeyboardKey key;
+
+  /// Cmd/Ctrl+digit shortcut; Help has none (only 1…9 exist).
+  final LogicalKeyboardKey? key;
 
   /// Figma sidebar icon; Installation has none and uses [icon].
   final String? asset;
   final IconData? icon;
 }
 
-/// The Figma sidebar lists Overview, Sync, Peers, Wallet, RPC Console,
-/// Electrum, Logs, Settings and Help. Only screens that exist are listed;
-/// Installation is ours (no Figma frame yet).
+/// The Figma sidebar order (Overview, Sync, Peers, Wallet, RPC Console,
+/// Electrum, Logs, Settings, Help), plus Installation, which has no Figma
+/// frame yet.
 const _destinations = [
   _Destination(
     '/node',
@@ -46,27 +47,52 @@ const _destinations = [
     asset: DashIcons.sync,
   ),
   _Destination(
+    '/peers',
+    'Peers',
+    LogicalKeyboardKey.digit3,
+    asset: DashIcons.peersNav,
+  ),
+  _Destination(
     '/wallet',
     'Wallet',
-    LogicalKeyboardKey.digit3,
+    LogicalKeyboardKey.digit4,
     asset: DashIcons.wallet,
+  ),
+  _Destination(
+    '/rpc',
+    'RPC Console',
+    LogicalKeyboardKey.digit5,
+    asset: DashIcons.rpcConsole,
+  ),
+  _Destination(
+    '/electrum',
+    'Electrum',
+    LogicalKeyboardKey.digit6,
+    asset: DashIcons.electrum,
+  ),
+  _Destination(
+    '/logs',
+    'Logs',
+    LogicalKeyboardKey.digit7,
+    asset: DashIcons.logsNav,
   ),
   _Destination(
     '/installation',
     'Installation',
-    LogicalKeyboardKey.digit4,
+    LogicalKeyboardKey.digit8,
     icon: Icons.download_for_offline_outlined,
   ),
   _Destination(
     '/settings',
     'Settings',
-    LogicalKeyboardKey.digit5,
+    LogicalKeyboardKey.digit9,
     asset: DashIcons.settings,
   ),
+  _Destination('/help', 'Help', null, asset: DashIcons.help),
 ];
 
 /// Dashboard layout from Figma: 328 px sidebar, 82 px header bar, content.
-/// Cmd/Ctrl+1…5 switch sections.
+/// Cmd/Ctrl+1…9 switch sections.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.location, required this.child});
 
@@ -87,8 +113,9 @@ class AppShell extends ConsumerWidget {
     return CallbackShortcuts(
       bindings: {
         for (final d in _destinations)
-          SingleActivator(d.key, meta: isMac, control: !isMac): () =>
-              context.go(d.path),
+          if (d.key case final key?)
+            SingleActivator(key, meta: isMac, control: !isMac): () =>
+                context.go(d.path),
       },
       child: Scaffold(
         backgroundColor: context.dash.page,
@@ -463,7 +490,7 @@ class _HeaderBar extends ConsumerWidget {
                 'Logs',
                 height: 32,
                 asset: DashIcons.logs,
-                onPressed: () => showLogsDialog(context),
+                onPressed: () => context.go('/logs'),
               ),
               const SizedBox(width: 12),
               IconButton(

@@ -3,7 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/installation/presentation/installation_page.dart';
+import '../../features/console/domain/console_template.dart';
+import '../../features/console/presentation/console_page.dart';
+import '../../features/help/presentation/help_page.dart';
+import '../../features/node/presentation/logs_page.dart';
 import '../../features/node/presentation/overview_page.dart';
+import '../../features/node/presentation/peers_page.dart';
 import '../../features/node/presentation/sync_page.dart';
 import '../../features/onboarding/presentation/onboarding_pages.dart';
 import '../../features/settings/presentation/settings_controller.dart';
@@ -54,6 +59,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/sync',
             pageBuilder: (_, s) => _page(s, const SyncPage()),
+          ),
+          GoRoute(
+            path: '/peers',
+            pageBuilder: (_, s) => _page(s, const PeersPage()),
+          ),
+          GoRoute(
+            path: '/rpc',
+            pageBuilder: (_, s) => _page(
+              s,
+              const ConsolePage(ConsoleKind.rpc, key: ValueKey('rpc')),
+            ),
+          ),
+          GoRoute(
+            path: '/electrum',
+            pageBuilder: (_, s) => _page(
+              s,
+              const ConsolePage(
+                ConsoleKind.electrum,
+                key: ValueKey('electrum'),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/logs',
+            pageBuilder: (_, s) => _page(s, const LogsPage()),
+          ),
+          GoRoute(
+            path: '/help',
+            pageBuilder: (_, s) => _page(s, const HelpPage()),
           ),
           GoRoute(
             path: '/wallet',

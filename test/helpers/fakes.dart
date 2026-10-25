@@ -97,8 +97,10 @@ class FakeProcessManager implements NodeProcessManager {
 
   @override
   Stream<NodeProcessState> get states => _states.stream;
+
+  /// Daemon output the app shows (Logs screen).
   @override
-  List<LogLine> get logs => const [];
+  List<LogLine> logs = const [];
   @override
   Stream<LogLine> get logLines => const Stream.empty();
 

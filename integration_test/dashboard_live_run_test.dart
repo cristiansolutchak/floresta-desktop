@@ -99,6 +99,9 @@ Future<Object?> _rpc(int port, String method) async {
 List<String> _texts(WidgetTester tester) => [
   for (final e in find.byType(RichText).evaluate())
     (e.widget as RichText).text.toPlainText(),
+  // Selectable text (console responses) renders through EditableText.
+  for (final e in find.byType(EditableText).evaluate())
+    (e.widget as EditableText).controller.text,
 ];
 
 void main() {
@@ -142,16 +145,25 @@ void main() {
         tester.element(find.byType(FlorestaApp)),
       );
 
+      // A frame that has not finished yet (display asleep); awaited before
+      // the next one, since the test API forbids overlapping pumps.
+      Future<void>? frame;
       Future<void> follow(bool Function() done, Duration limit) async {
         final end = DateTime.now().add(limit);
         while (!done()) {
           if (DateTime.now().isAfter(end)) fail('timed out');
           await Future<void>.delayed(const Duration(seconds: 1));
+          frame ??= tester.pump();
           try {
-            await tester.pump().timeout(const Duration(seconds: 2));
+            await frame!.timeout(const Duration(seconds: 2));
+            frame = null;
           } on Object {
             // Display asleep: keep following on real time.
           }
+        }
+        if (frame case final pending?) {
+          await pending;
+          frame = null;
         }
       }
 
@@ -282,12 +294,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       shots.add(await _screenshot(tester, '02b-overview-lower'));
       await tester.tap(find.text('View Peers'));
-      await tester.pump(const Duration(milliseconds: 500));
-      shots.add(await _screenshot(tester, '03-peers-dialog'));
-      final rows = find.textContaining(RegExp(r'^\[?[0-9a-f.:\[\]]+:\d+'));
-      _step('peer rows in dialog: ${rows.evaluate().length}');
-      await tester.tap(find.byTooltip('Close'));
-      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(seconds: 1));
+      shots.add(await _screenshot(tester, '03-peers'));
 
       await tester.tap(find.text('Sync').first);
       await tester.pump(const Duration(seconds: 1));
@@ -303,6 +311,54 @@ void main() {
       expect(sync['validatedShown'], isTrue);
       expect(sync['tipShown'], isTrue);
       expect(find.text('Accepted from snapshot'), findsOneWidget);
+
+      // The other Figma screens, against the same node.
+      Future<void> open(String item, String shot) async {
+        await tester.tap(find.text(item).first);
+        await tester.pump(const Duration(seconds: 1));
+        shots.add(await _screenshot(tester, shot));
+      }
+
+      Future<String> runCall() async {
+        await tester.ensureVisible(find.text('Run Call'));
+        await tester.tap(find.text('Run Call'));
+        final end = DateTime.now().add(const Duration(seconds: 30));
+        while (!find
+            .textContaining(' ms')
+            .evaluate()
+            .any((e) => (e.widget as Text).data?.endsWith(' ms') ?? false)) {
+          if (DateTime.now().isAfter(end)) fail('no console answer');
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await tester.pump();
+        }
+        return _texts(tester).join('\n');
+      }
+
+      await open('Peers', '07-peers');
+      expect(
+        find.text('Connected'),
+        findsWidgets,
+        reason: 'ready peers are shown as cards',
+      );
+
+      await open('RPC Console', '08-rpc-console');
+      final rpcText = await runCall();
+      expect(rpcText, contains('"validated": '));
+      expect(rpcText, contains('Answered in'));
+      shots.add(await _screenshot(tester, '09-rpc-answer'));
+
+      await open('Electrum', '10-electrum');
+      final electrumText = await runCall();
+      expect(electrumText, contains('Answered in'));
+      _step(
+        'electrum server.version: '
+        '${RegExp(r'\[[^\]]*"[^\]]*\]').firstMatch(electrumText.replaceAll('\n', ' '))?.group(0)}',
+      );
+      shots.add(await _screenshot(tester, '11-electrum-answer'));
+
+      await open('Logs', '12-logs');
+      await open('Help', '13-help');
+      expect(find.text('Glossary'), findsOneWidget);
 
       final network = BitcoinNetwork.values.firstWhere(
         (n) => n.name == _network,

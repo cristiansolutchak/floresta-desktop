@@ -16,7 +16,6 @@ import '../domain/peer.dart';
 import '../domain/preflight.dart';
 import '../domain/sync_progress.dart';
 import 'node_controller.dart';
-import 'node_dialogs.dart';
 import 'status_labels.dart';
 
 /// Figma "Overview" (frame 1:14488): status banner, then Syncing, Backfill,
@@ -241,7 +240,7 @@ class _StatusBanner extends ConsumerWidget {
               DashButton(
                 'Logs',
                 style: DashButtonStyle.secondary,
-                onPressed: () => showLogsDialog(context),
+                onPressed: () => context.go('/logs'),
               ),
               if (status.canStop && !status.isExternallyManaged)
                 DashButton(
@@ -519,7 +518,7 @@ class _PeersCard extends ConsumerWidget {
             'View Peers',
             height: 48,
             expand: true,
-            onPressed: () => showPeersDialog(context),
+            onPressed: () => context.go('/peers'),
           ),
         ],
       ),

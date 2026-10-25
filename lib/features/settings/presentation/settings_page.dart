@@ -4,19 +4,15 @@ import 'package:fpdart/fpdart.dart' hide State;
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
-import '../../../core/providers.dart';
 import '../../../shared/widgets/common.dart';
-import '../../installation/presentation/installation_providers.dart';
 import '../../node/presentation/node_controller.dart';
 import '../../node/presentation/status_labels.dart';
 import '../domain/node_settings.dart';
 import '../domain/wallet_birthday.dart';
+import 'diagnostics.dart';
 import 'node_settings_widgets.dart';
 import 'reset_panel.dart';
 import 'settings_controller.dart';
-
-/// App version shown in diagnostics; keep in sync with pubspec.yaml.
-const appVersion = '0.1.0';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -259,39 +255,8 @@ class _DiagnosticsPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final platform = ref.watch(hostPlatformProvider);
-    final settings = ref.watch(settingsControllerProvider);
-    final env = ref.watch(environmentProvider);
-    final detection = ref.watch(installationDetectionProvider).value;
-    final status = ref.watch(nodeControllerProvider);
-    final dataDir = settings.effectiveDataDir(
-      homeDir: env['HOME'] ?? env['USERPROFILE'],
-      separator: platform.pathSeparator,
-    );
-
-    final rows = <(String, String)>[
-      ('App version', appVersion),
-      ('Platform', platform.label),
-      (
-        'Floresta',
-        detection == null
-            ? 'Checking…'
-            : detection.match(
-                (f) => f.title,
-                (i) => '${i.version} at ${i.executablePath}',
-              ),
-      ),
-      ('Network', settings.network.label),
-      ('RPC endpoint', settings.rpcEndpoint.toString()),
-      ('Electrum (TCP)', '127.0.0.1:${settings.network.electrumPort}'),
-      ('Data folder', dataDir),
-      if (settings.logToFile)
-        ('Log file', '$dataDir${platform.pathSeparator}debug.log'),
-      ('Process', status.process.runtimeType.toString()),
-      ('API', status.api.name),
-      if (status.lastRpcFailure case final f?) ('Last RPC error', f.message),
-    ];
-    final report = rows.map((r) => '${r.$1}: ${r.$2}').join('\n');
+    final rows = ref.watch(diagnosticsRowsProvider);
+    final report = ref.watch(diagnosticsReportProvider);
 
     return Panel(
       title: 'Diagnostics',

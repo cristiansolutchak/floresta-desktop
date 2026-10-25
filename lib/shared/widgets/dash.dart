@@ -65,6 +65,11 @@ abstract final class DashIcons {
   static const sync = 'assets/icons/sidebar/sync.svg';
   static const wallet = 'assets/icons/sidebar/wallet.svg';
   static const settings = 'assets/icons/sidebar/settings.svg';
+  static const peersNav = 'assets/icons/sidebar/peers.svg';
+  static const rpcConsole = 'assets/icons/sidebar/rpc-console.svg';
+  static const electrum = 'assets/icons/sidebar/electrum.svg';
+  static const logsNav = 'assets/icons/sidebar/logs.svg';
+  static const help = 'assets/icons/sidebar/help.svg';
   static const shieldTick = 'assets/icons/sidebar/shield-tick.svg';
   static const headerSyncing = 'assets/icons/overview/header/syncing.svg';
   static const height = 'assets/icons/overview/header/height.svg';
@@ -736,3 +741,235 @@ String formatCompact(int n) {
 
 /// "62.5%".
 String formatPercent1(double f) => '${(f * 100).toStringAsFixed(1)}%';
+
+/// Top card of the Peers, RPC, Electrum, Logs and Help screens: a 32 icon
+/// block, title (and tag), subtitle, actions on the right and an optional
+/// help box underneath.
+class DashPageHeader extends StatelessWidget {
+  const DashPageHeader({
+    super.key,
+    required this.asset,
+    required this.title,
+    this.tag,
+    this.subtitle,
+    this.actions = const [],
+    this.help,
+  });
+
+  final String asset;
+  final String title;
+  final Widget? tag;
+  final String? subtitle;
+  final List<Widget> actions;
+  final String? help;
+
+  @override
+  Widget build(BuildContext context) {
+    return DashCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 12,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: DashIconBlock.asset(asset, size: 32, iconSize: 16),
+                  ),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Semantics(
+                              header: true,
+                              child: Text(
+                                title,
+                                style: DashText.cardTitle(
+                                  context,
+                                ).copyWith(fontSize: 16),
+                              ),
+                            ),
+                            ?tag,
+                          ],
+                        ),
+                        if (subtitle != null)
+                          SelectableText(
+                            subtitle!,
+                            style: DashText.body(context),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (actions.isNotEmpty)
+                Wrap(spacing: 8, runSpacing: 8, children: actions),
+            ],
+          ),
+          if (help != null) ...[const SizedBox(height: 16), DashHelpBox(help!)],
+        ],
+      ),
+    );
+  }
+}
+
+/// Underlined text tabs (RPC console categories).
+class DashTabs extends StatelessWidget {
+  const DashTabs({
+    super.key,
+    required this.labels,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<String> labels;
+  final int selected;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.dash;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: t.border, width: 2)),
+      ),
+      child: Wrap(
+        children: [
+          for (var i = 0; i < labels.length; i++)
+            Semantics(
+              selected: i == selected,
+              button: true,
+              child: InkWell(
+                onTap: () => onSelected(i),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: i == selected ? t.brand : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    labels[i],
+                    style: DashText.body(
+                      context,
+                      color: i == selected ? t.textPrimary : t.textSecondary,
+                      weight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Filter chip of the Logs screen: black when selected, gray otherwise.
+class DashChip extends StatelessWidget {
+  const DashChip(
+    this.label, {
+    super.key,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.dash;
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: Material(
+        color: selected ? t.primaryButton : t.secondaryButton,
+        borderRadius: BorderRadius.circular(2),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(2),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            child: Text(
+              label,
+              style: DashText.small(
+                context,
+                color: selected ? t.onPrimaryButton : t.textPrimary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Near-black panel for code: RPC/Electrum responses and logs.
+class DashCodeBox extends StatelessWidget {
+  const DashCodeBox({super.key, required this.child, this.height});
+
+  final Widget child;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: height,
+    width: double.infinity,
+    color: context.dash.codeBg,
+    padding: const EdgeInsets.all(16),
+    child: child,
+  );
+}
+
+/// Monospace style for code panels.
+TextStyle dashCode(BuildContext context, {Color? color}) => monoStyle(
+  context,
+  size: 12.5,
+).copyWith(color: color ?? context.dash.codeText, height: 1.6);
+
+final _jsonToken = RegExp(
+  r'("(?:[^"\\]|\\.)*")(\s*:)?|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b',
+);
+
+/// Colours pretty-printed JSON like the Figma response panel.
+TextSpan highlightJson(BuildContext context, String json) {
+  final t = context.dash;
+  final spans = <TextSpan>[];
+  var last = 0;
+  for (final m in _jsonToken.allMatches(json)) {
+    if (m.start > last) {
+      spans.add(TextSpan(text: json.substring(last, m.start)));
+    }
+    final color = m.group(1) != null
+        ? (m.group(2) != null ? t.codeKey : t.codeString)
+        : t.codeNumber;
+    spans.add(
+      TextSpan(
+        text: m.group(1) ?? m.group(3) ?? m.group(4),
+        style: TextStyle(color: color),
+      ),
+    );
+    if (m.group(2) != null) spans.add(TextSpan(text: m.group(2)));
+    last = m.end;
+  }
+  if (last < json.length) spans.add(TextSpan(text: json.substring(last)));
+  return TextSpan(style: dashCode(context), children: spans);
+}

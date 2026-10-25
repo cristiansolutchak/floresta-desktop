@@ -54,6 +54,25 @@ final class StorageFailure extends Failure {
   final String message;
 }
 
+/// A file the user asked to save (for example exported diagnostics) could
+/// not be written.
+final class FileWriteFailure extends Failure {
+  const FileWriteFailure(this.path, this.detail);
+
+  final String path;
+  final String detail;
+
+  @override
+  String get title => 'Could not save the file';
+  @override
+  String get message => '$path: $detail';
+  @override
+  String get recovery => 'Choose another folder and try again.';
+
+  @override
+  List<Object?> get props => [path, detail];
+}
+
 /// INS-12: a reset or removal was refused or did not complete.
 final class ResetFailure extends Failure {
   const ResetFailure(this.message, {this.recovery});
@@ -283,6 +302,23 @@ final class ElectrumProtocolFailure extends Failure {
 
   @override
   List<Object?> get props => [...super.props, detail];
+}
+
+/// The Electrum server answered a request with an error object.
+final class ElectrumServerErrorFailure extends Failure {
+  const ElectrumServerErrorFailure(this.method, this.code, this.serverMessage);
+
+  final String method;
+  final int code;
+  final String serverMessage;
+
+  @override
+  String get title => 'The Electrum server returned an error';
+  @override
+  String get message => serverMessage;
+
+  @override
+  List<Object?> get props => [method, code, serverMessage];
 }
 
 /// The server or node is on a different chain than the wallet expects.

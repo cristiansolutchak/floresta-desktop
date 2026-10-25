@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/dash_tokens.dart';
 import '../../../shared/widgets/common.dart';
@@ -8,7 +9,6 @@ import '../domain/node_status.dart';
 import '../domain/peer.dart';
 import '../domain/sync_progress.dart';
 import 'node_controller.dart';
-import 'node_dialogs.dart';
 import 'overview_page.dart';
 import 'status_labels.dart';
 import 'utreexo_peer_controller.dart';
@@ -37,12 +37,12 @@ class SyncPage extends ConsumerWidget {
             DashButton(
               'View Peers',
               height: 32,
-              onPressed: () => showPeersDialog(context),
+              onPressed: () => context.go('/peers'),
             ),
             DashButton(
               'Logs',
               height: 32,
-              onPressed: () => showLogsDialog(context),
+              onPressed: () => context.go('/logs'),
             ),
             DashButton(
               'Refresh',

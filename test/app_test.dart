@@ -1,5 +1,8 @@
 import 'package:floresta_gui/app/app.dart';
 import 'package:floresta_gui/core/build_flavor.dart';
+import 'package:floresta_gui/core/logging/log_buffer.dart';
+import 'package:floresta_gui/features/console/domain/console_repository.dart';
+import 'package:floresta_gui/features/console/presentation/console_page.dart';
 import 'package:floresta_gui/core/errors/failure.dart';
 import 'package:floresta_gui/core/platform/host_platform.dart';
 import 'package:floresta_gui/core/providers.dart';
@@ -27,6 +30,7 @@ import 'package:floresta_gui/shared/widgets/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,6 +56,9 @@ class _Harness {
   final electrum = FakeElectrumProbe();
 
   BuildFlavor flavor = BuildFlavor.production;
+
+  /// Per-test provider overrides, applied last.
+  final extra = <Override>[];
   PeerProbe probeResult = const PeerProbe.failed('test');
 
   Future<void> pump(
@@ -106,6 +113,7 @@ class _Harness {
               probe: (_, _, _) async => probeResult,
             ),
           ),
+          ...extra,
         ],
         child: const FlorestaApp(),
       ),
@@ -871,9 +879,10 @@ void main() {
     await tester.ensureVisible(find.text('View Peers'));
     await tester.tap(find.text('View Peers'));
     await tester.pumpAndSettle();
-    expect(find.text('1.2.3.4:38333'), findsOneWidget);
-    expect(find.text('5.6.7.8:38333 (in)'), findsOneWidget);
-    await tester.tap(find.byTooltip('Close'));
+    // Card and advanced table.
+    expect(find.text('1.2.3.4:38333'), findsNWidgets(2));
+    expect(find.text('5.6.7.8:38333'), findsNWidgets(2));
+    await tester.tap(find.text('Overview').first);
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('View Sync Details'));
@@ -891,7 +900,153 @@ void main() {
 
     await tester.tap(find.text('Logs').first);
     await tester.pumpAndSettle();
+    expect(find.text('System Logs'), findsOneWidget);
     expect(find.text('Daemon output'), findsOneWidget);
+  });
+
+  testWidgets('UX-05..09: every Figma sidebar screen opens', (tester) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    await h.pump(tester);
+    for (final (item, shown) in [
+      ('Peers', 'Peers are other nodes. More peers = smoother syncing.'),
+      ('RPC Console', 'RPC Call Console'),
+      ('Electrum', 'Electrum Console'),
+      ('Logs', 'System Logs'),
+      ('Help', 'Glossary'),
+    ]) {
+      await tester.tap(find.text(item).first);
+      await tester.pumpAndSettle();
+      expect(find.text(shown), findsOneWidget, reason: item);
+    }
+  });
+
+  testWidgets('Add Peer refuses host names and sends addnode for an IP', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    await h.pump(tester);
+    await tester.tap(find.text('Peers').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add Peer'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'seed.example.com:8333');
+    await tester.tap(find.text('Connect'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('IP addresses only'), findsOneWidget);
+    expect(h.rpc.addNodeCalls, isEmpty);
+
+    await tester.enterText(find.byType(TextField), '203.0.113.7:8333');
+    await tester.tap(find.text('Connect'));
+    await tester.pumpAndSettle();
+    expect(h.rpc.addNodeCalls.single, (
+      '203.0.113.7:8333',
+      AddNodeCommand.add,
+      false,
+    ));
+  });
+
+  testWidgets('RPC console runs templates and guards risky calls', (
+    tester,
+  ) async {
+    final calls = <(String, List<Object?>)>[];
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()))
+      ..extra.add(
+        rpcConsoleRepositoryProvider.overrideWithValue(
+          _FakeConsole((m, p) {
+            calls.add((m, p));
+            return {'chain': 'signet', 'blocks': 200000};
+          }),
+        ),
+      );
+    await h.pump(tester);
+    await tester.tap(find.text('RPC Console').first);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Run Call'));
+    await tester.tap(find.text('Run Call'));
+    await tester.pumpAndSettle();
+    expect(calls.single.$1, 'getblockchaininfo');
+    expect(calls.single.$2, isEmpty);
+    expect(find.textContaining('"blocks": 200000'), findsOneWidget);
+
+    // State-changing methods ask first; cancelling sends nothing.
+    await tester.enterText(find.byType(TextField).first, 'stop');
+    await tester.ensureVisible(find.text('Run Call'));
+    await tester.tap(find.text('Run Call'));
+    await tester.pumpAndSettle();
+    expect(find.text('Run stop?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(calls, hasLength(1));
+
+    // Key material never leaves the app.
+    await tester.enterText(find.byType(TextField).first, 'loaddescriptor');
+    await tester.enterText(
+      find.byType(TextField).last,
+      '["wpkh(${FakeKeys.xprv}/0/*)"]',
+    );
+    await tester.ensureVisible(find.text('Run Call'));
+    await tester.tap(find.text('Run Call'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Private key material detected'),
+      findsOneWidget,
+    );
+    expect(calls, hasLength(1));
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).controller!.text,
+      isEmpty,
+    );
+  });
+
+  testWidgets('Electrum console shows the server answer', (tester) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()))
+      ..extra.add(
+        electrumConsoleRepositoryProvider.overrideWithValue(
+          _FakeConsole((m, p) => ['Floresta 0.9.1', '1.4']),
+        ),
+      );
+    await h.pump(tester);
+    await tester.tap(find.text('Electrum').first);
+    await tester.pumpAndSettle();
+    expect(find.text('server.version'), findsWidgets);
+    await tester.ensureVisible(find.text('Run Call'));
+    await tester.tap(find.text('Run Call'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('"Floresta 0.9.1"'), findsOneWidget);
+  });
+
+  testWidgets('Logs filters daemon output by area', (tester) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    h.manager.logs = [
+      LogLine(
+        DateTime(2026, 10, 25, 18, 23, 41),
+        LogSource.stdout,
+        '2026-10-25 18:23:41  INFO floresta_chain::pruned_utreexo::chain_state: '
+        'New tip! height=940729',
+      ),
+      LogLine(
+        DateTime(2026, 10, 25, 18, 23, 42),
+        LogSource.stdout,
+        '2026-10-25 18:23:42  WARN floresta_wire::p2p_wire::node: '
+        'Peer timed out',
+      ),
+    ];
+    await h.pump(tester);
+    await tester.tap(find.text('Logs').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('New tip!'), findsOneWidget);
+    expect(find.textContaining('Peer timed out'), findsOneWidget);
+
+    await tester.tap(find.text('Network'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('New tip!'), findsNothing);
+    expect(find.textContaining('Peer timed out'), findsOneWidget);
   });
 
   testWidgets('node status reflects an unreachable API while starting', (
@@ -907,4 +1062,18 @@ void main() {
       ApiReachability.unreachable,
     );
   });
+}
+
+class _FakeConsole implements ConsoleRepository {
+  _FakeConsole(this.answer);
+  final Object? Function(String, List<Object?>) answer;
+
+  @override
+  String get endpoint => 'test';
+
+  @override
+  Future<Either<Failure, Object?>> call(
+    String method,
+    List<Object?> params,
+  ) async => Right(answer(method, params));
 }
