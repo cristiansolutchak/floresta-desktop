@@ -18,7 +18,6 @@ class UtreexoPeerSearch extends Equatable {
     this.lastAttempt,
     this.tried = 0,
     this.added = const [],
-    this.triedV2 = const [],
     this.dropped = const [],
   });
 
@@ -28,9 +27,6 @@ class UtreexoPeerSearch extends Equatable {
   /// Verified over v1 and added for good.
   final List<String> added;
 
-  /// No v1 answer; handed to florestad for one v2 attempt.
-  final List<String> triedV2;
-
   /// Unverified Utreexo peers disconnected while validation was stuck.
   final List<String> dropped;
 
@@ -38,18 +34,16 @@ class UtreexoPeerSearch extends Equatable {
     DateTime? lastAttempt,
     int? tried,
     List<String>? added,
-    List<String>? triedV2,
     List<String>? dropped,
   }) => UtreexoPeerSearch(
     lastAttempt: lastAttempt ?? this.lastAttempt,
     tried: tried ?? this.tried,
     added: added ?? this.added,
-    triedV2: triedV2 ?? this.triedV2,
     dropped: dropped ?? this.dropped,
   );
 
   @override
-  List<Object?> get props => [lastAttempt, tried, added, triedV2, dropped];
+  List<Object?> get props => [lastAttempt, tried, added, dropped];
 }
 
 final utreexoPeerFinderProvider = Provider<UtreexoPeerFinder>(
@@ -141,11 +135,6 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
           ...state.added,
           for (final a in attempts)
             if (a.action == 'add') a.address,
-        }.toList(),
-        triedV2: {
-          ...state.triedV2,
-          for (final a in attempts)
-            if (a.action == 'onetry-v2') a.address,
         }.toList(),
       );
     } finally {

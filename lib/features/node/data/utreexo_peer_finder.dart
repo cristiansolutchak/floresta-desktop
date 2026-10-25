@@ -30,23 +30,22 @@ class UtreexoPeerAttempt {
   final String address;
   final PeerProbe probe;
 
-  /// `add` (verified Utreexo over v1), `onetry-v2` (no v1 answer: let the
-  /// node try its encrypted transport once), or null (skipped).
+  /// `add` (verified Utreexo over v1) or null (skipped).
   final String? action;
 }
 
 /// SYNC-05: finds Utreexo peers for florestad v0.9.1, whose built-in seeds
 /// no longer answer. Candidates come from the seeds upstream maintains
 /// ([utreexoSeeds]) and [curatedUtreexoPeers]; each is checked with a P2P
-/// handshake first, so nothing unverified is added permanently:
+/// handshake first, and only verified ones are added:
 ///
 /// - Utreexo bit, right network, height past the snapshot: `addnode add`
 ///   over v1 (v0.9.1 does not fall back to v1 on its own, and utreexod
 ///   nodes may not speak v2);
-/// - no v1 answer (likely a v2-only node): `addnode onetry` with v2, so
-///   florestad itself checks it; it is kept only if it then shows up as a
-///   Utreexo peer, which florestad remembers in its own `anchors.json`;
-/// - anything else (wrong network, no Utreexo bit, too far behind): skipped.
+/// - anything else is skipped, including nodes that do not answer v1. The
+///   only v2-only Utreexo nodes seen so far (`/bridge:0.1.3/`) never
+///   answered proof requests and stalled header download when added
+///   (real mainnet runs, 2026-10-25; docs/audit/sync-utreexo-root-cause.md).
 class UtreexoPeerFinder {
   UtreexoPeerFinder({
     required this.rpc,
@@ -103,14 +102,6 @@ class UtreexoPeerFinder {
       if (verdict == UtreexoCandidateVerdict.usable) {
         final r = await rpc.addNode(list[i], command: AddNodeCommand.add);
         action = r.isRight() ? 'add' : null;
-      } else if (verdict == UtreexoCandidateVerdict.unreachable &&
-          probe.error == noVersionReply) {
-        final r = await rpc.addNode(
-          list[i],
-          command: AddNodeCommand.onetry,
-          v2transport: true,
-        );
-        action = r.isRight() ? 'onetry-v2' : null;
       }
       attempts.add(UtreexoPeerAttempt(list[i], probe, action));
     }

@@ -179,7 +179,7 @@ void main() {
 
   group('UtreexoPeerFinder', () {
     test(
-      'adds verified Utreexo nodes, tries v2-only ones once, skips the rest',
+      'adds only verified Utreexo nodes, skips v2-only and the rest',
       () async {
         final rpc = FakeNodeRpcRepository();
         final probes = <String, PeerProbe>{
@@ -201,13 +201,12 @@ void main() {
         );
         final attempts = await finder.run(BitcoinNetwork.bitcoin);
         expect(attempts.map((a) => (a.address, a.action)), [
-          ('189.44.63.101:8333', 'onetry-v2'),
+          ('189.44.63.101:8333', null), // v2-only: never added
           ('195.26.240.213:8333', null),
           ('1.228.21.110:8333', null),
           ('161.97.178.61:8333', 'add'), // curated, verified again here
         ]);
         expect(rpc.addNodeCalls, [
-          ('189.44.63.101:8333', AddNodeCommand.onetry, true),
           ('161.97.178.61:8333', AddNodeCommand.add, false),
         ]);
       },

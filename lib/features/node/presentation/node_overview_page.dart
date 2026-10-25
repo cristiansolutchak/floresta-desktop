@@ -298,8 +298,6 @@ class _SyncPanel extends ConsumerWidget {
                 '${(status.peers ?? const []).where((p) => p.isReady && p.supportsUtreexo).length} connected (2 wanted)',
                 if (search.added.isNotEmpty)
                   'the app added ${search.added.length} verified',
-                if (search.triedV2.isNotEmpty)
-                  '${search.triedV2.length} more being tried',
               ].join(' · '),
             ),
           if (status.disk case final disk?)
