@@ -76,6 +76,22 @@ flutter:
     - assets/icons/sidebar/
     - assets/icons/overview/header/
     - assets/icons/overview/body/
+    # Shipped with the font, as the SIL OFL 1.1 requires.
+    - assets/fonts/Space_Grotesk/OFL.txt
+
+  fonts:
+    - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/Space_Grotesk/static/SpaceGrotesk-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Space_Grotesk/static/SpaceGrotesk-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Space_Grotesk/static/SpaceGrotesk-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Space_Grotesk/static/SpaceGrotesk-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Space_Grotesk/static/SpaceGrotesk-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:
