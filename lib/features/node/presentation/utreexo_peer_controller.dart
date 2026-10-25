@@ -217,7 +217,7 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
           .read(utreexoPeerFinderProvider)
           .run(
             network,
-            networkTip: ref.read(nodeReadinessProvider).peerTip,
+            validatedHeight: status.chain?.validatedHeight ?? 0,
             alreadyConnected: {
               for (final p in status.peers ?? const []) p.address,
             },

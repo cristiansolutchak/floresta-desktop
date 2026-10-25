@@ -24,6 +24,22 @@ const _core = PeerProbe(
 
 void main() {
   group('judgeUtreexoCandidate', () {
+    test(
+      'a node behind the tip is usable for the blocks it has (observed)',
+      () {
+        // utreexod at 970 486 while the tip was 973 099 and we had validated
+        // only up to the snapshot: it served the proofs that unblocked mainnet.
+        expect(
+          judgeUtreexoCandidate(
+            _utreexod,
+            network: BitcoinNetwork.bitcoin,
+            validatedHeight: 939969,
+          ),
+          UtreexoCandidateVerdict.usable,
+        );
+      },
+    );
+
     test('a Utreexo node past the snapshot is usable', () {
       expect(
         judgeUtreexoCandidate(_utreexod, network: BitcoinNetwork.bitcoin),
@@ -51,9 +67,9 @@ void main() {
       );
       expect(
         judgeUtreexoCandidate(
-          _utreexod,
+          _utreexod, // 970 486
           network: BitcoinNetwork.bitcoin,
-          networkTip: 980000, // more than 2016 blocks ahead
+          validatedHeight: 970400, // it has almost nothing we still need
         ),
         UtreexoCandidateVerdict.tooFarBehind,
       );

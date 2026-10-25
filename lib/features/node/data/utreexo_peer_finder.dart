@@ -80,7 +80,7 @@ class UtreexoPeerFinder {
 
   Future<List<UtreexoPeerAttempt>> run(
     BitcoinNetwork network, {
-    int? networkTip,
+    int validatedHeight = 0,
     Set<String> alreadyConnected = const {},
   }) async {
     final list = [
@@ -96,7 +96,7 @@ class UtreexoPeerFinder {
       final verdict = judgeUtreexoCandidate(
         probe,
         network: network,
-        networkTip: networkTip,
+        validatedHeight: validatedHeight,
       );
       String? action;
       if (verdict == UtreexoCandidateVerdict.usable) {

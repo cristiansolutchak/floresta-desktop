@@ -312,6 +312,68 @@ void main() {
     );
   });
 
+  testWidgets(
+    'SYNC-05: silent Utreexo peers do not stop the search (observed)',
+    (tester) async {
+      final h = _Harness()
+        ..probeResult = const PeerProbe(
+          protocolVersion: 70016,
+          services: 0x340d,
+          userAgent: '/btcwire:0.5.0/utreexod:0.5.2/',
+          height: 970486,
+        )
+        ..rpc.peers = const [
+          Peer(
+            id: 2,
+            address: '189.44.63.101:8333',
+            userAgent: '/bridge:0.1.3/',
+            inbound: false,
+            kind: 'regular',
+            state: 'Ready',
+            transport: 'V2',
+            initialHeight: 973099,
+            services: ['WITNESS', 'P2P_V2', '0x1000'],
+          ),
+          Peer(
+            id: 3,
+            address: '194.163.132.180:8333',
+            userAgent: '/bridge:0.1.3/',
+            inbound: false,
+            kind: 'regular',
+            state: 'Ready',
+            transport: 'V2',
+            initialHeight: 973099,
+            services: ['WITNESS', 'P2P_V2', '0x1000'],
+          ),
+          Peer(
+            id: 1,
+            address: '1.2.3.4:8333',
+            userAgent: '/Satoshi:31.1.0/',
+            inbound: false,
+            kind: 'regular',
+            state: 'Ready',
+            transport: 'V2',
+            initialHeight: 973047,
+            services: ['NETWORK', 'WITNESS'],
+          ),
+        ];
+      await h.pump(tester);
+      await tester.tap(find.text('Start node'));
+      await tester.pumpAndSettle();
+      // Our node is up and answering now.
+      h.rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+      h.manager.emit(ProcessRunning(9, DateTime(2026)));
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      // Mainnet (production default): the curated utreexod entry, verified
+      // by the (fake) handshake, is added over v1 for good.
+      expect(
+        h.rpc.addNodeCalls,
+        contains(('161.97.178.61:8333', AddNodeCommand.add, false)),
+      );
+    },
+  );
+
   testWidgets('start launches the detected executable', (tester) async {
     final h = _Harness();
     await h.pump(tester);

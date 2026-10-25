@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:equatable/equatable.dart';
 
 import '../../settings/domain/bitcoin_network.dart';
@@ -46,21 +48,23 @@ class PeerProbe extends Equatable {
 }
 
 /// SYNC-05: whether a probed node is worth handing to florestad as a
-/// Utreexo peer. Its height must be past the assume-utreexo snapshot (or it
-/// cannot serve the proofs florestad needs next) and within [maxLag] blocks
-/// of [networkTip] when that is known.
+/// Utreexo peer: it must serve Utreexo and have blocks this node still has
+/// to verify, i.e. a height above both the assume-utreexo snapshot and
+/// [validatedHeight] (+ [margin]). A node that is behind the network tip
+/// is still useful for the blocks it has: the utreexod peer that unblocked
+/// mainnet (2026-10-25) was ~2 600 blocks behind the tip and served 30 000
+/// needed proofs. An earlier "within 2016 blocks of the tip" rule wrongly
+/// rejected it.
 UtreexoCandidateVerdict judgeUtreexoCandidate(
   PeerProbe probe, {
   required BitcoinNetwork network,
-  int? networkTip,
-  int maxLag = 2016,
+  int validatedHeight = 0,
+  int margin = 144,
 }) {
   if (!probe.answered) return UtreexoCandidateVerdict.unreachable;
   if (!probe.servesUtreexo) return UtreexoCandidateVerdict.notUtreexo;
-  if (probe.height <= network.assumeUtreexoHeight) {
-    return UtreexoCandidateVerdict.tooFarBehind;
-  }
-  if (networkTip != null && probe.height + maxLag < networkTip) {
+  final needed = [network.assumeUtreexoHeight, validatedHeight].reduce(max);
+  if (probe.height <= needed + margin) {
     return UtreexoCandidateVerdict.tooFarBehind;
   }
   return UtreexoCandidateVerdict.usable;
