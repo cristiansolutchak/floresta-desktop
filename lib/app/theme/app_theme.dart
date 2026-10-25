@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'dash_tokens.dart';
+
 /// Semantic colors that Material's ColorScheme has no slot for.
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
@@ -75,6 +77,7 @@ abstract final class AppTheme {
     surface: Colors.white,
     onSurface: const Color(0xFF1A1C1A),
     colors: AppColors.light,
+    dash: DashTokens.light,
   );
 
   static ThemeData dark() => _build(
@@ -84,6 +87,7 @@ abstract final class AppTheme {
     surface: const Color(0xFF181B19),
     onSurface: const Color(0xFFE7E9E6),
     colors: AppColors.dark,
+    dash: DashTokens.dark,
   );
 
   static ThemeData _build({
@@ -93,6 +97,7 @@ abstract final class AppTheme {
     required Color surface,
     required Color onSurface,
     required AppColors colors,
+    required DashTokens dash,
   }) {
     final scheme =
         ColorScheme.fromSeed(
@@ -117,7 +122,7 @@ abstract final class AppTheme {
     );
     return base.copyWith(
       scaffoldBackgroundColor: background,
-      extensions: [colors],
+      extensions: [colors, dash],
       visualDensity: VisualDensity.compact,
       dividerTheme: DividerThemeData(color: colors.border, space: 1),
       textTheme: text.copyWith(

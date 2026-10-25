@@ -44,3 +44,22 @@ class Peer extends Equatable {
   @override
   List<Object?> get props => [id, address, state];
 }
+
+/// Connected peers by direction and transport (`getpeerinfo`
+/// `transport_protocol` is "V1" or "V2" upstream).
+class PeerCounts {
+  const PeerCounts(this.inbound, this.outbound, this.v1, this.v2);
+
+  factory PeerCounts.of(List<Peer> ready) => PeerCounts(
+    ready.where((p) => p.inbound).length,
+    ready.where((p) => !p.inbound).length,
+    ready.where((p) => p.transport.toUpperCase() == 'V1').length,
+    ready.where((p) => p.transport.toUpperCase() == 'V2').length,
+  );
+
+  final int inbound;
+  final int outbound;
+  final int v1;
+  final int v2;
+  int get total => inbound + outbound;
+}

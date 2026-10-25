@@ -142,12 +142,12 @@ void main() {
 
       final start = find.ancestor(
         of: find.text('Start node'),
-        matching: find.byWidgetPredicate((w) => w is FilledButton),
+        matching: find.byType(TextButton),
       );
       await waitFor(
         () =>
             start.evaluate().isNotEmpty &&
-            tester.widget<FilledButton>(start).onPressed != null,
+            tester.widget<TextButton>(start).onPressed != null,
         const Duration(seconds: 30),
       );
       final shots = <String?>[await _screenshot('01-before-start', tester)];
@@ -160,7 +160,7 @@ void main() {
           await container.read(nodeControllerProvider.notifier).stop();
         }
       });
-      _step('starting from the Node screen');
+      _step('starting from the Overview banner');
       final started = DateTime.now();
       await tester.tap(start);
       final startDeadline = DateTime.now().add(const Duration(seconds: 20));
@@ -264,7 +264,7 @@ void main() {
       expect(seenStages, contains(ReadinessStage.downloadingHeaders));
       expect(timeline.any((t) => (t['headers'] as int? ?? 0) > 100000), isTrue);
 
-      _step('stopping from the Node screen');
+      _step('stopping from the Overview banner');
       await tester.tap(find.text('Stop'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Stop'));

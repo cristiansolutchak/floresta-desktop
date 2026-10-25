@@ -47,6 +47,71 @@ abstract final class StatusLabels {
     ),
   };
 
+  /// One or two words for the header bar tag and the Overview banner
+  /// ("Syncing", "Synced"). Derived from the same readiness as every other
+  /// label (SYNC-08).
+  static StatusLabel short(NodeReadiness r, NodeStatus s) {
+    if (s.api != ApiReachability.reachable) {
+      return switch (s.process) {
+        ProcessStarting() || ProcessRunning() || ProcessAdopted() => (
+          label: 'Starting',
+          caption: null,
+          tone: Tone.warning,
+        ),
+        ProcessStopping() => (
+          label: 'Stopping',
+          caption: null,
+          tone: Tone.warning,
+        ),
+        ProcessCrashed() || ProcessFailedToStart() => (
+          label: 'Error',
+          caption: null,
+          tone: Tone.danger,
+        ),
+        ProcessIdle() || ProcessStopped() => (
+          label: 'Stopped',
+          caption: null,
+          tone: Tone.neutral,
+        ),
+      };
+    }
+    if (r.wrongNetwork) {
+      return (label: 'Wrong network', caption: null, tone: Tone.danger);
+    }
+    if (r.stalledFor != null) {
+      return (label: 'Stalled', caption: null, tone: Tone.danger);
+    }
+    return switch (r.stage) {
+      ReadinessStage.stopped => (
+        label: 'Stopped',
+        caption: null,
+        tone: Tone.neutral,
+      ),
+      ReadinessStage.starting => (
+        label: 'Starting',
+        caption: null,
+        tone: Tone.warning,
+      ),
+      ReadinessStage.findingPeers ||
+      ReadinessStage.downloadingHeaders ||
+      ReadinessStage.validatingBlocks => (
+        label: 'Syncing',
+        caption: null,
+        tone: Tone.warning,
+      ),
+      ReadinessStage.behindNetwork => (
+        label: 'Behind',
+        caption: null,
+        tone: Tone.danger,
+      ),
+      ReadinessStage.ready => (
+        label: 'Synced',
+        caption: null,
+        tone: Tone.success,
+      ),
+    };
+  }
+
   static StatusLabel api(NodeStatus s) => switch (s.api) {
     ApiReachability.unknown => (
       label: 'Checking',

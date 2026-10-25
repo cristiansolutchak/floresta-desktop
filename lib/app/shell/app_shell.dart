@@ -1,44 +1,72 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/build_flavor.dart';
+import '../../features/installation/domain/next_action.dart';
+import '../../features/installation/presentation/installation_providers.dart';
 import '../../features/node/domain/node_status.dart';
 import '../../features/node/presentation/node_controller.dart';
+import '../../features/node/presentation/node_dialogs.dart';
 import '../../features/node/presentation/status_labels.dart';
 import '../../features/settings/presentation/settings_controller.dart';
 import '../../features/node/presentation/utreexo_peer_controller.dart';
 import '../../features/wallet/presentation/wallet_rescan_controller.dart';
 import '../../shared/widgets/common.dart';
-import '../theme/app_theme.dart';
+import '../../shared/widgets/dash.dart';
+import '../theme/dash_tokens.dart';
 
 class _Destination {
-  const _Destination(this.path, this.label, this.icon, this.key);
+  const _Destination(this.path, this.label, this.key, {this.asset, this.icon});
   final String path;
   final String label;
-  final IconData icon;
   final LogicalKeyboardKey key;
+
+  /// Figma sidebar icon; Installation has none and uses [icon].
+  final String? asset;
+  final IconData? icon;
 }
 
+/// The Figma sidebar lists Overview, Sync, Peers, Wallet, RPC Console,
+/// Electrum, Logs, Settings and Help. Only screens that exist are listed;
+/// Installation is ours (no Figma frame yet).
 const _destinations = [
-  _Destination('/node', 'Node', Icons.dns_outlined, LogicalKeyboardKey.digit1),
+  _Destination(
+    '/node',
+    'Overview',
+    LogicalKeyboardKey.digit1,
+    asset: DashIcons.overview,
+  ),
+  _Destination(
+    '/sync',
+    'Sync',
+    LogicalKeyboardKey.digit2,
+    asset: DashIcons.sync,
+  ),
   _Destination(
     '/wallet',
     'Wallet',
-    Icons.account_balance_wallet_outlined,
-    LogicalKeyboardKey.digit2,
+    LogicalKeyboardKey.digit3,
+    asset: DashIcons.wallet,
   ),
   _Destination(
     '/installation',
     'Installation',
-    Icons.download_for_offline_outlined,
-    LogicalKeyboardKey.digit3,
+    LogicalKeyboardKey.digit4,
+    icon: Icons.download_for_offline_outlined,
   ),
-  _Destination('/settings', 'Settings', Icons.tune, LogicalKeyboardKey.digit4),
+  _Destination(
+    '/settings',
+    'Settings',
+    LogicalKeyboardKey.digit5,
+    asset: DashIcons.settings,
+  ),
 ];
 
-/// Sidebar layout for the main app. Cmd/Ctrl+1…4 switch sections.
+/// Dashboard layout from Figma: 328 px sidebar, 82 px header bar, content.
+/// Cmd/Ctrl+1…5 switch sections.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.location, required this.child});
 
@@ -52,6 +80,10 @@ class AppShell extends ConsumerWidget {
     // Keeps the Utreexo peer search alive while the app runs (SYNC-05).
     ref.watch(utreexoPeerSearchProvider);
     final isMac = Theme.of(context).platform == TargetPlatform.macOS;
+    final current = _destinations.firstWhere(
+      (d) => location.startsWith(d.path),
+      orElse: () => _destinations.first,
+    );
     return CallbackShortcuts(
       bindings: {
         for (final d in _destinations)
@@ -59,11 +91,23 @@ class AppShell extends ConsumerWidget {
               context.go(d.path),
       },
       child: Scaffold(
+        backgroundColor: context.dash.page,
         body: Row(
           children: [
             _Sidebar(location: location),
-            VerticalDivider(width: 1, color: context.colors.border),
-            Expanded(child: FocusTraversalGroup(child: child)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _HeaderBar(title: current.label),
+                  Expanded(
+                    child: ShellTitleScope(
+                      child: FocusTraversalGroup(child: child),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -77,73 +121,58 @@ class _Sidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final status = ref.watch(nodeControllerProvider);
-    final network = ref.watch(
-      settingsControllerProvider.select((s) => s.network),
-    );
-    final summary = status.api == ApiReachability.reachable
-        ? StatusLabels.readiness(ref.watch(nodeReadinessProvider), status)
-        : StatusLabels.process(status);
-
+    final t = context.dash;
+    final width = MediaQuery.sizeOf(context).width >= 1360 ? 328.0 : 264.0;
+    final pad = width > 300 ? 32.0 : 20.0;
     return Container(
-      width: 224,
-      color: context.colors.sidebar,
-      padding: const EdgeInsets.fromLTRB(12, 20, 12, 16),
+      width: width,
+      decoration: BoxDecoration(
+        color: t.surface,
+        border: Border(right: BorderSide(color: t.border)),
+      ),
       child: FocusTraversalGroup(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.forest_outlined,
-                    size: 20,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text('Floresta', style: context.text.titleMedium),
-                ],
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(pad, 32, pad, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Semantics(
+                        label: 'Floresta',
+                        excludeSemantics: true,
+                        child: SvgPicture.asset(
+                          DashIcons.logo,
+                          height: 40,
+                          colorFilter: ColorFilter.mode(
+                            t.textPrimary,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    for (final d in _destinations)
+                      _NavItem(
+                        destination: d,
+                        selected: location.startsWith(d.path),
+                      ),
+                    const SizedBox(height: 48),
+                    const _ValidationCard(),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 24),
-            for (final d in _destinations)
-              _NavItem(destination: d, selected: location.startsWith(d.path)),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('NETWORK', style: context.text.labelSmall),
-                  const SizedBox(height: 6),
-                  // Always visible: which chain this app is driving.
-                  Semantics(
-                    label: 'Active network: ${network.label}',
-                    child: StatusIndicator(
-                      label: network.label,
-                      caption: network.isMainnet
-                          ? 'Real bitcoin'
-                          : 'Test network: coins have no value',
-                      tone: network.isMainnet ? Tone.info : Tone.warning,
-                    ),
-                  ),
-                  if (ref.watch(buildFlavorProvider) ==
-                      BuildFlavor.development) ...[
-                    const SizedBox(height: 6),
-                    Text('Development build', style: context.text.bodySmall),
-                  ],
-                  const SizedBox(height: 14),
-                  Text('NODE', style: context.text.labelSmall),
-                  const SizedBox(height: 6),
-                  StatusIndicator(
-                    label: summary.label,
-                    caption: summary.caption,
-                    tone: summary.tone,
-                  ),
-                ],
+            Container(
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: t.border)),
               ),
+              padding: EdgeInsets.fromLTRB(pad, 20, pad, 24),
+              child: const _SidebarFooter(),
             ),
           ],
         ),
@@ -159,37 +188,37 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: Semantics(
-        selected: selected,
-        button: true,
-        child: Material(
-          color: selected
-              ? scheme.primary.withValues(alpha: 0.10)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => context.go(destination.path),
+    final t = context.dash;
+    final color = selected ? t.brand : t.textSecondary;
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: Material(
+        color: selected ? t.sidebarActive : Colors.transparent,
+        child: InkWell(
+          onTap: () => context.go(destination.path),
+          child: SizedBox(
+            height: 56,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  Icon(
-                    destination.icon,
-                    size: 18,
-                    color: selected ? scheme.primary : context.colors.muted,
+                  dashGlyph(
+                    context,
+                    icon: destination.icon,
+                    asset: destination.asset,
+                    size: 24,
+                    color: color,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       destination.label,
                       overflow: TextOverflow.ellipsis,
-                      style: context.text.bodyMedium?.copyWith(
-                        fontWeight: selected ? FontWeight.w600 : null,
-                        color: selected ? scheme.primary : null,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: selected ? t.brand : t.textPrimary,
                       ),
                     ),
                   ),
@@ -198,6 +227,253 @@ class _NavItem extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ValidationCard extends StatelessWidget {
+  const _ValidationCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.dash;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      color: t.subtle,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DashIconBlock.asset(
+            DashIcons.shieldTick,
+            size: 24,
+            iconSize: 16,
+            color: t.textSecondary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Self-Sovereign Validation',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: t.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Your Floresta node checks Bitcoin consensus rules locally '
+            'instead of trusting third-party explorers.',
+            style: DashText.body(context),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Online · v0.9.1", plus the network the app drives (owner decision 3:
+/// always visible) and the development build marker.
+class _SidebarFooter extends ConsumerWidget {
+  const _SidebarFooter();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.dash;
+    final status = ref.watch(nodeControllerProvider);
+    final network = ref.watch(
+      settingsControllerProvider.select((s) => s.network),
+    );
+    final version = switch (ref.watch(nextActionProvider).value) {
+      OpenNodeManagement(:final installation) ||
+      ConfigureNode(:final installation) ||
+      UpdateFloresta(:final installation) => installation.version.toString(),
+      _ => null,
+    };
+    final online = status.api == ApiReachability.reachable;
+    final process = StatusLabels.process(status);
+    final label = online ? 'Online' : process.label;
+    final tone = online ? DashTone.success : DashToneColors.of(process.tone);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: tone.strong(context),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: t.textPrimary,
+                ),
+              ),
+            ),
+            if (version != null) ...[
+              const SizedBox(width: 8),
+              DashTag(version, tone: DashTone.neutral),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+        Semantics(
+          label: 'Active network: ${network.label}',
+          excludeSemantics: true,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              DashTag(
+                network.label,
+                tone: network.isMainnet ? DashTone.info : DashTone.warning,
+              ),
+              Text(
+                network.isMainnet
+                    ? 'Real bitcoin'
+                    : 'Test network: coins have no value',
+                style: DashText.small(context),
+              ),
+            ],
+          ),
+        ),
+        if (ref.watch(buildFlavorProvider) == BuildFlavor.development) ...[
+          const SizedBox(height: 6),
+          Text('Development build', style: DashText.small(context)),
+        ],
+      ],
+    );
+  }
+}
+
+/// Title, sync status, height, behind count, Copy Endpoint, Logs, settings.
+class _HeaderBar extends ConsumerWidget {
+  const _HeaderBar({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.dash;
+    final status = ref.watch(nodeControllerProvider);
+    final readiness = ref.watch(nodeReadinessProvider);
+    final progress = ref.watch(syncProgressProvider);
+    final network = ref.watch(
+      settingsControllerProvider.select((s) => s.network),
+    );
+    final short = StatusLabels.short(readiness, status);
+    final tone = DashToneColors.of(short.tone);
+    final endpoint = 'tcp://127.0.0.1:${network.electrumPort}';
+    final chain = status.chain;
+
+    Widget meta(String asset, String text) => Flexible(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DashSvg(asset, size: 16, color: t.textSecondary),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              style: DashText.small(context),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Container(
+      height: 82,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: t.surface,
+        border: Border(bottom: BorderSide(color: t.border)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final roomy = c.maxWidth >= 860;
+          return Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: DashText.title(context),
+                  ),
+                ),
+              ),
+              DashTag(
+                short.label,
+                tone: tone,
+                asset: tone == DashTone.warning
+                    ? DashIcons.headerSyncing
+                    : null,
+                icon: switch (tone) {
+                  DashTone.success => Icons.check,
+                  DashTone.danger => Icons.error_outline,
+                  _ => null,
+                },
+              ),
+              if (roomy && chain != null) ...[
+                const SizedBox(width: 12),
+                meta(
+                  DashIcons.height,
+                  'Height: ${formatInt(chain.headerHeight)}',
+                ),
+                if (progress case final p? when p.behind > 0) ...[
+                  const SizedBox(width: 12),
+                  meta(
+                    DashIcons.behindBy,
+                    'Behind by: ${p.tipIsEstimate ? '~' : ''}'
+                    '${formatCompact(p.behind)}',
+                  ),
+                ],
+              ],
+              Container(
+                width: 1,
+                height: 32,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                color: t.border,
+              ),
+              DashButton(
+                'Copy Endpoint',
+                height: 32,
+                asset: DashIcons.copy,
+                tooltip: 'Copy the Electrum address for wallets: $endpoint',
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: endpoint));
+                  if (context.mounted) {
+                    showMessage(context, 'Copied $endpoint');
+                  }
+                },
+              ),
+              const SizedBox(width: 8),
+              DashButton(
+                'Logs',
+                height: 32,
+                asset: DashIcons.logs,
+                onPressed: () => showLogsDialog(context),
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                tooltip: 'Settings',
+                onPressed: () => context.go('/settings'),
+                icon: DashSvg(DashIcons.gear, size: 24, color: t.textSecondary),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/installation/presentation/installation_page.dart';
-import '../../features/node/presentation/node_overview_page.dart';
+import '../../features/node/presentation/overview_page.dart';
+import '../../features/node/presentation/sync_page.dart';
 import '../../features/onboarding/presentation/onboarding_pages.dart';
 import '../../features/settings/presentation/settings_controller.dart';
 import '../../features/settings/presentation/settings_page.dart';
@@ -48,7 +49,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/node',
-            pageBuilder: (_, s) => _page(s, const NodeOverviewPage()),
+            pageBuilder: (_, s) => _page(s, const OverviewPage()),
+          ),
+          GoRoute(
+            path: '/sync',
+            pageBuilder: (_, s) => _page(s, const SyncPage()),
           ),
           GoRoute(
             path: '/wallet',

@@ -25,6 +25,7 @@ import 'package:floresta_gui/features/wallet/data/wallet_sync_engine.dart';
 import 'package:floresta_gui/features/wallet/data/bip32_address_deriver.dart';
 import 'package:floresta_gui/shared/widgets/common.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
@@ -235,10 +236,10 @@ void main() {
     await h.pump(tester);
 
     expect(find.text('Floresta is not ready to run'), findsOneWidget);
-    final start = tester.widget<FilledButton>(
+    final start = tester.widget<TextButton>(
       find.ancestor(
         of: find.text('Start node'),
-        matching: find.byWidgetPredicate((w) => w is FilledButton),
+        matching: find.byType(TextButton),
       ),
     );
     expect(start.onPressed, isNull);
@@ -524,6 +525,8 @@ void main() {
     final h = _Harness()
       ..rpc.info = Right(RpcModels.blockchainInfo(signetAfterSnapshot));
     await h.pump(tester, network: 'signet');
+    await tester.tap(find.text('Sync'));
+    await tester.pumpAndSettle();
     expect(find.text('Accepted from snapshot'), findsOneWidget);
     expect(find.text('Verified by this node'), findsOneWidget);
     expect(find.text('None yet'), findsOneWidget);
@@ -550,6 +553,8 @@ void main() {
         ),
       ];
     await h.pump(tester, network: 'signet');
+    await tester.tap(find.text('Sync'));
+    await tester.pumpAndSettle();
     expect(find.text('Network tip (estimate from peers)'), findsOneWidget);
     // 327 900 from the peer, 296 870 validated (signetAfterSnapshot).
     expect(
@@ -782,6 +787,111 @@ void main() {
     expect(h.wallet.loaded, isEmpty);
     final field = tester.widget<TextField>(find.byType(TextField));
     expect(field.controller!.text, isEmpty);
+  });
+
+  testWidgets('UX-03/04: Overview and Sync show the node\'s real numbers', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(signetAfterSnapshot))
+      ..rpc.peers = const [
+        Peer(
+          id: 1,
+          address: '1.2.3.4:38333',
+          userAgent: '/Satoshi:30.0.0/',
+          inbound: false,
+          kind: 'regular',
+          state: 'Ready',
+          transport: 'V2',
+          initialHeight: 327900,
+          services: ['NETWORK', 'WITNESS'],
+        ),
+        Peer(
+          id: 2,
+          address: '5.6.7.8:38333',
+          userAgent: '/Floresta:0.9.1/',
+          inbound: true,
+          kind: 'regular',
+          state: 'Ready',
+          transport: 'V1',
+          initialHeight: 327843,
+          services: ['NETWORK'],
+        ),
+      ];
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await h.pump(tester, network: 'signet');
+
+    // Header bar: status, header height, behind (estimate from peers).
+    expect(find.text('Overview'), findsWidgets);
+    expect(find.text('Syncing'), findsOneWidget);
+    expect(find.text('Height: 327,843'), findsOneWidget);
+    expect(find.text('Behind by: ~31.0k'), findsOneWidget);
+
+    // Banner and Syncing card. 296 870 is the signet snapshot, so nothing
+    // after it is verified yet: 0.0 %, not florestad's 90.56 % "progress".
+    expect(find.text('Status: SYNCING'), findsOneWidget);
+    expect(find.text('Phase: Blocks'), findsOneWidget);
+    expect(find.text('0.0%'), findsOneWidget);
+    expect(find.textContaining('90.5'), findsNothing);
+    expect(find.text('296,870'), findsOneWidget);
+    expect(find.text('327,900'), findsOneWidget);
+    expect(find.text('~ 31,030 blocks'), findsOneWidget);
+
+    // Backfill: no progress reported upstream, so no percentage.
+    expect(find.text('Mode: ON (recommended on desktop)'), findsOneWidget);
+    expect(find.text('Running'), findsWidgets);
+    expect(find.textContaining('does not report how far'), findsOneWidget);
+
+    // Peers and services.
+    expect(find.text('2 Connected'), findsOneWidget);
+    expect(find.text('v2: 1  •  v1: 1'), findsOneWidget);
+    expect(find.text('Ready tcp://127.0.0.1:60001'), findsOneWidget);
+    expect(find.text('Metrics (Prometheus)'), findsOneWidget);
+
+    await tester.tap(find.text('Copy Endpoint'));
+    await tester.pump();
+    expect(copied, 'tcp://127.0.0.1:60001');
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('View Peers'));
+    await tester.tap(find.text('View Peers'));
+    await tester.pumpAndSettle();
+    expect(find.text('1.2.3.4:38333'), findsOneWidget);
+    expect(find.text('5.6.7.8:38333 (in)'), findsOneWidget);
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('View Sync Details'));
+    await tester.tap(find.text('View Sync Details'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Step 2/3 – Downloading & Verifying Blocks'),
+      findsOneWidget,
+    );
+    expect(find.text('Phase Blocks'), findsOneWidget);
+    expect(find.text('2  (1 v2 / 1 v1)'), findsOneWidget);
+    expect(find.text('Background Backfill Active'), findsOneWidget);
+    expect(find.text('Pause Backfill'), findsNothing); // not supported
+    expect(find.text('Verified by this node'), findsOneWidget);
+
+    await tester.tap(find.text('Logs').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Daemon output'), findsOneWidget);
   });
 
   testWidgets('node status reflects an unreachable API while starting', (

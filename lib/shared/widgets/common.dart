@@ -119,6 +119,19 @@ class Panel extends StatelessWidget {
   }
 }
 
+/// Marks pages shown inside the dashboard shell, whose header bar already
+/// shows the page title; [PageHeader] then shows only its subtitle and
+/// actions.
+class ShellTitleScope extends InheritedWidget {
+  const ShellTitleScope({super.key, required super.child});
+
+  static bool active(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<ShellTitleScope>() != null;
+
+  @override
+  bool updateShouldNotify(ShellTitleScope oldWidget) => false;
+}
+
 class PageHeader extends StatelessWidget {
   const PageHeader({
     super.key,
@@ -133,6 +146,10 @@ class PageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final inShell = ShellTitleScope.active(context);
+    if (inShell && subtitle == null && actions.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Wrap(
@@ -145,12 +162,13 @@ class PageHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Semantics(
-                header: true,
-                child: Text(title, style: context.text.headlineSmall),
-              ),
+              if (!inShell)
+                Semantics(
+                  header: true,
+                  child: Text(title, style: context.text.headlineSmall),
+                ),
               if (subtitle != null) ...[
-                const SizedBox(height: 4),
+                if (!inShell) const SizedBox(height: 4),
                 Text(subtitle!, style: context.text.bodySmall),
               ],
             ],

@@ -21,6 +21,8 @@ import '../domain/node_rpc_repository.dart';
 import '../domain/node_readiness.dart';
 import '../domain/node_status.dart';
 import '../domain/preflight.dart';
+import '../domain/sync_progress.dart';
+import '../domain/verification_breakdown.dart';
 
 final rpcClientProvider = Provider<JsonRpcClient>((ref) {
   final endpoint = ref.watch(
@@ -302,6 +304,31 @@ final nodeReadinessProvider = Provider<NodeReadiness>((ref) {
     noUtreexoPeersLogged: logsShowNoUtreexoPeers(
       logs.reversed.take(100).map((l) => l.text),
     ),
+  );
+});
+
+/// What the node verified itself versus accepted from the snapshot
+/// (SYNC-02); null until the node reports its chain.
+final verificationBreakdownProvider = Provider<VerificationBreakdown?>((ref) {
+  final chain = ref.watch(nodeControllerProvider.select((s) => s.chain));
+  final network = chain?.network;
+  if (chain == null || network == null) return null;
+  return VerificationBreakdown.of(
+    chain,
+    network,
+    snapshotHeight: ref.watch(nodeReadinessProvider).snapshotHeight,
+  );
+});
+
+/// The dashboard's sync step and numbers; null until the node reports its
+/// chain.
+final syncProgressProvider = Provider<SyncProgress?>((ref) {
+  final chain = ref.watch(nodeControllerProvider.select((s) => s.chain));
+  if (chain == null) return null;
+  return SyncProgress.of(
+    chain,
+    ref.watch(nodeReadinessProvider),
+    ref.watch(verificationBreakdownProvider),
   );
 });
 

@@ -43,6 +43,7 @@ dependencies:
   file_selector: ^1.1.0
   bitcoin_base: 7.3.0
   blockchain_utils: 7.1.0
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +69,13 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Figma dashboard icons and logo (file RufQekcBeaxI8H0jYaQpSM).
+  assets:
+    - assets/logo-icon-text.svg
+    - assets/icons/sidebar/
+    - assets/icons/overview/header/
+    - assets/icons/overview/body/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
