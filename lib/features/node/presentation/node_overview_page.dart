@@ -292,14 +292,16 @@ class _SyncPanel extends ConsumerWidget {
                   '${formatInt(tip - chain.validatedHeight)} blocks left to verify',
             ),
           if (readiness.snapshotHeight > 0 || search.lastAttempt != null)
-            KeyValueRow(
-              'Utreexo peers',
-              [
-                '${(status.peers ?? const []).where((p) => p.isReady && p.supportsUtreexo).length} connected (2 wanted)',
-                if (search.added.isNotEmpty)
-                  'the app added ${search.added.length} verified',
-              ].join(' · '),
-            ),
+            KeyValueRow('Utreexo peers', () {
+              final connected = (status.peers ?? const [])
+                  .where((p) => p.isReady && p.supportsUtreexo)
+                  .toList();
+              final verified = connected
+                  .where((p) => search.added.contains(p.address))
+                  .length;
+              return '${connected.length} connected, $verified verified by '
+                  'the app (2 verified wanted)';
+            }()),
           if (search.restarts.isNotEmpty)
             KeyValueRow(
               'Automatic restarts',
