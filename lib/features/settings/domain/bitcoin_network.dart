@@ -12,6 +12,7 @@ enum BitcoinNetwork {
         '000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f',
     label: 'Mainnet',
     rpcPort: 8332,
+    p2pPort: 8333,
     electrumPort: 50001,
     dataSubdir: null,
     chainNames: {'main', 'bitcoin'},
@@ -24,6 +25,7 @@ enum BitcoinNetwork {
         '00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6',
     label: 'Signet',
     rpcPort: 38332,
+    p2pPort: 38333,
     electrumPort: 60001,
     dataSubdir: 'signet',
     chainNames: {'signet'},
@@ -36,6 +38,7 @@ enum BitcoinNetwork {
         '00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043',
     label: 'Testnet4',
     rpcPort: 48332,
+    p2pPort: 48333,
     electrumPort: 40001,
     dataSubdir: 'testnet4',
     chainNames: {'testnet4'},
@@ -48,6 +51,7 @@ enum BitcoinNetwork {
         '0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206',
     label: 'Regtest',
     rpcPort: 18442,
+    p2pPort: 18444,
     electrumPort: 20001,
     dataSubdir: 'regtest',
     chainNames: {'regtest'},
@@ -60,6 +64,7 @@ enum BitcoinNetwork {
     required this.genesisHash,
     required this.label,
     required this.rpcPort,
+    required this.p2pPort,
     required this.electrumPort,
     required this.dataSubdir,
     required this.chainNames,
@@ -81,6 +86,10 @@ enum BitcoinNetwork {
   final String genesisHash;
   final String label;
   final int rpcPort;
+
+  /// Default P2P port, as florestad's `addnode` assumes when none is given
+  /// (`floresta-node` `json_rpc/network.rs` `add_node`, v0.9.1).
+  final int p2pPort;
 
   /// Plain-TCP Electrum port; TLS is `electrumPort + 1` upstream.
   final int electrumPort;

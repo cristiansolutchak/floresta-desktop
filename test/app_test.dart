@@ -7,9 +7,14 @@ import 'package:floresta_gui/features/installation/domain/floresta_version.dart'
 import 'package:floresta_gui/features/installation/domain/installation.dart';
 import 'package:floresta_gui/features/installation/presentation/installation_providers.dart';
 import 'package:floresta_gui/features/node/data/rpc_models.dart';
+import 'package:floresta_gui/features/node/data/utreexo_peer_finder.dart';
+import 'package:floresta_gui/features/node/domain/utreexo_peer.dart';
 import 'package:floresta_gui/features/node/presentation/node_controller.dart';
+import 'package:floresta_gui/features/node/presentation/utreexo_peer_controller.dart';
 import 'package:floresta_gui/features/node/domain/node_process_state.dart';
 import 'package:floresta_gui/features/node/domain/node_status.dart';
+import 'package:floresta_gui/features/node/domain/node_rpc_repository.dart';
+import 'package:floresta_gui/features/node/domain/peer.dart';
 import 'package:floresta_gui/features/node/domain/preflight.dart';
 import 'package:floresta_gui/features/onboarding/presentation/wizard_widgets.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
@@ -41,6 +46,7 @@ class _Harness {
   final electrum = FakeElectrumProbe();
 
   BuildFlavor flavor = BuildFlavor.production;
+  PeerProbe probeResult = const PeerProbe.failed('test');
 
   Future<void> pump(
     WidgetTester tester, {
@@ -71,6 +77,14 @@ class _Harness {
           preflightProbeProvider.overrideWithValue(preflight),
           electrumProbeProvider.overrideWithValue(electrum),
           buildFlavorProvider.overrideWithValue(flavor),
+          // No DNS or P2P from widget tests.
+          utreexoPeerFinderProvider.overrideWithValue(
+            UtreexoPeerFinder(
+              rpc: rpc,
+              resolve: (_) async => const [],
+              probe: (_, _, _) async => probeResult,
+            ),
+          ),
         ],
         child: const FlorestaApp(),
       ),
@@ -259,6 +273,45 @@ void main() {
     }
   });
 
+  testWidgets('SYNC-05: our node without Utreexo peers gets verified ones', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..probeResult = const PeerProbe(
+        protocolVersion: 70016,
+        services: 0x340d,
+        userAgent: '/btcwire:0.5.0/utreexod:0.5.2/',
+        height: 970486,
+      )
+      ..rpc.peers = const [
+        Peer(
+          id: 1,
+          address: '1.2.3.4:8333',
+          userAgent: '/Satoshi:31.1.0/',
+          inbound: false,
+          kind: 'regular',
+          state: 'Ready',
+          transport: 'V2',
+          initialHeight: 973047,
+          services: ['NETWORK', 'WITNESS'],
+        ),
+      ];
+    await h.pump(tester);
+    await tester.tap(find.text('Start node'));
+    await tester.pumpAndSettle();
+    // Our node is up and answering now.
+    h.rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    h.manager.emit(ProcessRunning(9, DateTime(2026)));
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    // Mainnet (production default): the curated utreexod entry, verified
+    // by the (fake) handshake, is added over v1 for good.
+    expect(
+      h.rpc.addNodeCalls,
+      contains(('161.97.178.61:8333', AddNodeCommand.add, false)),
+    );
+  });
+
   testWidgets('start launches the detected executable', (tester) async {
     final h = _Harness();
     await h.pump(tester);
@@ -394,6 +447,33 @@ void main() {
     expect(find.text('None yet'), findsOneWidget);
     expect(find.textContaining('% validated'), findsNothing);
     expect(find.textContaining('90.5'), findsNothing);
+  });
+
+  testWidgets('SYNC-03: the network tip from peers is labelled an estimate', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(signetAfterSnapshot))
+      ..rpc.peers = const [
+        Peer(
+          id: 1,
+          address: '1.2.3.4:38333',
+          userAgent: '/Satoshi:30.0.0/',
+          inbound: false,
+          kind: 'regular',
+          state: 'Ready',
+          transport: 'V2',
+          initialHeight: 327900,
+          services: ['NETWORK', 'WITNESS'],
+        ),
+      ];
+    await h.pump(tester, network: 'signet');
+    expect(find.text('Network tip (estimate from peers)'), findsOneWidget);
+    // 327 900 from the peer, 296 870 validated (signetAfterSnapshot).
+    expect(
+      find.text('327,900 · about 31,030 blocks left to verify'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('after our node exits, no stale API makes it look external', (

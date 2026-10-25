@@ -8,6 +8,7 @@ import '../../features/node/domain/node_status.dart';
 import '../../features/node/presentation/node_controller.dart';
 import '../../features/node/presentation/status_labels.dart';
 import '../../features/settings/presentation/settings_controller.dart';
+import '../../features/node/presentation/utreexo_peer_controller.dart';
 import '../../features/wallet/presentation/wallet_rescan_controller.dart';
 import '../../shared/widgets/common.dart';
 import '../theme/app_theme.dart';
@@ -48,6 +49,8 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Keeps the rescan schedule running on every screen, not only Wallet.
     ref.watch(walletRescanProvider);
+    // Keeps the Utreexo peer search alive while the app runs (SYNC-05).
+    ref.watch(utreexoPeerSearchProvider);
     final isMac = Theme.of(context).platform == TargetPlatform.macOS;
     return CallbackShortcuts(
       bindings: {

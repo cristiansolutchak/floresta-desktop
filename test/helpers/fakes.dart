@@ -39,6 +39,24 @@ class FakeNodeRpcRepository implements NodeRpcRepository {
   );
   List<Peer> peers = const [];
   int stopRequests = 0;
+  final addNodeCalls = <(String, AddNodeCommand, bool)>[];
+  final disconnected = <String>[];
+
+  @override
+  Future<Either<Failure, Unit>> disconnectNode(String address) async {
+    disconnected.add(address);
+    return const Right(unit);
+  }
+
+  @override
+  Future<Either<Failure, Unit>> addNode(
+    String address, {
+    required AddNodeCommand command,
+    bool v2transport = false,
+  }) async {
+    addNodeCalls.add((address, command, v2transport));
+    return const Right(unit);
+  }
 
   @override
   Future<Either<Failure, BlockchainInfo>> getBlockchainInfo() async => info;

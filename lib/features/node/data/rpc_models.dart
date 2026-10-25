@@ -55,6 +55,8 @@ abstract final class RpcModels {
       // v0.9.x reports neither disk usage nor warnings.
       sizeOnDisk: null,
       warnings: const [],
+      utreexoLeaves: (m['leaf_count'] as num?)?.toInt(),
+      utreexoRoots: (m['root_count'] as num?)?.toInt(),
     );
   }
 

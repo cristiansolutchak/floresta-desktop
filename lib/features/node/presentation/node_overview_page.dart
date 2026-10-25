@@ -16,6 +16,7 @@ import '../domain/verification_breakdown.dart';
 import '../domain/peer.dart';
 import '../domain/preflight.dart';
 import 'node_controller.dart';
+import 'utreexo_peer_controller.dart';
 import 'status_labels.dart';
 
 class NodeOverviewPage extends ConsumerWidget {
@@ -66,7 +67,7 @@ class NodeOverviewPage extends ConsumerWidget {
             message:
                 'Heights have not changed for ${formatDuration(idle)}. '
                 '${readiness.missingUtreexoPeers
-                    ? 'Floresta needs at least $minUtreexoPeers peers that serve Utreexo proofs to verify new blocks, and has ${status.peers?.where((p) => p.isReady && p.supportsUtreexo).length ?? 0} right now. It keeps looking; this depends on how many such peers the network has, not on your setup.'
+                    ? 'Floresta needs at least $minUtreexoPeers peers that serve Utreexo proofs to verify new blocks, and has ${status.peers?.where((p) => p.isReady && p.supportsUtreexo).length ?? 0} right now. Floresta\'s own list of such peers is out of date, so this app also looks for them and adds the ones it can verify (see Utreexo peers below). Progress depends on how many such peers are online, not on your setup.'
                     : (status.peers?.where((p) => p.isReady).length ?? 0) == 0
                     ? 'It has no connected peers: check your internet connection or firewall.'
                     : 'It has peers, so they may not be serving the data it needs; the log below may say why.'}',
@@ -220,13 +221,14 @@ class _StatusStrip extends StatelessWidget {
   }
 }
 
-class _SyncPanel extends StatelessWidget {
+class _SyncPanel extends ConsumerWidget {
   const _SyncPanel(this.status, this.readiness);
   final NodeStatus status;
   final NodeReadiness readiness;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final search = ref.watch(utreexoPeerSearchProvider);
     final chain = status.chain;
     if (chain == null) {
       return const Panel(
@@ -280,6 +282,26 @@ class _SyncPanel extends StatelessWidget {
             const SizedBox(height: 14),
           ],
           KeyValueRow('Block headers known', formatInt(chain.headerHeight)),
+          // SYNC-03: peers' heights are from when they connected, so this is
+          // an estimate and says so.
+          if (readiness.peerTip case final tip?
+              when tip > chain.validatedHeight)
+            KeyValueRow(
+              'Network tip (estimate from peers)',
+              '${formatInt(tip)} · about '
+                  '${formatInt(tip - chain.validatedHeight)} blocks left to verify',
+            ),
+          if (readiness.snapshotHeight > 0 || search.lastAttempt != null)
+            KeyValueRow(
+              'Utreexo peers',
+              [
+                '${(status.peers ?? const []).where((p) => p.isReady && p.supportsUtreexo).length} connected (2 wanted)',
+                if (search.added.isNotEmpty)
+                  'the app added ${search.added.length} verified',
+                if (search.triedV2.isNotEmpty)
+                  '${search.triedV2.length} more being tried',
+              ].join(' · '),
+            ),
           if (status.disk case final disk?)
             KeyValueRow(
               'Data folder',
@@ -324,6 +346,12 @@ class _SyncPanel extends StatelessWidget {
           ),
           KeyValueRow('Latest block time', _formatTime(chain.tipTime)),
           KeyValueRow('Best block hash', chain.bestBlockHash, mono: true),
+          if (chain.utreexoLeaves case final leaves? when leaves > 0)
+            KeyValueRow(
+              'Utreexo accumulator',
+              '${formatInt(leaves)} outputs in '
+                  '${chain.utreexoRoots ?? '?'} roots',
+            ),
           if (chain.sizeOnDisk case final size?)
             KeyValueRow('Chain state on disk', formatBytes(size)),
           if (chain.network == null) KeyValueRow('Reported chain', chain.chain),

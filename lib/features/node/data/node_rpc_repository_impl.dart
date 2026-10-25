@@ -44,4 +44,27 @@ class NodeRpcRepositoryImpl implements NodeRpcRepository {
     await _client.call('stop', const [], const Duration(seconds: 5));
     return unit;
   });
+
+  @override
+  Future<Either<Failure, Unit>> addNode(
+    String address, {
+    required AddNodeCommand command,
+    bool v2transport = false,
+  }) => guardRpc(_client, () async {
+    await _client.call('addnode', [
+      address,
+      command.name,
+      v2transport,
+    ], const Duration(seconds: 10));
+    return unit;
+  });
+
+  @override
+  Future<Either<Failure, Unit>> disconnectNode(String address) =>
+      guardRpc(_client, () async {
+        await _client.call('disconnectnode', [
+          address,
+        ], const Duration(seconds: 10));
+        return unit;
+      });
 }

@@ -27,6 +27,8 @@ class BlockchainInfo extends Equatable {
     required this.tipTime,
     required this.sizeOnDisk,
     required this.warnings,
+    this.utreexoLeaves,
+    this.utreexoRoots,
   });
 
   /// Raw `chain` string; kept for diagnostics when [network] is null.
@@ -50,6 +52,12 @@ class BlockchainInfo extends Equatable {
   final int? sizeOnDisk;
   final List<String> warnings;
 
+  /// SYNC-04: size of the Utreexo accumulator (UTXOs ever added, and the
+  /// number of tree roots). v0.9.x `leaf_count`/`root_count`; null on nodes
+  /// that report Core's shape. Non-zero leaves mean a chain state is loaded.
+  final int? utreexoLeaves;
+  final int? utreexoRoots;
+
   SyncPhase get phase {
     if (initialBlockDownload) return SyncPhase.initialDownload;
     if (validatedHeight < headerHeight) return SyncPhase.catchingUp;
@@ -70,5 +78,7 @@ class BlockchainInfo extends Equatable {
     tipTime,
     sizeOnDisk,
     warnings,
+    utreexoLeaves,
+    utreexoRoots,
   ];
 }

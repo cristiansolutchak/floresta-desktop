@@ -86,6 +86,7 @@ void main() {
       expect(info.validatedHeight, 200000);
       expect(info.phase, SyncPhase.synced);
       expect(info.sizeOnDisk, 52428800);
+      expect(info.utreexoLeaves, isNull);
       expect(info.tipTime.isUtc, isTrue);
     });
 
@@ -122,6 +123,9 @@ void main() {
       expect(info.headerHeight, 0);
       expect(info.initialBlockDownload, isTrue);
       expect(info.sizeOnDisk, isNull);
+      // SYNC-04: v0.9.x reports the accumulator size; Core's shape does not.
+      expect(info.utreexoLeaves, 0);
+      expect(info.utreexoRoots, 0);
       expect(info.warnings, isEmpty);
     });
 
