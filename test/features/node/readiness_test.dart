@@ -160,6 +160,33 @@ void main() {
     );
   });
 
+  group('SYNC-10: consensus tip', () {
+    test('one peer on another chain does not set the tip (observed)', () {
+      expect(
+        consensusPeerTip([
+          973080, 973081, 973080, 973079, 973081, 973080, 973082, 973080,
+          973081, 978945, // a Knots peer on a separate chain
+        ]),
+        973081,
+      );
+      expect(consensusPeerTip([]), isNull);
+      expect(consensusPeerTip([5]), 5);
+    });
+
+    test('a node at the majority tip is not "behind" because of it', () {
+      final s = _status(
+        chain: _chain(headers: 327840, validated: 327840, ibd: false),
+        peers: [
+          _peer(initialHeight: 327840),
+          _peer(initialHeight: 327841),
+          _peer(initialHeight: 333700),
+        ],
+        electrum: ElectrumCheck.ok,
+      );
+      expect(_assess(s).stage, ReadinessStage.ready);
+    });
+  });
+
   group('SYNC-06: never done while behind the network', () {
     test('Mandacaru #63: "done" at 17,904 while peers report ~947k', () {
       final s = _status(

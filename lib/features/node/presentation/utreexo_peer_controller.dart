@@ -20,6 +20,7 @@ class UtreexoPeerSearch extends Equatable {
     this.added = const [],
     this.dropped = const [],
     this.restarts = const [],
+    this.forkPeersDropped = const [],
   });
 
   final DateTime? lastAttempt;
@@ -35,22 +36,35 @@ class UtreexoPeerSearch extends Equatable {
   /// selection (SYNC-09).
   final List<DateTime> restarts;
 
+  /// Peers on another chain disconnected so florestad could finish header
+  /// selection (SYNC-10).
+  final List<String> forkPeersDropped;
+
   UtreexoPeerSearch copyWith({
     DateTime? lastAttempt,
     int? tried,
     List<String>? added,
     List<String>? dropped,
     List<DateTime>? restarts,
+    List<String>? forkPeersDropped,
   }) => UtreexoPeerSearch(
     lastAttempt: lastAttempt ?? this.lastAttempt,
     tried: tried ?? this.tried,
     added: added ?? this.added,
     dropped: dropped ?? this.dropped,
     restarts: restarts ?? this.restarts,
+    forkPeersDropped: forkPeersDropped ?? this.forkPeersDropped,
   );
 
   @override
-  List<Object?> get props => [lastAttempt, tried, added, dropped, restarts];
+  List<Object?> get props => [
+    lastAttempt,
+    tried,
+    added,
+    dropped,
+    restarts,
+    forkPeersDropped,
+  ];
 }
 
 final utreexoPeerFinderProvider = Provider<UtreexoPeerFinder>(
@@ -78,11 +92,17 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
           !status.isExternallyManaged,
       network: network,
       connectedPeers: ready.length,
-      utreexoPeers: ready.where((p) => p.supportsUtreexo).length,
+      // Only peers the app verified count: silent Utreexo peers (seen on
+      // mainnet: /bridge:0.1.3/) also advertise the bit and would otherwise
+      // satisfy the target while serving no proofs.
+      utreexoPeers: ready
+          .where((p) => p.supportsUtreexo && state.added.contains(p.address))
+          .length,
       now: DateTime.now(),
       lastAttempt: state.lastAttempt,
     );
     _maybeDrop(status, ready);
+    _maybeDropForkPeers(status, ready);
     _maybeRestart(status);
     if (!seek || _inFlight) return;
     unawaited(_seek(status, network));
@@ -115,6 +135,41 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
         await ref.read(nodeControllerProvider.notifier).restart();
       } finally {
         _restarting = false;
+      }
+    }());
+  }
+
+  DateTime? _lastForkDrop;
+
+  void _maybeDropForkPeers(NodeStatus status, List<Peer> ready) {
+    final chain = status.chain;
+    if (chain == null || status.isExternallyManaged) return;
+    final now = DateTime.now();
+    if (_lastForkDrop case final last?
+        when now.difference(last).inSeconds < 60) {
+      return;
+    }
+    final readiness = ref.read(nodeReadinessProvider);
+    final drop = forkPeersToDrop(
+      peers: [
+        for (final p in ready) (address: p.address, height: p.initialHeight),
+      ],
+      consensusTip: readiness.peerTip,
+      headerHeight: chain.headerHeight,
+      validatedHeight: chain.validatedHeight,
+      snapshotHeight: readiness.snapshotHeight,
+    );
+    if (drop.isEmpty) return;
+    _lastForkDrop = now;
+    final rpc = ref.read(nodeRpcRepositoryProvider);
+    unawaited(() async {
+      for (final a in drop) {
+        await rpc.disconnectNode(a);
+      }
+      if (ref.mounted) {
+        state = state.copyWith(
+          forkPeersDropped: {...state.forkPeersDropped, ...drop}.toList(),
+        );
       }
     }());
   }

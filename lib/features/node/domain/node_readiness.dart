@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:equatable/equatable.dart';
 
 import '../../settings/domain/bitcoin_network.dart';
@@ -138,7 +136,7 @@ NodeReadiness assessReadiness(
     for (final p in s.peers ?? const <Peer>[])
       if (p.isReady && p.initialHeight > 0) p.initialHeight,
   ];
-  final peerTip = tips.isEmpty ? null : tips.reduce(max);
+  final peerTip = consensusPeerTip(tips);
   final ReadinessStage stage;
   if (!chain.initialBlockDownload &&
       chain.validatedHeight >= chain.headerHeight) {
@@ -171,4 +169,15 @@ NodeReadiness assessReadiness(
                 s.peers!.where((p) => p.isReady && p.supportsUtreexo).length <
                     minUtreexoPeers)),
   );
+}
+
+/// The chain tip most connected peers agree on, from their heights when
+/// they connected: the median. A plain maximum lets one peer on another
+/// chain decide; on mainnet (2026-10-25) Knots peers on a separate chain
+/// reported ~978 900 while every other peer was at ~973 080, which made the
+/// node look 5 800 blocks behind (SYNC-10).
+int? consensusPeerTip(List<int> heights) {
+  if (heights.isEmpty) return null;
+  final sorted = [...heights]..sort();
+  return sorted[sorted.length ~/ 2]; // upper median
 }

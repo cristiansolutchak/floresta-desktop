@@ -104,7 +104,8 @@ const curatedUtreexoPeers = <BitcoinNetwork, List<CuratedUtreexoPeer>>{
 /// SYNC-05: whether the app should look for Utreexo peers for the node now.
 /// Only for a node this app runs, on a network with Utreexo peers to find,
 /// once it has peers at all (headers flowing), while it has fewer than
-/// [wanted] Utreexo peers, and at most once per [every].
+/// [wanted] *verified* Utreexo peers ([utreexoPeers] counts only those),
+/// and at most once per [every].
 bool shouldSeekUtreexoPeers({
   required bool ownNode,
   required BitcoinNetwork network,
@@ -213,4 +214,37 @@ class StuckSelectionTracker {
     _headersCompleteSince = null; // give the restarted node a fresh window
     return true;
   }
+}
+
+/// SYNC-10: peers to disconnect because they are on another chain.
+///
+/// florestad v0.9.1 applies the assume-utreexo snapshot only after *every*
+/// peer answers "no new headers" (`chain_selector_ctx.rs`
+/// `LookingForForks`). A peer on a different chain keeps sending its own
+/// headers, so that never happens. Observed on mainnet 2026-10-25: a Knots
+/// peer reporting 978 945 blocks re-sent competing headers for 12 minutes,
+/// across a restart; disconnecting it let florestad apply the snapshot 9 s
+/// later.
+///
+/// While the node has all headers ([headerHeight] within [tolerance] of
+/// [consensusTip]) and has validated nothing, returns the peers whose
+/// reported height is more than [aheadBy] blocks above the consensus.
+List<String> forkPeersToDrop({
+  required List<({String address, int height})> peers,
+  required int? consensusTip,
+  required int headerHeight,
+  required int validatedHeight,
+  required int snapshotHeight,
+  int tolerance = 6,
+  int aheadBy = 144,
+}) {
+  if (consensusTip == null || validatedHeight != 0 || snapshotHeight == 0) {
+    return const [];
+  }
+  if (headerHeight <= snapshotHeight) return const [];
+  if (headerHeight + tolerance < consensusTip) return const [];
+  return [
+    for (final p in peers)
+      if (p.height > consensusTip + aheadBy) p.address,
+  ];
 }

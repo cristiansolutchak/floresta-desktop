@@ -201,6 +201,30 @@ void main() {
     });
   });
 
+  group('forkPeersToDrop (SYNC-10)', () {
+    final peers = [
+      for (var i = 0; i < 9; i++) (address: 'core$i:8333', height: 973080),
+      (address: '176.132.253.23:8333', height: 978945),
+    ];
+    List<String> drop({int headers = 973087, int validated = 0}) =>
+        forkPeersToDrop(
+          peers: peers,
+          consensusTip: 973080,
+          headerHeight: headers,
+          validatedHeight: validated,
+          snapshotHeight: 939969,
+        );
+
+    test('drops a peer far above the consensus once headers are done', () {
+      expect(drop(), ['176.132.253.23:8333']);
+    });
+
+    test('leaves peers alone while headers download or after validation', () {
+      expect(drop(headers: 600000), isEmpty);
+      expect(drop(validated: 939969), isEmpty);
+    });
+  });
+
   group('P2pVersionProbe wire format', () {
     test('a version message has the network magic and a valid header', () {
       final m = P2pVersionProbe.versionMessage(BitcoinNetwork.signet, nonce: 7);
