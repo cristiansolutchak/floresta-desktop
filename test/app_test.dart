@@ -118,6 +118,7 @@ void main() {
     expect(find.textContaining('Assume Utreexo'), findsOneWidget);
     await tapNext(tester);
     expect(find.textContaining('Electrum server'), findsOneWidget);
+    expect(find.text('Always on'), findsOneWidget);
     expect(find.text('Remote RPC'), findsNothing);
     await tapNext(tester, 'Review configuration');
     expect(find.text('Ready to start'), findsOneWidget);
@@ -213,6 +214,49 @@ void main() {
     expect(find.text('Next: install Floresta'), findsOneWidget);
     expect(find.text('Build from source'), findsOneWidget);
     expect(find.text('Automatic installation'), findsNothing);
+  });
+
+  testWidgets('INS-12: resetting settings brings the wizard back', (
+    tester,
+  ) async {
+    await _Harness().pump(tester);
+    await tester.tap(find.text('Settings').first);
+    await tester.pumpAndSettle();
+    final reset = find.text('Reset settings…');
+    await tester.ensureVisible(reset);
+    await tester.tap(reset);
+    await tester.pumpAndSettle();
+    expect(find.text('Reset app settings?'), findsOneWidget);
+    await tester.tap(find.text('Reset settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome to Floresta'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('settings.onboardingComplete'), isNull);
+  });
+
+  testWidgets('INS-12: nothing can be reset while the node runs', (
+    tester,
+  ) async {
+    final h = _Harness();
+    await h.pump(tester);
+    await tester.tap(find.text('Start node'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings').first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Delete node data…'));
+    expect(
+      find.text('Stop it from Node before resetting anything here.'),
+      findsOneWidget,
+    );
+    for (final label in ['Reset settings…', 'Delete node data…']) {
+      final button = tester.widget<OutlinedButton>(
+        find.ancestor(
+          of: find.text(label),
+          matching: find.byType(OutlinedButton),
+        ),
+      );
+      expect(button.onPressed, isNull, reason: label);
+    }
   });
 
   testWidgets('start launches the detected executable', (tester) async {

@@ -243,6 +243,13 @@ class OptionCard extends StatelessWidget {
         size: 18,
         color: selected ? scheme.primary : colors.muted,
       ),
+      // A disabled switch reads as "off"; a fixed setting says so in words.
+      OptionControl.toggle when !enabled => Text(
+        selected ? 'Always on' : 'Unavailable',
+        style: context.text.labelMedium?.copyWith(
+          color: selected ? scheme.primary : colors.muted,
+        ),
+      ),
       OptionControl.toggle => Switch(value: selected, onChanged: onChanged),
     };
     final body = Padding(

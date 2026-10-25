@@ -1,0 +1,6 @@
+{
+  "FLORESTA_FLAVOR": "development",
+  "FLORESTA_RELEASE_MANIFEST_URL": "http://127.0.0.1:8787/manifest.json",
+  "FLORESTA_RELEASE_REDIRECT_HOSTS": "",
+  "FLORESTA_DEV_RELEASE_KEY": "<64 hex chars printed by release_tool.dart keygen>"
+}

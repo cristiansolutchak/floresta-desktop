@@ -108,6 +108,7 @@ void _manifest(Map<String, String> f) {
       'url': name,
       'sha256': sha,
       'size': bytes.length,
+      if (i['minOs'] case final String minOs) 'minOs': minOs,
     });
   }
   final now = DateTime.now().toUtc();

@@ -14,6 +14,7 @@ class ReleaseArtifact extends Equatable {
     required this.url,
     required this.sha256,
     required this.size,
+    this.minOs,
   });
 
   final HostOs os;
@@ -24,8 +25,37 @@ class ReleaseArtifact extends Equatable {
   final String sha256;
   final int size;
 
+  /// Oldest system the build runs on, as recorded by the artifact build:
+  /// a macOS version (`11.0`) or a glibc version (`glibc 2.31`). Null when
+  /// the manifest does not say.
+  final String? minOs;
+
   @override
-  List<Object?> get props => [os, arch, url, sha256, size];
+  List<Object?> get props => [os, arch, url, sha256, size, minOs];
+}
+
+/// INS-09: whether a host satisfies an artifact's [ReleaseArtifact.minOs].
+///
+/// [hostVersion] uses the same form (`26.3.1`, `glibc 2.35`). Returns null
+/// when either side is unknown or the forms differ, so the caller can let
+/// the later `--version` probe decide instead of refusing blindly.
+bool? satisfiesMinOs(String? minOs, String? hostVersion) {
+  if (minOs == null || hostVersion == null) return null;
+  (String, List<int>)? split(String v) {
+    final m = RegExp(r'^(glibc )?(\d+(?:\.\d+)*)$').firstMatch(v.trim());
+    if (m == null) return null;
+    return (m.group(1) ?? '', m.group(2)!.split('.').map(int.parse).toList());
+  }
+
+  final need = split(minOs);
+  final have = split(hostVersion);
+  if (need == null || have == null || need.$1 != have.$1) return null;
+  for (var i = 0; i < need.$2.length || i < have.$2.length; i++) {
+    final a = i < have.$2.length ? have.$2[i] : 0;
+    final b = i < need.$2.length ? need.$2[i] : 0;
+    if (a != b) return a > b;
+  }
+  return true;
 }
 
 /// The signed description of one Floresta release published for this app.
@@ -103,6 +133,7 @@ class ReleaseManifest extends Equatable {
             .firstOrNull;
         final sha = (a['sha256'] as String).toLowerCase();
         final size = a['size'] as int;
+        final minOs = a['minOs'] as String?;
         if (os == null || arch == null || !_hex64.hasMatch(sha) || size <= 0) {
           return const Left(InstallationFailure.manifest('bad artifact entry'));
         }
@@ -113,6 +144,7 @@ class ReleaseManifest extends Equatable {
             url: base.resolve(a['url'] as String),
             sha256: sha,
             size: size,
+            minOs: minOs,
           ),
         );
       }
@@ -162,7 +194,7 @@ class ReleaseManifest extends Equatable {
     if (!now.isBefore(expires)) {
       return const Left(
         InstallationFailure(
-          stage: 'verify',
+          stage: 'resolve',
           message: 'The release information has expired.',
           recovery:
               'Nothing was installed. Check that your computer clock is '
@@ -173,7 +205,7 @@ class ReleaseManifest extends Equatable {
     if (issued.isAfter(now.add(clockSkew))) {
       return const Left(
         InstallationFailure(
-          stage: 'verify',
+          stage: 'resolve',
           message: 'The release information is dated in the future.',
           recovery:
               'Nothing was installed. Check that your computer clock is '
@@ -184,7 +216,7 @@ class ReleaseManifest extends Equatable {
     if (serial < highestAcceptedSerial) {
       return const Left(
         InstallationFailure(
-          stage: 'verify',
+          stage: 'resolve',
           message:
               'The release server offered older release information '
               'than this computer has already seen.',

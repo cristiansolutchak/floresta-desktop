@@ -94,7 +94,10 @@ void main() {
         addTearDown(() => Process.runSync('chmod', ['755', ro.path]));
         expect(await PreflightProbe.canWrite(ro), isFalse);
       },
-      skip: Platform.environment['USER'] == 'root' ? 'root can write' : false,
+      // Root ignores permission bits (e.g. in a Linux container).
+      skip: '${Process.runSync('id', ['-u']).stdout}'.trim() == '0'
+          ? 'root can write anywhere'
+          : false,
     );
 
     test('free space comes from the OS', () async {

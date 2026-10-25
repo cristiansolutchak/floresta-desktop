@@ -12,6 +12,7 @@ import '../../node/presentation/status_labels.dart';
 import '../domain/node_settings.dart';
 import '../domain/wallet_birthday.dart';
 import 'node_settings_widgets.dart';
+import 'reset_panel.dart';
 import 'settings_controller.dart';
 
 /// App version shown in diagnostics; keep in sync with pubspec.yaml.
@@ -75,6 +76,8 @@ class SettingsPage extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         const _DiagnosticsPanel(),
+        const SizedBox(height: 16),
+        const ResetPanel(),
       ],
     );
   }

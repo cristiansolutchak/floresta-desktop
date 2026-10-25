@@ -8,6 +8,7 @@ import '../../../core/platform/app_paths.dart';
 import '../../../core/platform/host_platform.dart';
 import '../domain/installation.dart';
 import '../domain/installer.dart';
+import '../domain/release_manifest.dart';
 import 'artifact_downloader.dart';
 import 'managed_install_store.dart';
 import 'release_source.dart';
@@ -17,6 +18,31 @@ import 'version_probe.dart';
 
 /// Marks a file executable (unix). Injected so tests and Windows can skip it.
 typedef MakeExecutable = Future<bool> Function(String path);
+
+/// The running system's version in the form artifacts record `minOs`:
+/// `26.3.1` on macOS, `glibc 2.35` on Linux. Null when unknown.
+typedef HostOsVersion = Future<String?> Function();
+
+Future<String?> readHostOsVersion() async {
+  if (Platform.isMacOS) {
+    // "Version 26.3.1 (Build 25D771280a)".
+    return RegExp(
+      r'(\d+(?:\.\d+)+)',
+    ).firstMatch(Platform.operatingSystemVersion)?.group(1);
+  }
+  if (Platform.isLinux) {
+    try {
+      final r = await Process.run('/usr/bin/getconf', [
+        'GNU_LIBC_VERSION',
+      ]).timeout(const Duration(seconds: 5));
+      final out = '${r.stdout}'.trim();
+      return r.exitCode == 0 && out.startsWith('glibc ') ? out : null;
+    } on Object {
+      return null;
+    }
+  }
+  return null;
+}
 
 Future<bool> chmodExecutable(String path) async {
   if (Platform.isWindows) return true;
@@ -43,10 +69,12 @@ class ManagedInstaller implements Installer {
     HttpClient Function()? clientFactory,
     MakeExecutable? makeExecutable,
     DateTime Function()? now,
+    HostOsVersion? hostOsVersion,
   }) : verifier = SignedManifestVerifier(source.trustedKeys),
        _clientFactory = clientFactory ?? HttpClient.new,
        _makeExecutable = makeExecutable ?? chmodExecutable,
-       _now = now ?? DateTime.now;
+       _now = now ?? DateTime.now,
+       _hostOsVersion = hostOsVersion ?? readHostOsVersion;
 
   final AppPaths paths;
   final ReleaseSource source;
@@ -58,6 +86,7 @@ class ManagedInstaller implements Installer {
   final HttpClient Function() _clientFactory;
   final MakeExecutable _makeExecutable;
   final DateTime Function() _now;
+  final HostOsVersion _hostOsVersion;
 
   Uri get manifestUrl => source.manifestUrl;
 
@@ -80,8 +109,12 @@ class ManagedInstaller implements Installer {
       out.add(
         result.match(
           (f) => InstallFailed(
-            [f.message, if (f is InstallationFailure) '(${f.stage})'].join(' '),
+            f.message,
             recovery: f.recovery,
+            stage: f is InstallationFailure
+                ? InstallStage.fromName(f.stage)
+                : null,
+            cancelled: cancel.isCancelled,
           ),
           InstallCompleted.new,
         ),
@@ -138,6 +171,34 @@ class ManagedInstaller implements Installer {
     final artifact = artifactE.getOrElse(
       (_) => throw StateError('unreachable'),
     );
+    // INS-09: a relative URL resolves against the manifest; either way the
+    // artifact must come from the manifest's host or an allowlisted one.
+    if (!isAllowedRedirect(manifestUrl, artifact.url, source.redirectHosts)) {
+      return Left(
+        InstallationFailure(
+          stage: 'resolve',
+          message:
+              'The release information points to a download location this '
+              'app does not trust (${artifact.url.host}).',
+          recovery: 'Nothing was installed. Try again later.',
+        ),
+      );
+    }
+    final host = await _hostOsVersion();
+    if (satisfiesMinOs(artifact.minOs, host) == false) {
+      return Left(
+        InstallationFailure(
+          stage: 'resolve',
+          message:
+              'Floresta ${release.version} needs '
+              '${platform.os.label} ${artifact.minOs} or newer; this '
+              'computer has $host.',
+          recovery:
+              'Nothing was installed. Update your system, or choose an '
+              'existing florestad executable built for it.',
+        ),
+      );
+    }
     final version = '${release.version}'.replaceFirst('v', '');
 
     // Already installed and intact: nothing to do.
@@ -154,7 +215,8 @@ class ManagedInstaller implements Installer {
       artifact,
       paths.staging,
       cancel: cancel,
-      onProgress: (got, total) => emit(InstallDownloading(got / total)),
+      onProgress: (got, total) =>
+          emit(InstallDownloading(got / total, received: got, total: total)),
       redirectHosts: source.redirectHosts,
     );
     if (downloaded case Left(:final value)) return Left(value);

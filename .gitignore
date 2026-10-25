@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Local release configuration (may hold a development key).
+/config/release/development.json
+/dist/

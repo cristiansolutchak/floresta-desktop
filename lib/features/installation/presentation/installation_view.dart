@@ -8,6 +8,7 @@ import '../../../core/errors/failure.dart';
 import '../../../core/platform/host_platform.dart';
 import '../../../core/providers.dart';
 import '../../../shared/widgets/common.dart';
+import '../../node/presentation/status_labels.dart' show formatBytes;
 import '../../settings/presentation/settings_controller.dart';
 import '../domain/floresta_version.dart';
 import '../domain/installation.dart';
@@ -95,8 +96,23 @@ class InstallationView extends ConsumerWidget {
             automaticInstall: automatic,
           ),
         const SizedBox(height: 16),
-        if (automatic) ...[const _InstallerPanel(), const SizedBox(height: 16)],
-        _BuildFromSourcePanel(platform),
+        if (automatic) ...[
+          const _InstallerPanel(),
+          const SizedBox(height: 16),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              title: Text(
+                'Other ways: build from source',
+                style: context.text.bodyMedium,
+              ),
+              children: [_BuildFromSourcePanel(platform)],
+            ),
+          ),
+        ] else
+          _BuildFromSourcePanel(platform),
       ],
     );
   }
@@ -350,7 +366,9 @@ class _BuildFromSourcePanel extends StatelessWidget {
 }
 
 /// Runs the configured [Installer]. Shown only when this build has a
-/// release source.
+/// release source. INS-03: the four stages stay visible, the download shows
+/// its size, failures get a headline per stage, and a cancelled download
+/// resumes where it stopped.
 class _InstallerPanel extends ConsumerWidget {
   const _InstallerPanel();
 
@@ -366,7 +384,9 @@ class _InstallerPanel extends ConsumerWidget {
         ? 'DEVELOPMENT SOURCE'
         : null;
     final supported = installer.supports(platform);
-    final done = run.progress is InstallCompleted;
+    final progress = run.progress;
+    final done = progress is InstallCompleted;
+    final paused = progress is InstallFailed && progress.cancelled;
 
     return Panel(
       title: 'Automatic installation',
@@ -403,11 +423,13 @@ class _InstallerPanel extends ConsumerWidget {
               message: 'Choose an existing florestad executable instead.',
             ),
           ],
-          const SizedBox(height: 12),
-          if (run.progress case final p?) ...[
-            _ProgressLine(p),
+          if (progress != null) ...[
+            const SizedBox(height: 16),
+            _StageSteps(progress),
             const SizedBox(height: 12),
+            _ProgressLine(progress),
           ],
+          const SizedBox(height: 12),
           if (!done)
             Align(
               alignment: Alignment.centerLeft,
@@ -416,19 +438,70 @@ class _InstallerPanel extends ConsumerWidget {
                       onPressed: controller.cancel,
                       child: const Text('Cancel'),
                     )
-                  : OutlinedButton(
-                      onPressed: run.running || !supported
-                          ? null
-                          : controller.start,
-                      child: Text(
-                        run.progress is InstallFailed
-                            ? 'Try again'
-                            : 'Install Floresta',
-                      ),
+                  : FilledButton(
+                      onPressed: !supported ? null : controller.start,
+                      child: Text(switch (progress) {
+                        _ when paused => 'Resume download',
+                        InstallFailed() => 'Try again',
+                        _ => 'Install Floresta',
+                      }),
                     ),
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Release → Download → Verify → Install, with the current one marked.
+class _StageSteps extends StatelessWidget {
+  const _StageSteps(this.progress);
+  final InstallProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = InstallStage.of(progress);
+    final failed = progress is InstallFailed;
+    final complete = progress is InstallCompleted;
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        for (final s in InstallStage.values) ...[
+          Expanded(
+            child: Builder(
+              builder: (context) {
+                final idx = s.index;
+                final cur = current?.index ?? InstallStage.values.length;
+                final (icon, color, state) = complete || idx < cur
+                    ? (Icons.check_circle, scheme.primary, 'done')
+                    : idx == cur && failed
+                    ? (Icons.error_outline, context.colors.warning, 'stopped')
+                    : idx == cur
+                    ? (Icons.radio_button_checked, scheme.primary, 'current')
+                    : (Icons.radio_button_unchecked, context.colors.muted, '');
+                return Semantics(
+                  label: '${s.label}${state.isEmpty ? '' : ', $state'}',
+                  excludeSemantics: true,
+                  child: Row(
+                    children: [
+                      Icon(icon, size: 16, color: color),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          s.label,
+                          style: context.text.bodySmall?.copyWith(
+                            fontWeight: idx == cur ? FontWeight.w600 : null,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -440,26 +513,34 @@ class _ProgressLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (progress) {
-      InstallResolving() => const Text('Checking the published release…'),
-      InstallDownloading(:final fraction) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Downloading ${(fraction * 100).round()}%'),
-          const SizedBox(height: 6),
-          LinearProgressIndicator(value: fraction),
-        ],
+      InstallResolving() => const Text(
+        'Checking the published release and its signature…',
       ),
-      InstallVerifying() => const Text('Verifying the download…'),
+      InstallDownloading(:final fraction, :final received, :final total) =>
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Downloading ${(fraction * 100).round()}%'
+              '${received != null && total != null ? ' · ${formatBytes(received)} of ${formatBytes(total)}' : ''}',
+            ),
+            const SizedBox(height: 6),
+            LinearProgressIndicator(value: fraction),
+          ],
+        ),
+      InstallVerifying() => const Text(
+        'Verifying the checksum and that it runs on this computer…',
+      ),
       InstallInstalling() => const Text('Installing…'),
       InstallCompleted(:final executablePath) => StatusIndicator(
         label: 'Floresta installed',
         caption: executablePath,
         tone: Tone.success,
       ),
-      InstallFailed(:final reason, :final recovery) => Notice(
-        tone: Tone.warning,
-        title: 'Nothing was installed',
-        message: [reason, ?recovery].join(' '),
+      final InstallFailed f => Notice(
+        tone: f.cancelled ? Tone.info : Tone.warning,
+        title: f.title,
+        message: [f.reason, ?f.recovery].join(' '),
       ),
     };
   }

@@ -170,10 +170,57 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Cancel'));
     expect(installer.cancels, 1);
-    await installer.finish(const InstallFailed('The download was cancelled.'));
+    await installer.finish(
+      const InstallFailed(
+        'The download was cancelled.',
+        recovery: 'Start it again to resume.',
+        stage: InstallStage.download,
+        cancelled: true,
+      ),
+    );
     await tester.pumpAndSettle();
-    expect(find.text('Try again'), findsOneWidget);
+    expect(find.text('Download paused'), findsOneWidget);
+    // INS-04: the partial download is kept; the button resumes it.
+    await tester.tap(find.text('Resume download'));
+    await tester.pump();
+    expect(installer.installs, 2);
+    installer.emit(
+      const InstallDownloading(0.6, received: 6000000, total: 10000000),
+    );
+    await tester.pump();
+    expect(find.text('Downloading 60% · 6.0 MB of 10.0 MB'), findsOneWidget);
+    await installer.finish(const InstallCompleted('/data/x/florestad'));
+    await tester.pumpAndSettle();
+    expect(find.text('Floresta installed'), findsOneWidget);
   });
+
+  // INS-03: every stage a real install can stop at has its own headline.
+  for (final (stage, title) in [
+    (InstallStage.resolve, 'Could not get the release information'),
+    (InstallStage.download, 'The download did not finish'),
+    (InstallStage.verify, 'The download did not pass verification'),
+    (InstallStage.install, 'Floresta could not be installed'),
+  ]) {
+    testWidgets('a ${stage.name} failure says so and offers a retry', (
+      tester,
+    ) async {
+      final installer = _ScriptedInstaller();
+      await _pump(tester, installer: installer, source: _devSource);
+      await tester.tap(find.text('Install Floresta'));
+      await tester.pump();
+      await installer.finish(
+        InstallFailed(
+          'Detail.',
+          recovery: 'Nothing was installed.',
+          stage: stage,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(title), findsOneWidget);
+      expect(find.text('Detail. Nothing was installed.'), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+    });
+  }
 
   group('providers', () {
     test('the installer follows the release source', () {

@@ -30,6 +30,17 @@ void main() {
       );
     });
 
+    test('a production build never trusts a development key', () {
+      expect(
+        ReleaseSource.resolve(
+          manifestUrl: 'http://127.0.0.1:8080/manifest.json',
+          devKeyHex: devKey,
+          allowDevKey: false,
+        ),
+        isNull,
+      );
+    });
+
     test('refuses insecure manifest URLs', () {
       expect(
         ReleaseSource.resolve(

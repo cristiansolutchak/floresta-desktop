@@ -31,7 +31,7 @@ class ReleaseTrustStore {
     } on Object catch (e) {
       return Left(
         InstallationFailure(
-          stage: 'verify',
+          stage: 'resolve',
           message: 'The record of trusted releases is unreadable ($e).',
           recovery:
               'Nothing was installed. Choose an existing florestad '

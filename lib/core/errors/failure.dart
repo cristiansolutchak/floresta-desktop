@@ -54,6 +54,18 @@ final class StorageFailure extends Failure {
   final String message;
 }
 
+/// INS-12: a reset or removal was refused or did not complete.
+final class ResetFailure extends Failure {
+  const ResetFailure(this.message, {this.recovery});
+
+  @override
+  String get title => 'Reset did not complete';
+  @override
+  final String message;
+  @override
+  final String? recovery;
+}
+
 final class ExecutableNotFoundFailure extends Failure {
   const ExecutableNotFoundFailure(this.searchedPaths);
 

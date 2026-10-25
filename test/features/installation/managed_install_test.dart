@@ -17,6 +17,7 @@ import 'package:floresta_gui/features/installation/data/managed_install_store.da
 import 'package:floresta_gui/features/installation/data/managed_installer.dart';
 import 'package:floresta_gui/features/installation/data/release_source.dart';
 import 'package:floresta_gui/features/installation/data/release_trust_store.dart';
+import 'package:floresta_gui/features/installation/data/release_keys.dart';
 import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
 import 'package:floresta_gui/features/installation/data/version_probe.dart';
 import 'package:floresta_gui/features/installation/domain/installation.dart';
@@ -407,6 +408,23 @@ void main() {
     });
   });
 
+  group('satisfiesMinOs (INS-09)', () {
+    test('compares dotted versions of the same kind', () {
+      expect(satisfiesMinOs('11.0', '26.3.1'), isTrue);
+      expect(satisfiesMinOs('11.0', '11'), isTrue);
+      expect(satisfiesMinOs('11.0', '10.15.7'), isFalse);
+      expect(satisfiesMinOs('glibc 2.31', 'glibc 2.35'), isTrue);
+      expect(satisfiesMinOs('glibc 2.31', 'glibc 2.28'), isFalse);
+    });
+
+    test('unknown or mismatched forms are left to the version probe', () {
+      expect(satisfiesMinOs(null, '26.3.1'), isNull);
+      expect(satisfiesMinOs('11.0', null), isNull);
+      expect(satisfiesMinOs('glibc 2.31', '26.3.1'), isNull);
+      expect(satisfiesMinOs('weird', '1.0'), isNull);
+    });
+  });
+
   group('ManagedInstaller', () {
     late LocalArtifactServer server;
     late Directory root;
@@ -419,16 +437,18 @@ void main() {
       trustedKeys: [key.trusted],
     );
 
-    ManagedInstaller installer({ArtifactDownloader? downloader}) =>
-        ManagedInstaller(
-          paths: paths,
-          source: source(),
-          downloader:
-              downloader ?? ArtifactDownloader(retryDelay: Duration.zero),
-          probe: VersionProbe(),
-          store: store,
-          trust: ReleaseTrustStore(paths),
-        );
+    ManagedInstaller installer({
+      ArtifactDownloader? downloader,
+      HostOsVersion? hostOsVersion,
+    }) => ManagedInstaller(
+      hostOsVersion: hostOsVersion,
+      paths: paths,
+      source: source(),
+      downloader: downloader ?? ArtifactDownloader(retryDelay: Duration.zero),
+      probe: VersionProbe(),
+      store: store,
+      trust: ReleaseTrustStore(paths),
+    );
 
     var serial = 0;
     void publish(String version, {String? reports}) {
@@ -515,6 +535,7 @@ void main() {
           (states.last as InstallFailed).reason,
           contains('expected v0.9.1'),
         );
+        expect((states.last as InstallFailed).stage, InstallStage.verify);
         expect(
           (await store.read()).toNullable()!.version,
           '0.9.0',
@@ -558,6 +579,66 @@ void main() {
       },
     );
 
+    test(
+      'INS-09: refuses an artifact on a host the source does not trust',
+      () async {
+        final bin = _fakeFlorestad('0.9.1');
+        server.files['/manifest.json'] = key.envelope(
+          _manifest(artifact: bin, url: 'https://elsewhere.example/florestad'),
+        );
+        final states = await installer().install(_platform).toList();
+        expect(
+          (states.last as InstallFailed).reason,
+          contains('does not trust (elsewhere.example)'),
+        );
+        expect(
+          server.requests.where((r) => r.path != '/manifest.json'),
+          isEmpty,
+        );
+        expect((await store.read()).toNullable(), isNull);
+      },
+    );
+
+    test(
+      'INS-09: refuses a build for a newer system, before downloading',
+      () async {
+        final bin = _fakeFlorestad('0.9.1');
+        server.files['/florestad-0.9.1'] = bin;
+        final m = _manifest(artifact: bin, url: 'florestad-0.9.1');
+        ((m['artifacts']! as List).first as Map)['minOs'] = '11.0';
+        server.files['/manifest.json'] = key.envelope(m);
+        final states = await installer(
+          hostOsVersion: () async => '10.15.7',
+        ).install(_platform).toList();
+        final failed = states.last as InstallFailed;
+        expect(failed.reason, contains('needs macOS 11.0 or newer'));
+        expect(failed.reason, contains('10.15.7'));
+        expect(
+          server.requests.where((r) => r.path != '/manifest.json'),
+          isEmpty,
+        );
+
+        final ok = await installer(
+          hostOsVersion: () async => '26.3.1',
+        ).install(_platform).toList();
+        expect(ok.last, isA<InstallCompleted>());
+      },
+    );
+
+    test('INS-03: offline explains itself and installs nothing', () async {
+      publish('0.9.1');
+      final offline = installer();
+      await server.stop(); // nothing listens on the manifest URL any more
+      final states = await offline.install(_platform).toList();
+      final failed = states.last as InstallFailed;
+      expect(failed.stage, InstallStage.resolve);
+      expect(failed.reason, contains('Could not reach the release server'));
+      expect(failed.recovery, contains('internet connection'));
+      expect((await store.read()).toNullable(), isNull);
+      server = LocalArtifactServer(); // for tearDown
+      await server.start();
+    });
+
     test('refuses an expired manifest', () async {
       final bin = _fakeFlorestad('0.9.1');
       server.files['/florestad-0.9.1'] = bin;
@@ -567,6 +648,7 @@ void main() {
       });
       final states = await installer().install(_platform).toList();
       expect((states.last as InstallFailed).reason, contains('expired'));
+      expect((states.last as InstallFailed).stage, InstallStage.resolve);
       expect(server.requests.where((r) => r.path != '/manifest.json'), isEmpty);
     });
 

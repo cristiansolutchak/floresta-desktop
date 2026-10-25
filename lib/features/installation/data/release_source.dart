@@ -1,4 +1,5 @@
 import 'artifact_downloader.dart';
+import 'release_keys.dart';
 import 'signed_manifest.dart';
 
 /// Where releases come from and whom to trust. Hosting is configuration:
@@ -31,16 +32,22 @@ class ReleaseSource {
     manifestUrl: _manifestUrl,
     redirectHosts: _redirectHosts,
     devKeyHex: _devKey,
+    // Same define as `BuildFlavor`; read directly so this engine code does
+    // not depend on Flutter.
+    allowDevKey:
+        const String.fromEnvironment('FLORESTA_FLAVOR') == 'development',
   );
 
   /// Builds a source from raw configuration values.
   ///
-  /// A development key is trusted only for a loopback manifest URL, so a
-  /// build carrying one can never accept a remote manifest signed with it.
+  /// A development key is trusted only in a development build
+  /// ([allowDevKey]) and only for a loopback manifest URL, so neither a
+  /// production build nor a remote manifest can ever rely on it.
   static ReleaseSource? resolve({
     required String manifestUrl,
     String redirectHosts = '',
     String devKeyHex = '',
+    bool allowDevKey = true,
     List<TrustedReleaseKey> productionKeys = productionReleaseKeys,
   }) {
     final url = Uri.tryParse(manifestUrl.trim());
@@ -49,7 +56,7 @@ class ReleaseSource {
     }
     final keys = [
       ...productionKeys,
-      if (_hex64.hasMatch(devKeyHex) && isLoopbackUrl(url))
+      if (allowDevKey && _hex64.hasMatch(devKeyHex) && isLoopbackUrl(url))
         TrustedReleaseKey(id: developmentKeyId, publicKeyHex: devKeyHex),
     ];
     if (keys.isEmpty) return null;

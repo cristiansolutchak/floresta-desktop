@@ -16,11 +16,6 @@ class TrustedReleaseKey {
   final String publicKeyHex;
 }
 
-/// Production keys compiled into the app. Empty until artifact hosting and
-/// signing ownership are decided (docs/phase1-installation-plan.md, D1);
-/// development keys are injected explicitly and never shipped.
-const productionReleaseKeys = <TrustedReleaseKey>[];
-
 /// Verifies the signed manifest envelope:
 ///
 /// `{"keyId": "...", "payload": base64(JSON bytes), "signature": base64(64 bytes)}`
@@ -60,7 +55,7 @@ class SignedManifestVerifier {
     if (key == null || revokedKeys.contains(keyId)) {
       return Left(
         InstallationFailure(
-          stage: 'verify',
+          stage: 'resolve',
           message: 'The release is signed by an unknown key ($keyId).',
           recovery:
               'Nothing was installed. This app only installs releases '
@@ -75,7 +70,7 @@ class SignedManifestVerifier {
     )) {
       return const Left(
         InstallationFailure(
-          stage: 'verify',
+          stage: 'resolve',
           message: 'The release information failed its signature check.',
           recovery:
               'Nothing was installed. The download may have been '
