@@ -43,6 +43,9 @@ class P2pVersionProbe {
       return PeerProbe.failed(e.osError?.message ?? e.message);
     } on FormatException catch (e) {
       return PeerProbe.failed(e.message);
+    } on Object {
+      // Anything unexpected from a remote peer is just "no usable answer".
+      return const PeerProbe.failed('unexpected reply');
     } finally {
       socket?.destroy();
     }
@@ -130,14 +133,23 @@ class P2pVersionProbe {
     if (command != 'version') {
       return PeerProbe.failed('first message was "$command", not version');
     }
+    // version(4) services(8) time(8) addr_recv(26) addr_from(26) nonce(8)
+    // user-agent length(1) ... start height(4)
+    const fixed = 4 + 8 + 8 + 26 + 26 + 8;
+    if (length < fixed + 1 + 4) {
+      return const PeerProbe.failed('malformed version message');
+    }
     final p = ByteData.sublistView(bytes, 24, 24 + length);
     var o = 0;
     final version = p.getInt32(o, Endian.little);
     o += 4;
     final services = p.getUint64(o, Endian.little);
-    o += 8 + 8 + 26 + 26 + 8; // timestamp, addr_recv, addr_from, nonce
+    o = fixed;
     final uaLen = p.getUint8(o); // user agents are < 253 bytes
     o += 1;
+    if (uaLen >= 253 || o + uaLen + 4 > length) {
+      return const PeerProbe.failed('malformed version message');
+    }
     final ua = String.fromCharCodes(Uint8List.sublistView(p, o, o + uaLen));
     o += uaLen;
     final height = p.getInt32(o, Endian.little);

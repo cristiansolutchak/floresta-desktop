@@ -260,6 +260,26 @@ void main() {
         contains('another network'),
       );
     });
+
+    test('malformed replies are rejected, never thrown', () {
+      // A header announcing a 10-byte version payload.
+      final tiny = P2pVersionProbe.frame(
+        BitcoinNetwork.bitcoin,
+        'version',
+        List.filled(10, 0),
+      );
+      expect(
+        P2pVersionProbe.parseVersionReply(tiny, BitcoinNetwork.bitcoin)!.error,
+        contains('malformed'),
+      );
+      // A user-agent length pointing past the end of the payload.
+      final bad = P2pVersionProbe.versionMessage(BitcoinNetwork.bitcoin);
+      ByteData.sublistView(bad).setUint8(24 + 80, 200);
+      expect(
+        P2pVersionProbe.parseVersionReply(bad, BitcoinNetwork.bitcoin)!.error,
+        contains('malformed'),
+      );
+    });
   });
 
   group('UtreexoPeerFinder', () {
