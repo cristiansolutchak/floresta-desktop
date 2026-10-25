@@ -5,12 +5,57 @@ import 'package:fpdart/fpdart.dart' hide State;
 import '../../../app/theme/app_theme.dart';
 import '../../../core/errors/failure.dart';
 import '../../../shared/widgets/common.dart';
-import '../../node/domain/blockchain_info.dart';
+import '../../node/domain/node_readiness.dart';
 import '../../node/domain/node_status.dart';
 import '../../node/presentation/node_controller.dart';
 import '../../settings/domain/bitcoin_network.dart';
 import '../../settings/presentation/settings_controller.dart';
 import 'wallet_controller.dart';
+import 'wallet_rescan_controller.dart';
+
+/// Scheduled, started or abandoned rescans (WAL-06).
+class _RescanNotice extends ConsumerWidget {
+  const _RescanNotice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final r = ref.watch(walletRescanProvider);
+    final from = r.from == null
+        ? 'the start of the block filters'
+        : 'block ${r.from}';
+    final Widget? notice = r.owed
+        ? Notice(
+            tone: Tone.info,
+            icon: Icons.schedule,
+            title: 'Rescan scheduled',
+            message:
+                'Searches from $from. It starts automatically once the node '
+                'has been synced for a minute.',
+            action: TextButton(
+              onPressed: () => ref.read(walletRescanProvider.notifier).cancel(),
+              child: const Text('Cancel'),
+            ),
+          )
+        : r.gaveUp != null
+        ? Notice(
+            tone: Tone.warning,
+            title: 'Rescan not started',
+            message: r.gaveUp!,
+          )
+        : r.startedAt != null
+        ? Notice(
+            tone: Tone.info,
+            title: 'Rescan running in the background',
+            message:
+                'Started at ${TimeOfDay.fromDateTime(r.startedAt!).format(context)}. '
+                'Floresta 0.9.1 does not report its progress; transactions '
+                'appear as they are found.',
+          )
+        : null;
+    if (notice == null) return const SizedBox.shrink();
+    return Padding(padding: const EdgeInsets.only(bottom: 16), child: notice);
+  }
+}
 
 class WalletPage extends ConsumerWidget {
   const WalletPage({super.key});
@@ -59,6 +104,7 @@ class WalletPage extends ConsumerWidget {
               'connected to this node.',
         ),
         const SizedBox(height: 16),
+        const _RescanNotice(),
         Panel(
           title: 'Watched descriptors',
           trailing: apiUp
@@ -115,25 +161,26 @@ class WalletPage extends ConsumerWidget {
       context: context,
       builder: (_) => const _ImportDescriptorDialog(),
     );
-    if (ok == true && context.mounted) {
-      showMessage(
-        context,
-        'Descriptor added. Floresta is scanning for its transactions in the '
-        'background.',
-      );
+    if (ok != true || !context.mounted) return;
+    final synced =
+        ref.read(nodeReadinessProvider).stage == ReadinessStage.ready;
+    if (!synced) {
+      // florestad started its own scan, but over filters that are still
+      // incomplete while syncing; owe a full rescan for afterwards.
+      await ref.read(walletRescanProvider.notifier).request();
     }
+    if (!context.mounted) return;
+    showMessage(
+      context,
+      synced
+          ? 'Descriptor added. Floresta is scanning for its transactions in '
+                'the background.'
+          : 'Descriptor added. The node is still syncing, so a full scan '
+                'runs automatically once it has synced.',
+    );
   }
 
   Future<void> _rescan(BuildContext context, WidgetRef ref) async {
-    final chain = ref.read(nodeControllerProvider).chain;
-    if (chain?.phase == SyncPhase.initialDownload) {
-      showMessage(
-        context,
-        'Rescans are not possible during initial sync. Try again once the '
-        'node has synced.',
-      );
-      return;
-    }
     final heightController = TextEditingController();
     final start = await showDialog<Option<int?>>(
       context: context,
@@ -181,13 +228,20 @@ class WalletPage extends ConsumerWidget {
     );
     heightController.dispose();
     if (start == null || !context.mounted) return;
-    final result = await ref
-        .read(walletDescriptorsProvider.notifier)
-        .rescan(fromHeight: start.toNullable());
+    // WAL-06: scheduled, not sent now. florestad refuses rescans while
+    // syncing, and the gate sends it once the node has been synced a while.
+    await ref
+        .read(walletRescanProvider.notifier)
+        .request(from: start.toNullable());
     if (!context.mounted) return;
-    result.fold(
-      (f) => showFailure(context, f),
-      (_) => showMessage(context, 'Rescan started in the background.'),
+    final synced =
+        ref.read(nodeReadinessProvider).stage == ReadinessStage.ready;
+    showMessage(
+      context,
+      synced
+          ? 'Rescan scheduled. It starts within a minute.'
+          : 'Rescan scheduled. It starts automatically once the node has '
+                'synced.',
     );
   }
 }

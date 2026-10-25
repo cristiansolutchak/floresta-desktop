@@ -121,6 +121,30 @@ class PreflightProbe {
     return kb == null ? null : kb * 1024;
   }
 
+  /// Disk space actually allocated under [path] (`du -sk`), or null when
+  /// unknown. Apparent file sizes would mislead: florestad pre-allocates
+  /// sparse files (upstream master showed ~2 GB apparent on signet).
+  Future<int?> usedBytes(String path) async {
+    if (_isWindows || !Directory(path).existsSync()) return null;
+    final out = await _run('/usr/bin/du', ['-sk', path]);
+    final kb = int.tryParse(out?.trim().split(RegExp(r'\s+')).first ?? '');
+    return kb == null ? null : kb * 1024;
+  }
+
+  /// Usage of the data folder florestad writes to, for the running node.
+  Future<DiskUsage> diskUsage(NodeSettings settings) async {
+    final dir = settings.effectiveDataDir(
+      homeDir: homeDir,
+      separator: Platform.pathSeparator,
+    );
+    final existing = _closestExisting(Directory(dir));
+    final (used, free) = await (
+      usedBytes(dir),
+      existing == null ? Future.value(null) : freeBytes(existing.path),
+    ).wait;
+    return DiskUsage(dataDir: dir, usedBytes: used, freeBytes: free);
+  }
+
   static bool looksLikeBitcoinCore(Directory dir) {
     String p(String name) => '${dir.path}${Platform.pathSeparator}$name';
     return File(p('bitcoin.conf')).existsSync() ||

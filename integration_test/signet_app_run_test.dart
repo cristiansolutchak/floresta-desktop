@@ -48,13 +48,14 @@ const _maxDataMb = int.fromEnvironment(
   defaultValue: 4000,
 );
 
+/// Disk space actually allocated (`du -sk`), not apparent file sizes:
+/// florestad pre-allocates sparse files (upstream master reported ~2 GB of
+/// apparent size on signet within seconds while using far less).
 int _dirBytes(Directory d) {
   if (!d.existsSync()) return 0;
-  var total = 0;
-  for (final e in d.listSync(recursive: true, followLinks: false)) {
-    if (e is File) total += e.lengthSync();
-  }
-  return total;
+  final r = Process.runSync('/usr/bin/du', ['-sk', d.path]);
+  final kb = int.tryParse('${r.stdout}'.split(RegExp(r'\s+')).first) ?? 0;
+  return kb * 1024;
 }
 
 const _followSeconds = int.fromEnvironment(

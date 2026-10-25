@@ -8,7 +8,9 @@ import '../../../core/providers.dart';
 import '../../../shared/widgets/common.dart';
 import '../../installation/presentation/installation_providers.dart';
 import '../../node/presentation/node_controller.dart';
+import '../../node/presentation/status_labels.dart';
 import '../domain/node_settings.dart';
+import '../domain/wallet_birthday.dart';
 import 'node_settings_widgets.dart';
 import 'settings_controller.dart';
 
@@ -144,6 +146,10 @@ class _AdvancedPanelState extends State<_AdvancedPanel> {
             value: s.logToFile,
             onChanged: (v) => widget.onSave(s.copyWith(logToFile: v)),
           ),
+          if (!s.disableCompactFilters) ...[
+            const SizedBox(height: 8),
+            _WalletBirthdayField(settings: s, onSave: widget.onSave),
+          ],
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Disable compact block filters'),
@@ -157,6 +163,65 @@ class _AdvancedPanelState extends State<_AdvancedPanel> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// CFG-08: where wallet history searches (compact filters) begin.
+class _WalletBirthdayField extends StatelessWidget {
+  const _WalletBirthdayField({required this.settings, required this.onSave});
+
+  final NodeSettings settings;
+  final ValueChanged<NodeSettings> onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = settings;
+    final start = s.filtersStartHeight;
+    final explanation = Text(
+      start == null
+          ? 'Floresta downloads block filters for the whole chain.'
+          : 'Floresta downloads block filters from block ${formatInt(start)}. '
+                'Transactions before it are not found. Floresta 0.9.1 applies '
+                'this only before its first filter download, so set it before '
+                'syncing.',
+      style: context.text.bodySmall,
+    );
+    if (!s.network.isMainnet) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Wallet history', style: context.text.titleSmall),
+          const SizedBox(height: 4),
+          explanation,
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: 320,
+          child: DropdownButtonFormField<int?>(
+            initialValue: s.walletBirthdayYear,
+            decoration: const InputDecoration(
+              labelText: 'Wallet history starts in',
+              helperText: 'The year your wallet first received coins',
+            ),
+            items: [
+              const DropdownMenuItem<int?>(
+                child: Text('Recent only (smallest download)'),
+              ),
+              for (final y in WalletBirthday.selectableYears)
+                DropdownMenuItem<int?>(value: y, child: Text('$y')),
+            ],
+            onChanged: (y) =>
+                onSave(s.copyWith(walletBirthdayYear: Option.fromNullable(y))),
+          ),
+        ),
+        const SizedBox(height: 6),
+        explanation,
+      ],
     );
   }
 }

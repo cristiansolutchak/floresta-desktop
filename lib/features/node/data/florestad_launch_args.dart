@@ -15,5 +15,9 @@ List<String> florestadLaunchArgs(NodeSettings settings) {
     '127.0.0.1:${settings.effectiveRpcPort}',
     if (settings.logToFile) '--log-to-file',
     if (settings.disableCompactFilters) '--no-cfilters',
+    if (settings.filtersStartHeight case final h?) ...[
+      '--filters-start-height',
+      '$h',
+    ],
   ];
 }

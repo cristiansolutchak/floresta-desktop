@@ -277,6 +277,57 @@ void main() {
     expect(find.text('Started outside this app'), findsNothing);
   });
 
+  testWidgets('a busy node missing polls is not shown as down (NODE-12)', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    await h.pump(tester);
+    h.manager.emit(ProcessRunning(9, DateTime(2026)));
+    await tester.pumpAndSettle();
+    final controller = ProviderScope.containerOf(
+      tester.element(find.byType(FlorestaApp)),
+    ).read(nodeControllerProvider.notifier);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(FlorestaApp)),
+    );
+
+    h.rpc.info = const Left(RpcUnreachableFailure('http://127.0.0.1:8332/'));
+    for (var i = 1; i < NodeController.failuresBeforeUnreachable; i++) {
+      await controller.refresh();
+      await tester.pump();
+      expect(
+        container.read(nodeControllerProvider).api,
+        ApiReachability.reachable,
+        reason: 'failure $i is tolerated',
+      );
+    }
+    await controller.refresh();
+    await tester.pump();
+    expect(
+      container.read(nodeControllerProvider).api,
+      ApiReachability.unreachable,
+    );
+  });
+
+  testWidgets('a node we did not start is shown down on the first failure', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    await h.pump(tester);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(FlorestaApp)),
+    );
+    h.rpc.info = const Left(RpcUnreachableFailure('http://127.0.0.1:8332/'));
+    await container.read(nodeControllerProvider.notifier).refresh();
+    await tester.pump();
+    expect(
+      container.read(nodeControllerProvider).api,
+      ApiReachability.unreachable,
+    );
+  });
+
   testWidgets('shows sync state from the node API', (tester) async {
     final h = _Harness()
       ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));

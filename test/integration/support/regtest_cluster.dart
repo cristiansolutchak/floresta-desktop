@@ -61,10 +61,15 @@ class RegtestCluster {
     return p;
   }
 
-  static Future<RegtestCluster> start() async {
+  /// Extra florestad flags for a test (e.g. `--filters-start-height`).
+  List<String> florestadExtraArgs = const [];
+
+  static Future<RegtestCluster> start({
+    List<String> florestadExtraArgs = const [],
+  }) async {
     final c = RegtestCluster._(
       await Directory.systemTemp.createTemp('floresta_cluster_'),
-    );
+    )..florestadExtraArgs = florestadExtraArgs;
     try {
       await c._start();
     } catch (_) {
@@ -167,6 +172,7 @@ class RegtestCluster {
         '--connect',
         '127.0.0.1:$utxP2p',
         '--disable-dns-seeds',
+        ...florestadExtraArgs,
       ]),
       requestGracefulStop: () async =>
           (await floRpcRepo.requestStop()).isRight(),

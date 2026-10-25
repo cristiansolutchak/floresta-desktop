@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:equatable/equatable.dart';
 
 import '../../settings/domain/bitcoin_network.dart';
 import 'node_status.dart';
+import 'peer.dart';
 
 /// Result of asking florestad's Electrum server who it is.
 enum ElectrumCheck {
@@ -31,8 +34,17 @@ enum ReadinessStage {
   findingPeers,
   downloadingHeaders,
   validatingBlocks,
+
+  /// The node says it is done, but its headers are well behind what its
+  /// peers report (Mandacaru #63: "100%" at block 17,904 while peers were
+  /// near 947k). Never shown as ready.
+  behindNetwork,
   ready,
 }
+
+/// Headers within this many blocks of the best peer height count as caught
+/// up (peers report `initial_height` from connection time, so it lags).
+const peerTipTolerance = 12;
 
 class NodeReadiness extends Equatable {
   const NodeReadiness(
@@ -41,9 +53,14 @@ class NodeReadiness extends Equatable {
     this.wrongNetwork = false,
     this.electrum = ElectrumCheck.unknown,
     this.missingUtreexoPeers = false,
+    this.peerTip,
   });
 
   final ReadinessStage stage;
+
+  /// Highest `initial_height` among ready peers: an estimate of the network
+  /// tip, used only for estimates and the behind-the-network check.
+  final int? peerTip;
 
   /// florestad has fewer than [minUtreexoPeers] peers serving Utreexo
   /// proofs, which it needs to verify blocks after the snapshot. Observed:
@@ -74,6 +91,7 @@ class NodeReadiness extends Equatable {
     wrongNetwork,
     electrum,
     missingUtreexoPeers,
+    peerTip,
   ];
 }
 
@@ -110,10 +128,17 @@ NodeReadiness assessReadiness(
     );
   }
   final readyPeers = s.peers?.where((p) => p.isReady).length ?? 0;
+  final tips = [
+    for (final p in s.peers ?? const <Peer>[])
+      if (p.isReady && p.initialHeight > 0) p.initialHeight,
+  ];
+  final peerTip = tips.isEmpty ? null : tips.reduce(max);
   final ReadinessStage stage;
   if (!chain.initialBlockDownload &&
       chain.validatedHeight >= chain.headerHeight) {
-    stage = ReadinessStage.ready;
+    stage = peerTip != null && chain.headerHeight + peerTipTolerance < peerTip
+        ? ReadinessStage.behindNetwork
+        : ReadinessStage.ready;
   } else if (chain.validatedHeight > 0) {
     stage = ReadinessStage.validatingBlocks;
   } else if (readyPeers == 0 && chain.headerHeight == 0) {
@@ -131,6 +156,7 @@ NodeReadiness assessReadiness(
         : null,
     wrongNetwork: wrongNetwork,
     electrum: s.electrum,
+    peerTip: peerTip,
     missingUtreexoPeers:
         stage == ReadinessStage.validatingBlocks &&
         (noUtreexoPeersLogged ||

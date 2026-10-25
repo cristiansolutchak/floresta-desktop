@@ -1,5 +1,4 @@
 import '../../../shared/widgets/common.dart';
-import '../domain/blockchain_info.dart';
 import '../domain/node_process_state.dart';
 import '../domain/node_readiness.dart';
 import '../domain/node_status.dart';
@@ -101,10 +100,16 @@ abstract final class StatusLabels {
       ),
       ReadinessStage.downloadingHeaders => (
         label: 'Downloading block headers',
-        caption: chain == null
-            ? null
-            : '${formatInt(chain.headerHeight)} headers so far',
+        caption: headersCaption(r, s),
         tone: Tone.warning,
+      ),
+      ReadinessStage.behindNetwork => (
+        label: 'Behind the network',
+        caption: chain == null || r.peerTip == null
+            ? null
+            : 'Headers stop at ${formatInt(chain.headerHeight)} while peers '
+                  'report ${formatInt(r.peerTip!)}.',
+        tone: Tone.danger,
       ),
       ReadinessStage.validatingBlocks when r.missingUtreexoPeers => (
         label: 'Waiting for Utreexo peers',
@@ -148,7 +153,10 @@ abstract final class StatusLabels {
     );
   }
 
-  static StatusLabel sync(NodeStatus s) {
+  /// The blockchain cell. Derived from the same [NodeReadiness] as every
+  /// other sync label, so the screens cannot disagree (SYNC-08; Mandacaru
+  /// #103 had its notification and screen drift apart).
+  static StatusLabel sync(NodeReadiness r, NodeStatus s) {
     final chain = s.chain;
     if (chain == null) {
       return (
@@ -157,25 +165,48 @@ abstract final class StatusLabels {
         tone: Tone.neutral,
       );
     }
-    if (chain.phase == SyncPhase.synced) {
-      return (
+    return switch (r.stage) {
+      ReadinessStage.ready => (
         label: 'Synced',
         caption: 'Height ${formatInt(chain.validatedHeight)}',
         tone: Tone.success,
-      );
-    }
-    if (chain.validatedHeight == 0) {
-      return (
-        label: 'Downloading headers',
-        caption: '${formatInt(chain.headerHeight)} headers',
+      ),
+      ReadinessStage.behindNetwork => (
+        label: 'Behind the network',
+        caption: r.peerTip == null
+            ? null
+            : '${formatInt(chain.headerHeight)} of about '
+                  '${formatInt(r.peerTip!)} (from peers)',
+        tone: Tone.danger,
+      ),
+      ReadinessStage.validatingBlocks => (
+        label: 'Verifying blocks',
+        caption: verifiedCaption(s),
         tone: Tone.warning,
-      );
-    }
-    return (
-      label: 'Verifying blocks',
-      caption: verifiedCaption(s),
-      tone: Tone.warning,
-    );
+      ),
+      ReadinessStage.stopped ||
+      ReadinessStage.starting ||
+      ReadinessStage.findingPeers ||
+      ReadinessStage.downloadingHeaders => (
+        label: 'Downloading headers',
+        caption: headersCaption(r, s),
+        tone: Tone.warning,
+      ),
+    };
+  }
+
+  /// "N headers (about X% of the network, estimated from peers)". The
+  /// percentage is shown only with a peer-reported tip and always labelled
+  /// as an estimate (SYNC-06).
+  static String? headersCaption(NodeReadiness r, NodeStatus s) {
+    final chain = s.chain;
+    if (chain == null) return null;
+    final headers = '${formatInt(chain.headerHeight)} headers';
+    final tip = r.peerTip;
+    if (tip == null || tip <= 0 || chain.headerHeight == 0) return headers;
+    final share = (chain.headerHeight / tip).clamp(0.0, 1.0);
+    return '$headers (about ${(share * 100).floor()}% of the network, '
+        'estimated from peers)';
   }
 
   /// "X of Y blocks since the snapshot verified by this node": never counts

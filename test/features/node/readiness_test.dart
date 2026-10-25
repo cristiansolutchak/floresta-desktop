@@ -27,7 +27,7 @@ BlockchainInfo _chain({
   warnings: const [],
 );
 
-Peer _peer({bool utreexo = false}) => Peer(
+Peer _peer({bool utreexo = false, int initialHeight = 327831}) => Peer(
   id: 1,
   address: '1.2.3.4:38333',
   userAgent: '/Satoshi:30.0.0/',
@@ -35,7 +35,7 @@ Peer _peer({bool utreexo = false}) => Peer(
   kind: 'regular',
   state: 'Ready',
   transport: 'V2',
-  initialHeight: 327831,
+  initialHeight: initialHeight,
   services: ['NETWORK', 'WITNESS', if (utreexo) 'UTREEXO'],
 );
 
@@ -158,5 +158,86 @@ void main() {
       logsShowNoUtreexoPeers(['Catching up with the network...']),
       isFalse,
     );
+  });
+
+  group('SYNC-06: never done while behind the network', () {
+    test('Mandacaru #63: "done" at 17,904 while peers report ~947k', () {
+      final s = _status(
+        chain: _chain(headers: 17904, validated: 17904, ibd: false),
+        peers: [_peer(initialHeight: 947000), _peer(initialHeight: 946990)],
+        electrum: ElectrumCheck.ok,
+      );
+      final r = _assess(s);
+      expect(r.stage, ReadinessStage.behindNetwork);
+      expect(r.usable, isFalse);
+      expect(r.peerTip, 947000);
+      expect(StatusLabels.readiness(r, s).label, 'Behind the network');
+      expect(StatusLabels.sync(r, s).label, 'Behind the network');
+    });
+
+    test('within the tolerance it is synced', () {
+      final s = _status(
+        chain: _chain(headers: 327840, validated: 327840, ibd: false),
+        peers: [_peer(initialHeight: 327840 + peerTipTolerance)],
+        electrum: ElectrumCheck.ok,
+      );
+      expect(_assess(s).stage, ReadinessStage.ready);
+    });
+
+    test('without peers there is nothing to compare: no false alarm', () {
+      final s = _status(
+        chain: _chain(headers: 10, validated: 10, ibd: false),
+        electrum: ElectrumCheck.ok,
+      );
+      expect(_assess(s).stage, ReadinessStage.ready);
+    });
+
+    test('header progress is an estimate from peers, labelled as such', () {
+      final s = _status(
+        chain: _chain(headers: 192000, validated: 0, ibd: true),
+        peers: [_peer(initialHeight: 327843)],
+      );
+      final caption = StatusLabels.headersCaption(_assess(s), s);
+      expect(
+        caption,
+        '192,000 headers (about 58% of the network, estimated from peers)',
+      );
+      final noPeers = _status(
+        chain: _chain(headers: 192000, validated: 0, ibd: true),
+      );
+      expect(
+        StatusLabels.headersCaption(_assess(noPeers), noPeers),
+        '192,000 headers',
+      );
+    });
+  });
+
+  test('SYNC-08: "Synced" appears only when readiness is ready', () {
+    final snapshots = [
+      _status(),
+      _status(chain: _chain(headers: 0, validated: 0, ibd: true)),
+      _status(
+        chain: _chain(headers: 192000, validated: 0, ibd: true),
+        peers: [_peer()],
+      ),
+      _status(
+        chain: _chain(headers: 327843, validated: 296870, ibd: true),
+        peers: [_peer()],
+      ),
+      _status(
+        chain: _chain(headers: 17904, validated: 17904, ibd: false),
+        peers: [_peer(initialHeight: 947000)],
+      ),
+      _status(
+        chain: _chain(headers: 327843, validated: 327843, ibd: false),
+        peers: [_peer(initialHeight: 327843)],
+        electrum: ElectrumCheck.ok,
+      ),
+    ];
+    for (final s in snapshots) {
+      final r = _assess(s);
+      final synced = StatusLabels.sync(r, s).label == 'Synced';
+      expect(synced, r.stage == ReadinessStage.ready, reason: '${r.stage}');
+    }
   });
 }

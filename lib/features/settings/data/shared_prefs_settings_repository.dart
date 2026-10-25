@@ -24,6 +24,7 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
   static const _kRpcPort = 'settings.rpcPort';
   static const _kLogToFile = 'settings.logToFile';
   static const _kNoCfilters = 'settings.disableCompactFilters';
+  static const _kBirthday = 'settings.walletBirthdayYear';
 
   @override
   NodeSettings load() {
@@ -39,6 +40,7 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
       logToFile: _prefs.getBool(_kLogToFile) ?? defaults.logToFile,
       disableCompactFilters:
           _prefs.getBool(_kNoCfilters) ?? defaults.disableCompactFilters,
+      walletBirthdayYear: _prefs.getInt(_kBirthday),
     );
     // Values edited outside the app could be invalid. Keep the onboarding flag
     // and network but drop the paths/port so the node is never launched
@@ -66,6 +68,10 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
           : await _prefs.setInt(_kRpcPort, port);
       await _prefs.setBool(_kLogToFile, settings.logToFile);
       await _prefs.setBool(_kNoCfilters, settings.disableCompactFilters);
+      final year = settings.walletBirthdayYear;
+      year == null
+          ? await _prefs.remove(_kBirthday)
+          : await _prefs.setInt(_kBirthday, year);
       return const Right(unit);
     } on Exception catch (e) {
       return Left(StorageFailure('$e'));

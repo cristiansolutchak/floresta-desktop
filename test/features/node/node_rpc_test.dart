@@ -6,6 +6,7 @@ import 'package:floresta_gui/features/node/data/node_rpc_repository_impl.dart';
 import 'package:floresta_gui/features/node/data/rpc_models.dart';
 import 'package:floresta_gui/features/node/domain/blockchain_info.dart';
 import 'package:floresta_gui/features/node/domain/node_process_state.dart';
+import 'package:floresta_gui/features/node/domain/node_readiness.dart';
 import 'package:floresta_gui/features/node/domain/node_status.dart';
 import 'package:floresta_gui/features/node/presentation/status_labels.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
@@ -267,7 +268,7 @@ void main() {
       expect(StatusLabels.process(s).label, 'Running');
       expect(StatusLabels.api(s).label, 'Waiting for the node');
       expect(StatusLabels.api(s).tone, Tone.warning);
-      expect(StatusLabels.sync(s).label, 'Unknown');
+      expect(StatusLabels.sync(_ready(s), s).label, 'Unknown');
     });
 
     test('a reachable API without a supervised process is external', () {
@@ -285,7 +286,7 @@ void main() {
         api: ApiReachability.reachable,
         chain: RpcModels.blockchainInfo(signetAfterSnapshot),
       );
-      final label = StatusLabels.sync(s);
+      final label = StatusLabels.sync(_ready(s), s);
       expect(label.label, 'Verifying blocks');
       expect(
         label.caption,
@@ -304,8 +305,8 @@ void main() {
           'progress': 0.0,
         }),
       );
-      expect(StatusLabels.sync(s).label, 'Downloading headers');
-      expect(StatusLabels.sync(s).caption, '192,000 headers');
+      expect(StatusLabels.sync(_ready(s), s).label, 'Downloading headers');
+      expect(StatusLabels.sync(_ready(s), s).caption, '192,000 headers');
     });
 
     test('crashes are shown as errors', () {
@@ -324,3 +325,10 @@ void main() {
     });
   });
 }
+
+/// Readiness for [s] as the app computes it (labels derive from it).
+NodeReadiness _ready(NodeStatus s) => assessReadiness(
+  s,
+  expected: s.chain?.network ?? BitcoinNetwork.signet,
+  now: DateTime.now(),
+);

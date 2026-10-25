@@ -3,6 +3,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../core/errors/failure.dart';
 import 'bitcoin_network.dart';
+import 'wallet_birthday.dart';
 
 /// User-chosen configuration for launching and reaching florestad.
 ///
@@ -17,6 +18,7 @@ class NodeSettings extends Equatable {
     this.rpcPort,
     this.logToFile = true,
     this.disableCompactFilters = false,
+    this.walletBirthdayYear,
   });
 
   final bool onboardingComplete;
@@ -37,6 +39,16 @@ class NodeSettings extends Equatable {
 
   final bool logToFile;
   final bool disableCompactFilters;
+
+  /// Year the watched wallet was first used (mainnet). Bounds where compact
+  /// filters, and so history searches, begin. Null: recent history only.
+  final int? walletBirthdayYear;
+
+  /// `--filters-start-height`, or null when filters are off or start at
+  /// block 1 (see [WalletBirthday.filtersStartHeight]).
+  int? get filtersStartHeight => disableCompactFilters
+      ? null
+      : WalletBirthday.filtersStartHeight(network, walletBirthdayYear);
 
   int get effectiveRpcPort => rpcPort ?? network.rpcPort;
 
@@ -73,6 +85,14 @@ class NodeSettings extends Equatable {
         ),
       );
     }
+    final year = walletBirthdayYear;
+    if (year != null &&
+        (year < WalletBirthday.firstYear ||
+            year > WalletBirthday.lastKnownYear)) {
+      return const Left(
+        ValidationFailure('The wallet start year is out of range.'),
+      );
+    }
     final exe = executablePath;
     if (exe != null && !_isAbsolute(exe)) {
       return const Left(
@@ -93,6 +113,7 @@ class NodeSettings extends Equatable {
     Option<int>? rpcPort,
     bool? logToFile,
     bool? disableCompactFilters,
+    Option<int>? walletBirthdayYear,
   }) {
     return NodeSettings(
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
@@ -105,6 +126,9 @@ class NodeSettings extends Equatable {
       logToFile: logToFile ?? this.logToFile,
       disableCompactFilters:
           disableCompactFilters ?? this.disableCompactFilters,
+      walletBirthdayYear: walletBirthdayYear == null
+          ? this.walletBirthdayYear
+          : walletBirthdayYear.toNullable(),
     );
   }
 
@@ -117,5 +141,6 @@ class NodeSettings extends Equatable {
     rpcPort,
     logToFile,
     disableCompactFilters,
+    walletBirthdayYear,
   ];
 }

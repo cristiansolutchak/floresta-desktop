@@ -16,7 +16,15 @@ void main() {
       final args = florestadLaunchArgs(
         const NodeSettings(network: BitcoinNetwork.signet, logToFile: false),
       );
-      expect(args, ['--network', 'signet', '--rpc-address', '127.0.0.1:38332']);
+      expect(args, [
+        '--network',
+        'signet',
+        '--rpc-address',
+        '127.0.0.1:38332',
+        // CFG-08: no birthday, so filters start at signet's snapshot.
+        '--filters-start-height',
+        '296870',
+      ]);
       expect(args, isNot(contains('--daemon')));
     });
 

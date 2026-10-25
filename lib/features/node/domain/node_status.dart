@@ -30,7 +30,11 @@ class NodeStatus extends Equatable {
     this.preflightWarnings = const [],
     this.lastProgressAt,
     this.electrum = ElectrumCheck.unknown,
+    this.disk,
   });
+
+  /// Data-folder disk use while our node runs (CFG-08).
+  final DiskUsage? disk;
 
   final NodeProcessState process;
   final ApiReachability api;
@@ -73,6 +77,7 @@ class NodeStatus extends Equatable {
     List<PreflightIssue>? preflightWarnings,
     DateTime? lastProgressAt,
     ElectrumCheck? electrum,
+    DiskUsage? disk,
   }) {
     return NodeStatus(
       process: process ?? this.process,
@@ -87,6 +92,7 @@ class NodeStatus extends Equatable {
       preflightWarnings: preflightWarnings ?? this.preflightWarnings,
       lastProgressAt: clearChain ? null : lastProgressAt ?? this.lastProgressAt,
       electrum: clearChain ? ElectrumCheck.unknown : electrum ?? this.electrum,
+      disk: disk ?? this.disk,
     );
   }
 
@@ -102,5 +108,6 @@ class NodeStatus extends Equatable {
     preflightWarnings,
     lastProgressAt,
     electrum,
+    disk,
   ];
 }

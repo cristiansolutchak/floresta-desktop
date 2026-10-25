@@ -14,6 +14,7 @@ import '../domain/node_readiness.dart';
 import '../domain/node_status.dart';
 import '../domain/verification_breakdown.dart';
 import '../domain/peer.dart';
+import '../domain/preflight.dart';
 import 'node_controller.dart';
 import 'status_labels.dart';
 
@@ -69,6 +70,20 @@ class NodeOverviewPage extends ConsumerWidget {
                     : (status.peers?.where((p) => p.isReady).length ?? 0) == 0
                     ? 'It has no connected peers: check your internet connection or firewall.'
                     : 'It has peers, so they may not be serving the data it needs; the log below may say why.'}',
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (status.disk case final disk? when disk.alert != null) ...[
+          Notice(
+            tone: disk.alert == PreflightSeverity.blocking
+                ? Tone.danger
+                : Tone.warning,
+            title: disk.alert == PreflightSeverity.blocking
+                ? 'The disk is almost full'
+                : 'Disk space is running low',
+            message:
+                'Only ${formatBytes(disk.freeBytes!)} free where Floresta keeps '
+                'its data. ${disk.alert == PreflightSeverity.blocking ? 'Stop the node and free up space, or it may fail.' : 'Syncing may stop if the disk fills up.'}',
           ),
           const SizedBox(height: 16),
         ],
@@ -197,7 +212,7 @@ class _StatusStrip extends StatelessWidget {
         children: [
           cell('Process', StatusLabels.process(status)),
           cell('Node API', StatusLabels.api(status)),
-          cell('Blockchain', StatusLabels.sync(status)),
+          cell('Blockchain', StatusLabels.sync(readiness, status)),
           cell('Readiness', StatusLabels.readiness(readiness, status)),
         ],
       ),
@@ -258,6 +273,14 @@ class _SyncPanel extends StatelessWidget {
             const SizedBox(height: 14),
           ],
           KeyValueRow('Block headers known', formatInt(chain.headerHeight)),
+          if (status.disk case final disk?)
+            KeyValueRow(
+              'Data folder',
+              [
+                if (disk.usedBytes case final u?) '${formatBytes(u)} used',
+                if (disk.freeBytes case final f?) '${formatBytes(f)} free',
+              ].join(' · '),
+            ),
           KeyValueRow(
             'Verified by this node',
             b == null

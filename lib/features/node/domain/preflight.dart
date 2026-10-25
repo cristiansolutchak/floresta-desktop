@@ -45,6 +45,27 @@ class PreflightFacts extends Equatable {
 
 enum PreflightSeverity { blocking, warning }
 
+/// Disk use of the running node's data folder (CFG-08), refreshed
+/// periodically. Null fields mean "could not be determined".
+class DiskUsage extends Equatable {
+  const DiskUsage({required this.dataDir, this.usedBytes, this.freeBytes});
+
+  final String dataDir;
+  final int? usedBytes;
+  final int? freeBytes;
+
+  /// Same thresholds as the start check: below 1 GiB florestad may fail,
+  /// below 5 GiB syncing may stop soon.
+  PreflightSeverity? get alert => switch (freeBytes) {
+    final free? when free < preflightMinFreeBytes => PreflightSeverity.blocking,
+    final free? when free < preflightLowFreeBytes => PreflightSeverity.warning,
+    _ => null,
+  };
+
+  @override
+  List<Object?> get props => [dataDir, usedBytes, freeBytes];
+}
+
 class PreflightIssue extends Equatable {
   const PreflightIssue({
     required this.severity,

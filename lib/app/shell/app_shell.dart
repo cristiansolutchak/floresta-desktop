@@ -8,6 +8,7 @@ import '../../features/node/domain/node_status.dart';
 import '../../features/node/presentation/node_controller.dart';
 import '../../features/node/presentation/status_labels.dart';
 import '../../features/settings/presentation/settings_controller.dart';
+import '../../features/wallet/presentation/wallet_rescan_controller.dart';
 import '../../shared/widgets/common.dart';
 import '../theme/app_theme.dart';
 
@@ -45,6 +46,8 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keeps the rescan schedule running on every screen, not only Wallet.
+    ref.watch(walletRescanProvider);
     final isMac = Theme.of(context).platform == TargetPlatform.macOS;
     return CallbackShortcuts(
       bindings: {

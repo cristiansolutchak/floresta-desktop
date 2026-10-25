@@ -74,6 +74,29 @@ class NodeController extends Notifier<NodeStatus> {
   /// so its (possibly stale) result is not the last word.
   bool _refreshAgain = false;
 
+  /// A busy node can miss a poll (Mandacaru #160 §3). While our own process
+  /// is alive and the API was answering, this many consecutive failures are
+  /// needed before showing it as unreachable (NODE-12).
+  static const failuresBeforeUnreachable = 3;
+  int _rpcFailures = 0;
+
+  static const diskEvery = Duration(seconds: 60);
+  bool _checkingDisk = false;
+
+  /// Measures the data folder and free space; only while our node runs.
+  Future<void> checkDisk() async {
+    if (_checkingDisk || !ref.mounted || !state.process.isActive) return;
+    _checkingDisk = true;
+    try {
+      final usage = await ref
+          .read(preflightProbeProvider)
+          .diskUsage(ref.read(settingsControllerProvider));
+      if (ref.mounted) state = state.copyWith(disk: usage);
+    } finally {
+      _checkingDisk = false;
+    }
+  }
+
   /// Electrum is re-checked at most this often while the API answers.
   static const _electrumEvery = Duration(seconds: 30);
   DateTime? _electrumCheckedAt;
@@ -87,9 +110,13 @@ class NodeController extends Notifier<NodeStatus> {
     ref.watch(settingsControllerProvider.select((s) => s.rpcEndpoint));
     final manager = ref.watch(nodeProcessManagerProvider);
     final sub = manager.states.listen(_onProcessState);
+    // CFG-08: watch the data folder while our node runs (it grows with
+    // filters and logs; free space can run out mid-sync).
+    final diskTimer = Timer.periodic(diskEvery, (_) => unawaited(checkDisk()));
     ref.onDispose(() {
       sub.cancel();
       _timer?.cancel();
+      diskTimer.cancel();
     });
     _schedule(_pollActive);
     Future.microtask(() async {
@@ -110,6 +137,7 @@ class NodeController extends Notifier<NodeStatus> {
     // now instead of showing a stale "reachable" (which would look like a
     // node started elsewhere), then re-check, since another node may
     // still answer on the port.
+    _rpcFailures = 0;
     state = state.copyWith(
       process: s,
       api: ApiReachability.unknown,
@@ -137,14 +165,22 @@ class NodeController extends Notifier<NodeStatus> {
       if (!ref.mounted) return;
       await info.match(
         (failure) async {
-          state = state.copyWith(
-            api: ApiReachability.unreachable,
-            lastRpcFailure: failure,
-            clearChain: true,
-            lastUpdated: DateTime.now(),
-          );
+          _rpcFailures++;
+          final tolerate =
+              state.process.isActive &&
+              state.api == ApiReachability.reachable &&
+              _rpcFailures < failuresBeforeUnreachable;
+          state = tolerate
+              ? state.copyWith(lastRpcFailure: failure)
+              : state.copyWith(
+                  api: ApiReachability.unreachable,
+                  lastRpcFailure: failure,
+                  clearChain: true,
+                  lastUpdated: DateTime.now(),
+                );
         },
         (chain) async {
+          _rpcFailures = 0;
           final (peers, uptime) = await (
             _rpc.getPeers(),
             _rpc.getUptime(),
