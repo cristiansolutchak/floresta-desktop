@@ -205,6 +205,7 @@ void main() {
     final peers = [
       for (var i = 0; i < 9; i++) (address: 'core$i:8333', height: 973080),
       (address: '176.132.253.23:8333', height: 978945),
+      (address: '62.99.98.60:8333', height: 961639),
     ];
     List<String> drop({int headers = 973087, int validated = 0}) =>
         forkPeersToDrop(
@@ -215,8 +216,8 @@ void main() {
           snapshotHeight: 939969,
         );
 
-    test('drops a peer far above the consensus once headers are done', () {
-      expect(drop(), ['176.132.253.23:8333']);
+    test('drops peers far above or below the consensus (both observed)', () {
+      expect(drop(), ['176.132.253.23:8333', '62.99.98.60:8333']);
     });
 
     test('leaves peers alone while headers download or after validation', () {

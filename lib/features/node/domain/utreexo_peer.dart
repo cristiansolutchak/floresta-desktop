@@ -221,14 +221,17 @@ class StuckSelectionTracker {
 /// florestad v0.9.1 applies the assume-utreexo snapshot only after *every*
 /// peer answers "no new headers" (`chain_selector_ctx.rs`
 /// `LookingForForks`). A peer on a different chain keeps sending its own
-/// headers, so that never happens. Observed on mainnet 2026-10-25: a Knots
-/// peer reporting 978 945 blocks re-sent competing headers for 12 minutes,
-/// across a restart; disconnecting it let florestad apply the snapshot 9 s
-/// later.
+/// headers, so that never happens. Observed on mainnet 2026-10-25, twice:
+/// a Knots peer reporting 978 945 (5 858 *above* every other peer) kept it
+/// looping for 12 minutes, across a restart, and disconnecting it let the
+/// snapshot apply 9 s later; in the next run a Knots peer reporting 961 639
+/// (11 460 *below*) did the same, and disconnecting it took 5 s.
 ///
 /// While the node has all headers ([headerHeight] within [tolerance] of
 /// [consensusTip]) and has validated nothing, returns the peers whose
-/// reported height is more than [aheadBy] blocks above the consensus.
+/// reported height is more than [awayBy] blocks from the consensus, in
+/// either direction. A same-chain peer that is merely behind does not help
+/// header selection either, and may reconnect later.
 List<String> forkPeersToDrop({
   required List<({String address, int height})> peers,
   required int? consensusTip,
@@ -236,7 +239,7 @@ List<String> forkPeersToDrop({
   required int validatedHeight,
   required int snapshotHeight,
   int tolerance = 6,
-  int aheadBy = 144,
+  int awayBy = 144,
 }) {
   if (consensusTip == null || validatedHeight != 0 || snapshotHeight == 0) {
     return const [];
@@ -245,6 +248,6 @@ List<String> forkPeersToDrop({
   if (headerHeight + tolerance < consensusTip) return const [];
   return [
     for (final p in peers)
-      if (p.height > consensusTip + aheadBy) p.address,
+      if ((p.height - consensusTip).abs() > awayBy) p.address,
   ];
 }
