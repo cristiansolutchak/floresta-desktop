@@ -55,6 +55,11 @@ class AppPaths {
   /// revoked signing keys (anti-rollback state).
   File get trustRecord => File('${floresta.path}${_sep}trust.json');
 
+  /// `<root>/wallet/<network>/`: the watch-only wallet's synced public chain
+  /// data (ADR-0007), one JSON file per account. Never keys.
+  Directory walletStore(String network) =>
+      Directory('${root.path}${_sep}wallet$_sep$network');
+
   /// `<root>/floresta/node.json`: identity of the florestad this app is
   /// running, so it can be found again after the app restarts.
   File get nodeRecord => File('${floresta.path}${_sep}node.json');

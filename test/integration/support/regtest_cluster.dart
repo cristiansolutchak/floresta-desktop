@@ -63,13 +63,20 @@ class RegtestCluster {
 
   /// Extra florestad flags for a test (e.g. `--filters-start-height`).
   List<String> florestadExtraArgs = const [];
+  int? _fixedElectrumPort;
 
+  /// [electrumPort] fixes florestad's Electrum port (e.g. regtest's default
+  /// 20001, where the app looks for it); otherwise a free one is used.
   static Future<RegtestCluster> start({
     List<String> florestadExtraArgs = const [],
+    int? electrumPort,
   }) async {
-    final c = RegtestCluster._(
-      await Directory.systemTemp.createTemp('floresta_cluster_'),
-    )..florestadExtraArgs = florestadExtraArgs;
+    final c =
+        RegtestCluster._(
+            await Directory.systemTemp.createTemp('floresta_cluster_'),
+          )
+          ..florestadExtraArgs = florestadExtraArgs
+          .._fixedElectrumPort = electrumPort;
     try {
       await c._start();
     } catch (_) {
@@ -86,7 +93,7 @@ class RegtestCluster {
     utxRpc = await _freePort();
     utxP2p = await _freePort();
     floRpc = await _freePort();
-    floElectrum = await _freePort();
+    floElectrum = _fixedElectrumPort ?? await _freePort();
     _http = http.Client();
 
     // --- bitcoind -----------------------------------------------------------

@@ -19,6 +19,10 @@ import 'package:floresta_gui/features/node/domain/preflight.dart';
 import 'package:floresta_gui/features/onboarding/presentation/wizard_widgets.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:floresta_gui/features/wallet/presentation/wallet_controller.dart';
+import 'package:floresta_gui/features/wallet/presentation/amount_format.dart';
+import 'package:floresta_gui/features/wallet/presentation/wallet_sync_controller.dart';
+import 'package:floresta_gui/features/wallet/data/wallet_sync_engine.dart';
+import 'package:floresta_gui/features/wallet/data/bip32_address_deriver.dart';
 import 'package:floresta_gui/shared/widgets/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,6 +34,7 @@ import 'features/node/node_rpc_test.dart'
     show blockchainInfoJson, signetAfterSnapshot;
 import 'helpers/fake_process.dart';
 import 'helpers/fakes.dart';
+import 'helpers/wallet_fixtures.dart';
 
 const _found = FlorestaInstallation(
   executablePath: '/Users/a/.cargo/bin/florestad',
@@ -77,6 +82,21 @@ class _Harness {
           preflightProbeProvider.overrideWithValue(preflight),
           electrumProbeProvider.overrideWithValue(electrum),
           buildFlavorProvider.overrideWithValue(flavor),
+          // The real engine over the Bitcoin Core fixture chain: no sockets.
+          walletEngineFactoryProvider.overrideWithValue((account) {
+            final server = FixtureElectrumClient();
+            final engine = WalletSyncEngine(
+              account: account,
+              client: server,
+              chain: FixtureChainView(),
+              store: MemoryWalletStore(),
+              deriver: Bip32AddressDeriver(),
+              coverage: 25,
+              indexingGrace: Duration.zero,
+            );
+            server.indexFixtureChain(engine.scripts.map((s) => s.scriptPubKey));
+            return engine;
+          }),
           // No DNS or P2P from widget tests.
           utreexoPeerFinderProvider.overrideWithValue(
             UtreexoPeerFinder(
@@ -655,13 +675,89 @@ void main() {
     await tester.tap(find.text('Wallet'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Watch-only'), findsOneWidget);
+    expect(find.text('Watch-only: can see, cannot spend'), findsOneWidget);
     for (final forbidden in ['Send', 'Sign', 'Broadcast', 'Receive']) {
       expect(find.text(forbidden), findsNothing);
     }
     // Descriptors are masked until revealed.
     expect(find.textContaining(FakeKeys.xpub), findsNothing);
     expect(find.text('127.0.0.1:50001'), findsOneWidget); // mainnet default
+  });
+
+  testWidgets('WAL-03: a synced wallet shows Core\'s balance, addresses '
+      'and activity', (tester) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()))
+      ..wallet.descriptors = Right([
+        vectorType('wpkh')['external']! as String,
+        vectorType('wpkh')['internal']! as String,
+      ]);
+    await h.pump(tester, network: 'regtest');
+    await tester.tap(find.text('Wallet'));
+    await tester.pumpAndSettle();
+
+    final expected = chainVectors['expected_balances']! as Map;
+    final trusted = btcToSats(expected['trusted'] as num);
+    final immature = btcToSats(expected['immature'] as num);
+    expect(find.text(formatBtc(trusted + immature)), findsOneWidget);
+    expect(
+      find.text(
+        'Spendable ${formatBtc(trusted)} · immature ${formatBtc(immature)}',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('1 wallet · 2 descriptors'), findsOneWidget);
+    expect(find.text('Receive #0'), findsOneWidget);
+    expect(find.textContaining('bcrt1q'), findsWidgets);
+    await tester.ensureVisible(find.text('Activity'));
+    expect(find.text('Received'), findsWidgets);
+    expect(find.textContaining('confirmations · block'), findsWidgets);
+    // Watch-only: still no spending vocabulary anywhere.
+    for (final forbidden in ['Send', 'Sign', 'Broadcast']) {
+      expect(find.text(forbidden), findsNothing);
+    }
+  });
+
+  testWidgets('WAL-07: "No wallets yet" only after two empty answers', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    await h.pump(tester);
+    await tester.tap(find.text('Wallet'));
+    await tester.pump();
+    await tester.pump();
+    expect(
+      find.text('Checking which wallets the node watches…'),
+      findsOneWidget,
+    );
+    expect(find.text('No wallets yet'), findsNothing);
+    await tester.pump(WalletController.recheckAfter);
+    await tester.pumpAndSettle();
+    expect(find.text('No wallets yet'), findsOneWidget);
+  });
+
+  testWidgets('importing a multipath descriptor watches both branches', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    await h.pump(tester, network: 'regtest');
+    await tester.tap(find.text('Wallet'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add descriptor'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextField),
+      vectorType('wpkh')['multipath']! as String,
+    );
+    await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+    expect(h.wallet.loaded, [
+      vectorType('wpkh')['external'],
+      vectorType('wpkh')['internal'],
+    ]);
+    expect(find.textContaining('1 wallet · 2 descriptors'), findsOneWidget);
   });
 
   testWidgets('import dialog refuses private keys and clears them', (

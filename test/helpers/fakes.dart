@@ -166,6 +166,8 @@ class FakeWalletRepository implements WalletRepository {
   @override
   Future<Either<Failure, Unit>> loadDescriptor(DescriptorInput d) async {
     loaded.add(d.value);
+    // Like florestad: a loaded descriptor is listed from then on.
+    descriptors = descriptors.map((l) => [...l, d.value]);
     return const Right(unit);
   }
 

@@ -6,6 +6,7 @@ import 'package:fpdart/fpdart.dart';
 import '../../../core/electrum/electrum_client.dart';
 import '../../../core/electrum/electrum_transport.dart';
 import '../../../core/errors/failure.dart';
+import '../domain/address_activity.dart';
 import '../domain/balance_calculator.dart';
 import '../domain/wallet_account.dart';
 import '../domain/wallet_state.dart';
@@ -354,6 +355,7 @@ class WalletSyncEngine {
       transactions: result.history,
       sync: SyncUpToDate(validated, _lastSuccess!),
       coverageLimit: coverage,
+      addresses: AddressActivity.compute(records: records, scripts: _scripts),
     );
     _emit(snapshot);
     return Right(snapshot);
@@ -404,6 +406,7 @@ class WalletSyncEngine {
     transactions: _current.transactions,
     sync: s,
     coverageLimit: coverage,
+    addresses: _current.addresses,
   );
 
   void _emit(WalletSnapshot s) {

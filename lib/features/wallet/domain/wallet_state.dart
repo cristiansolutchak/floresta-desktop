@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../core/errors/failure.dart';
+import 'address_activity.dart';
 
 class OutPoint extends Equatable {
   const OutPoint(this.txid, this.vout);
@@ -176,6 +177,7 @@ class WalletSnapshot extends Equatable {
     required this.transactions,
     required this.sync,
     required this.coverageLimit,
+    this.addresses = const [],
   });
 
   final String accountId;
@@ -188,6 +190,15 @@ class WalletSnapshot extends Equatable {
   /// Addresses per keychain the node watches (100 on florestad v0.9.1).
   final int coverageLimit;
 
+  /// Every watched address, receive branch first, with its activity.
+  final List<AddressActivity> addresses;
+
   @override
-  List<Object?> get props => [accountId, balance, transactions, sync];
+  List<Object?> get props => [
+    accountId,
+    balance,
+    transactions,
+    sync,
+    addresses,
+  ];
 }
