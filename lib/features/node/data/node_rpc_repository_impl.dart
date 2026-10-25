@@ -27,6 +27,12 @@ class NodeRpcRepositoryImpl implements NodeRpcRepository {
   );
 
   @override
+  Future<Either<Failure, String>> getBlockHash(int height) => guardRpc(
+    _client,
+    () async => (await _client.call('getblockhash', [height])) as String,
+  );
+
+  @override
   Future<Either<Failure, Duration>> getUptime() => guardRpc(
     _client,
     () async =>

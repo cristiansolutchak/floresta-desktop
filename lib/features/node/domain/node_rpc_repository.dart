@@ -10,6 +10,10 @@ abstract interface class NodeRpcRepository {
 
   Future<Either<Failure, List<Peer>>> getPeers();
 
+  /// Hash (display hex) of the active-chain block at [height]
+  /// (`getblockhash`).
+  Future<Either<Failure, String>> getBlockHash(int height);
+
   /// Seconds since florestad's RPC server started.
   Future<Either<Failure, Duration>> getUptime();
 

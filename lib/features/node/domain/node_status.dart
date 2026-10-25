@@ -3,6 +3,8 @@ import 'package:equatable/equatable.dart';
 import '../../../core/errors/failure.dart';
 import 'blockchain_info.dart';
 import 'node_process_state.dart';
+import 'node_readiness.dart';
+import 'preflight.dart';
 import 'peer.dart';
 
 enum ApiReachability { unknown, reachable, unreachable }
@@ -25,6 +27,9 @@ class NodeStatus extends Equatable {
     this.uptime,
     this.lastRpcFailure,
     this.lastUpdated,
+    this.preflightWarnings = const [],
+    this.lastProgressAt,
+    this.electrum = ElectrumCheck.unknown,
   });
 
   final NodeProcessState process;
@@ -35,6 +40,15 @@ class NodeStatus extends Equatable {
   final Failure? lastRpcFailure;
   final DateTime? lastUpdated;
 
+  /// Non-blocking findings from the last start (e.g. low disk space).
+  final List<PreflightIssue> preflightWarnings;
+
+  /// Last time the header or validated height moved (or the node came up).
+  final DateTime? lastProgressAt;
+
+  /// Latest Electrum identity check.
+  final ElectrumCheck electrum;
+
   bool get isExternallyManaged =>
       !process.isActive && api == ApiReachability.reachable;
 
@@ -42,6 +56,7 @@ class NodeStatus extends Equatable {
 
   bool get canStop =>
       process is ProcessRunning ||
+      process is ProcessAdopted ||
       process is ProcessStarting ||
       isExternallyManaged;
 
@@ -55,6 +70,9 @@ class NodeStatus extends Equatable {
     bool clearChain = false,
     bool clearFailure = false,
     DateTime? lastUpdated,
+    List<PreflightIssue>? preflightWarnings,
+    DateTime? lastProgressAt,
+    ElectrumCheck? electrum,
   }) {
     return NodeStatus(
       process: process ?? this.process,
@@ -66,6 +84,9 @@ class NodeStatus extends Equatable {
           ? null
           : lastRpcFailure ?? this.lastRpcFailure,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      preflightWarnings: preflightWarnings ?? this.preflightWarnings,
+      lastProgressAt: clearChain ? null : lastProgressAt ?? this.lastProgressAt,
+      electrum: clearChain ? ElectrumCheck.unknown : electrum ?? this.electrum,
     );
   }
 
@@ -78,5 +99,8 @@ class NodeStatus extends Equatable {
     uptime,
     lastRpcFailure,
     lastUpdated,
+    preflightWarnings,
+    lastProgressAt,
+    electrum,
   ];
 }

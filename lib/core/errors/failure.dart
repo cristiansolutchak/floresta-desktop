@@ -100,6 +100,23 @@ final class ProcessStartFailure extends Failure {
   final String? recovery;
 }
 
+/// A check before starting the node found a problem that would make
+/// florestad fail or put data at risk.
+final class PreflightFailure extends Failure {
+  const PreflightFailure({
+    required this.title,
+    required this.message,
+    this.recovery,
+  });
+
+  @override
+  final String title;
+  @override
+  final String message;
+  @override
+  final String? recovery;
+}
+
 final class ProcessStateFailure extends Failure {
   const ProcessStateFailure(this.message);
 
@@ -221,4 +238,85 @@ final class RpcErrorFailure extends Failure {
 
   @override
   List<Object?> get props => [method, code, nodeMessage, data];
+}
+
+final class ElectrumUnavailableFailure extends Failure {
+  const ElectrumUnavailableFailure(this.endpoint, this.detail);
+
+  final String endpoint;
+  final String detail;
+
+  @override
+  String get title => 'Wallet server not reachable';
+  @override
+  String get message => 'Could not talk to the Electrum server at $endpoint.';
+  @override
+  String get recovery =>
+      'Make sure the node is running. Balances shown may be out of date.';
+
+  @override
+  List<Object?> get props => [...super.props, detail];
+}
+
+final class ElectrumProtocolFailure extends Failure {
+  const ElectrumProtocolFailure(this.method, this.detail);
+
+  final String method;
+  final String detail;
+
+  @override
+  String get title => 'Unexpected wallet server response';
+  @override
+  String get message => '"$method" returned data this app cannot use.';
+
+  @override
+  List<Object?> get props => [...super.props, detail];
+}
+
+/// The server or node is on a different chain than the wallet expects.
+/// Syncing is refused so data from two chains is never mixed.
+final class ChainMismatchFailure extends Failure {
+  const ChainMismatchFailure(this.detail);
+
+  final String detail;
+
+  @override
+  String get title => 'Wrong network';
+  @override
+  String get message => detail;
+  @override
+  String get recovery =>
+      'Check that the node and the wallet use the same network in Settings.';
+}
+
+/// A managed-installation step failed. [stage] is one of resolve, download,
+/// verify, install, recover.
+final class InstallationFailure extends Failure {
+  const InstallationFailure({
+    required this.stage,
+    required this.message,
+    this.recovery,
+  });
+
+  const InstallationFailure.manifest(String detail)
+    : stage = 'resolve',
+      message = 'The release information is invalid ($detail).',
+      recovery = 'Nothing was installed. Try again later.';
+
+  final String stage;
+  @override
+  String get title => switch (stage) {
+    'resolve' => 'Could not find a Floresta release',
+    'download' => 'Download failed',
+    'verify' => 'Download could not be verified',
+    'install' => 'Installation failed',
+    _ => 'Installation problem',
+  };
+  @override
+  final String message;
+  @override
+  final String? recovery;
+
+  @override
+  List<Object?> get props => [stage, message];
 }

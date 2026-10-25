@@ -33,6 +33,19 @@ final class ProcessRunning extends NodeProcessState {
   List<Object?> get props => [pid, startedAt];
 }
 
+/// A florestad this app started before it last quit, found still running
+/// and taken over (same pid and executable). Its output since the restart is
+/// not captured; florestad's own `debug.log` has it when logging to file.
+final class ProcessAdopted extends NodeProcessState {
+  const ProcessAdopted(this.pid, this.startedAt);
+  final int pid;
+  final DateTime startedAt;
+  @override
+  bool get isActive => true;
+  @override
+  List<Object?> get props => [pid, startedAt];
+}
+
 final class ProcessStopping extends NodeProcessState {
   const ProcessStopping(this.pid);
   final int pid;
@@ -42,10 +55,11 @@ final class ProcessStopping extends NodeProcessState {
   List<Object?> get props => [pid];
 }
 
-/// Exited after the user asked it to stop.
+/// Exited after the user asked it to stop. [exitCode] is null for an adopted
+/// process, whose exit status the OS reports only to its original parent.
 final class ProcessStopped extends NodeProcessState {
   const ProcessStopped(this.exitCode);
-  final int exitCode;
+  final int? exitCode;
   @override
   List<Object?> get props => [exitCode];
 }
@@ -54,7 +68,9 @@ final class ProcessStopped extends NodeProcessState {
 /// the UI can show why.
 final class ProcessCrashed extends NodeProcessState {
   const ProcessCrashed(this.exitCode, this.lastOutput);
-  final int exitCode;
+
+  /// Null for an adopted process (see [ProcessStopped.exitCode]).
+  final int? exitCode;
   final List<String> lastOutput;
 
   /// florestad logs "Failed to bind to address … Floresta is probably

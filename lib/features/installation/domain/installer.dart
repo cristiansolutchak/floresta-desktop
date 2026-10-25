@@ -26,6 +26,11 @@ final class InstallVerifying extends InstallProgress {
   const InstallVerifying();
 }
 
+/// Moving the verified binary into place and recording it.
+final class InstallInstalling extends InstallProgress {
+  const InstallInstalling();
+}
+
 final class InstallCompleted extends InstallProgress {
   const InstallCompleted(this.executablePath);
   final String executablePath;
@@ -34,24 +39,25 @@ final class InstallCompleted extends InstallProgress {
 }
 
 final class InstallFailed extends InstallProgress {
-  const InstallFailed(this.reason);
+  const InstallFailed(this.reason, {this.recovery});
   final String reason;
+  final String? recovery;
   @override
-  List<Object?> get props => [reason];
+  List<Object?> get props => [reason, recovery];
 }
 
 /// Installs florestad into an app-managed location.
 ///
-/// No real implementation exists yet: upstream publishes no binary
-/// artifacts or signatures (docs/decisions/0005-…). Implementations must be
-/// started by an explicit user action and must never run downloaded scripts
-/// or request elevated privileges.
+/// Implementation: `ManagedInstaller` (signed manifest, verified download).
+/// Installs start only on an explicit user action and never run downloaded
+/// scripts or request elevation. There is no simulated installer: a build
+/// without a release source offers no automatic installation at all.
 abstract interface class Installer {
-  /// True only for the demonstration implementation. The UI must label
-  /// anything produced by a mock installer as such.
-  bool get isMock;
-
   bool supports(HostPlatform platform);
 
   Stream<InstallProgress> install(HostPlatform platform);
+
+  /// Asks a running install to stop. The stream then ends in
+  /// [InstallFailed]; a partial download is kept for resuming.
+  void cancel();
 }

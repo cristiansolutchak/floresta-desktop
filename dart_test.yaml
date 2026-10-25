@@ -1,0 +1,3 @@
+tags:
+  # Opt-in tests against a real florestad; skipped unless FLORESTAD_PATH is set.
+  integration:

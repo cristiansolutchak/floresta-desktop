@@ -1,3 +1,4 @@
+import 'package:floresta_gui/core/build_flavor.dart';
 import 'package:floresta_gui/core/errors/failure.dart';
 import 'package:floresta_gui/features/settings/data/shared_prefs_settings_repository.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
@@ -26,8 +27,14 @@ void main() {
   });
 
   group('NodeSettings', () {
-    test('defaults to signet so new users cannot touch real funds', () {
-      expect(const NodeSettings().network, BitcoinNetwork.signet);
+    test('defaults to mainnet in production builds (owner decision 3)', () {
+      expect(const NodeSettings().network, BitcoinNetwork.bitcoin);
+      expect(BuildFlavor.production.defaultNetwork, BitcoinNetwork.bitcoin);
+    });
+
+    test('development builds default to signet', () {
+      expect(BuildFlavor.development.defaultNetwork, BitcoinNetwork.signet);
+      expect(BuildFlavor.compiled, BuildFlavor.production);
     });
 
     test('computes the data directory like upstream datadir_path', () {
@@ -54,7 +61,7 @@ void main() {
     test('uses the network default RPC port unless overridden', () {
       expect(
         const NodeSettings().rpcEndpoint,
-        Uri.parse('http://127.0.0.1:38332/'),
+        Uri.parse('http://127.0.0.1:8332/'),
       );
       expect(const NodeSettings(rpcPort: 40000).effectiveRpcPort, 40000);
     });
@@ -135,6 +142,20 @@ void main() {
 
     test('falls back to the default network for unknown values', () async {
       final r = await repo({'settings.network': 'testnet3'});
+      expect(r.load().network, BitcoinNetwork.bitcoin);
+    });
+
+    test('a development build falls back to signet', () async {
+      SharedPreferences.setMockInitialValues({});
+      final r = SharedPrefsSettingsRepository(
+        await SharedPreferences.getInstance(),
+        defaultNetwork: BuildFlavor.development.defaultNetwork,
+      );
+      expect(r.load().network, BitcoinNetwork.signet);
+    });
+
+    test('a saved choice wins over the build default', () async {
+      final r = await repo({'settings.network': 'signet'});
       expect(r.load().network, BitcoinNetwork.signet);
     });
   });

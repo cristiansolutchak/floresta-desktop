@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fpdart/fpdart.dart';
+import 'package:fpdart/fpdart.dart' hide State;
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
@@ -11,7 +11,7 @@ import '../../settings/presentation/node_settings_widgets.dart';
 import '../../settings/presentation/settings_controller.dart';
 
 /// Centered, step-labelled frame for the first-run flow.
-class _OnboardingFrame extends StatelessWidget {
+class _OnboardingFrame extends StatefulWidget {
   const _OnboardingFrame({
     required this.step,
     required this.title,
@@ -25,10 +25,25 @@ class _OnboardingFrame extends StatelessWidget {
   final Widget child;
 
   @override
+  State<_OnboardingFrame> createState() => _OnboardingFrameState();
+}
+
+class _OnboardingFrameState extends State<_OnboardingFrame> {
+  late final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Scrollbar(
+        controller: _scrollController,
         child: SingleChildScrollView(
+          controller: _scrollController,
           padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 32),
           child: Center(
             child: ConstrainedBox(
@@ -36,22 +51,28 @@ class _OnboardingFrame extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (step != null)
-                    Text('STEP $step OF 2', style: context.text.labelSmall),
+                  if (widget.step != null)
+                    Text(
+                      'STEP ${widget.step} OF 2',
+                      style: context.text.labelSmall,
+                    ),
                   const SizedBox(height: 6),
                   Semantics(
                     header: true,
-                    child: Text(title, style: context.text.headlineSmall),
+                    child: Text(
+                      widget.title,
+                      style: context.text.headlineSmall,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    subtitle,
+                    widget.subtitle,
                     style: context.text.bodyMedium?.copyWith(
                       color: context.colors.muted,
                     ),
                   ),
                   const SizedBox(height: 28),
-                  child,
+                  widget.child,
                 ],
               ),
             ),

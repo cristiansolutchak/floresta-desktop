@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
 
+import '../../../core/build_flavor.dart';
 import '../../../core/errors/failure.dart';
 import '../../../core/providers.dart';
 import '../data/shared_prefs_settings_repository.dart';
@@ -8,7 +9,10 @@ import '../domain/node_settings.dart';
 import '../domain/settings_repository.dart';
 
 final settingsRepositoryProvider = Provider<SettingsRepository>(
-  (ref) => SharedPrefsSettingsRepository(ref.watch(sharedPreferencesProvider)),
+  (ref) => SharedPrefsSettingsRepository(
+    ref.watch(sharedPreferencesProvider),
+    defaultNetwork: ref.watch(buildFlavorProvider).defaultNetwork,
+  ),
 );
 
 final settingsControllerProvider =

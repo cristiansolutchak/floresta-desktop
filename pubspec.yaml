@@ -41,9 +41,13 @@ dependencies:
   http: ^1.6.0
   shared_preferences: ^2.5.5
   file_selector: ^1.1.0
+  bitcoin_base: 7.3.0
+  blockchain_utils: 7.1.0
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to

@@ -30,8 +30,16 @@ class Peer extends Equatable {
   final List<String> services;
 
   bool get isReady => state.toLowerCase() == 'ready';
-  bool get supportsUtreexo =>
-      services.any((s) => s.toUpperCase().contains('UTREEXO'));
+
+  /// NODE_UTREEXO is bit 12 (`floresta-common` `service_flags::UTREEXO =
+  /// 1 << 12`). rust-bitcoin has no name for it, so it arrives inside the
+  /// hex part of the flags (e.g. `0x1000`).
+  bool get supportsUtreexo => services.any((s) {
+    if (s.toUpperCase().contains('UTREEXO')) return true;
+    if (!s.startsWith('0x')) return false;
+    final bits = BigInt.tryParse(s.substring(2), radix: 16);
+    return bits != null && (bits >> 12) & BigInt.one == BigInt.one;
+  });
 
   @override
   List<Object?> get props => [id, address, state];

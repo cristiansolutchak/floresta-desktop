@@ -7,7 +7,13 @@ import '../domain/node_settings.dart';
 import '../domain/settings_repository.dart';
 
 class SharedPrefsSettingsRepository implements SettingsRepository {
-  SharedPrefsSettingsRepository(this._prefs);
+  SharedPrefsSettingsRepository(
+    this._prefs, {
+    this.defaultNetwork = BitcoinNetwork.bitcoin,
+  });
+
+  /// Used until the user picks a network (depends on the build flavour).
+  final BitcoinNetwork defaultNetwork;
 
   final SharedPreferences _prefs;
 
@@ -21,7 +27,7 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
 
   @override
   NodeSettings load() {
-    const defaults = NodeSettings();
+    final defaults = NodeSettings(network: defaultNetwork);
     final stored = NodeSettings(
       onboardingComplete: _prefs.getBool(_kOnboarding) ?? false,
       executablePath: _prefs.getString(_kExecutable),

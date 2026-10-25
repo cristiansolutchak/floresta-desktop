@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/build_flavor.dart';
+import '../../features/node/domain/node_status.dart';
 import '../../features/node/presentation/node_controller.dart';
 import '../../features/node/presentation/status_labels.dart';
 import '../../features/settings/presentation/settings_controller.dart';
@@ -73,9 +75,9 @@ class _Sidebar extends ConsumerWidget {
     final network = ref.watch(
       settingsControllerProvider.select((s) => s.network),
     );
-    final sync = StatusLabels.sync(status);
-    final process = StatusLabels.process(status);
-    final summary = status.chain != null ? sync : process;
+    final summary = status.api == ApiReachability.reachable
+        ? StatusLabels.readiness(ref.watch(nodeReadinessProvider), status)
+        : StatusLabels.process(status);
 
     return Container(
       width: 224,
@@ -108,11 +110,27 @@ class _Sidebar extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    network.label.toUpperCase(),
-                    style: context.text.labelSmall,
+                  Text('NETWORK', style: context.text.labelSmall),
+                  const SizedBox(height: 6),
+                  // Always visible: which chain this app is driving.
+                  Semantics(
+                    label: 'Active network: ${network.label}',
+                    child: StatusIndicator(
+                      label: network.label,
+                      caption: network.isMainnet
+                          ? 'Real bitcoin'
+                          : 'Test network: coins have no value',
+                      tone: network.isMainnet ? Tone.info : Tone.warning,
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  if (ref.watch(buildFlavorProvider) ==
+                      BuildFlavor.development) ...[
+                    const SizedBox(height: 6),
+                    Text('Development build', style: context.text.bodySmall),
+                  ],
+                  const SizedBox(height: 14),
+                  Text('NODE', style: context.text.labelSmall),
+                  const SizedBox(height: 6),
                   StatusIndicator(
                     label: summary.label,
                     caption: summary.caption,

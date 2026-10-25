@@ -9,12 +9,18 @@ import '../../../core/providers.dart';
 import '../../../core/rpc/json_rpc_client.dart';
 import '../../installation/presentation/installation_providers.dart';
 import '../../settings/presentation/settings_controller.dart';
+import '../../../core/processes/process_inspector.dart';
 import '../data/florestad_process_manager.dart';
+import '../data/electrum_probe.dart';
+import '../data/managed_node_store.dart';
+import '../data/preflight_probe.dart';
 import '../data/node_rpc_repository_impl.dart';
 import '../domain/node_process_manager.dart';
 import '../domain/node_process_state.dart';
 import '../domain/node_rpc_repository.dart';
+import '../domain/node_readiness.dart';
 import '../domain/node_status.dart';
+import '../domain/preflight.dart';
 
 final rpcClientProvider = Provider<JsonRpcClient>((ref) {
   final endpoint = ref.watch(
@@ -36,10 +42,21 @@ final nodeProcessManagerProvider = Provider<NodeProcessManager>((ref) {
   final manager = FlorestadProcessManager(
     requestGracefulStop: () async =>
         (await ref.read(nodeRpcRepositoryProvider).requestStop()).isRight(),
+    store: ManagedNodeStore(ref.read(appPathsProvider)),
+    inspector: SystemProcessInspector(),
   );
   ref.onDispose(manager.dispose);
   return manager;
 });
+
+final preflightProbeProvider = Provider<PreflightProbe>((ref) {
+  final env = ref.watch(environmentProvider);
+  return PreflightProbe(homeDir: env['HOME'] ?? env['USERPROFILE']);
+});
+
+final electrumProbeProvider = Provider<ElectrumProbe>(
+  (ref) => const ElectrumProbe(),
+);
 
 final nodeControllerProvider = NotifierProvider<NodeController, NodeStatus>(
   NodeController.new,
@@ -52,6 +69,14 @@ class NodeController extends Notifier<NodeStatus> {
 
   Timer? _timer;
   bool _polling = false;
+
+  /// A refresh was requested while one was in flight; run another after it,
+  /// so its (possibly stale) result is not the last word.
+  bool _refreshAgain = false;
+
+  /// Electrum is re-checked at most this often while the API answers.
+  static const _electrumEvery = Duration(seconds: 30);
+  DateTime? _electrumCheckedAt;
 
   NodeProcessManager get _manager => ref.read(nodeProcessManagerProvider);
   NodeRpcRepository get _rpc => ref.read(nodeRpcRepositoryProvider);
@@ -67,17 +92,31 @@ class NodeController extends Notifier<NodeStatus> {
       _timer?.cancel();
     });
     _schedule(_pollActive);
-    Future.microtask(refresh);
+    Future.microtask(() async {
+      // A florestad from an earlier session of this app (crash, force-quit)
+      // is taken over before polling, so it is not shown as a stranger.
+      await manager.reattach();
+      await refresh();
+    });
     return NodeStatus(process: manager.state);
   }
 
   void _onProcessState(NodeProcessState s) {
-    state = state.copyWith(process: s);
-    if (!s.isActive) {
-      // The API goes away with the process; re-check rather than assume,
-      // since another node may still answer on the port.
-      unawaited(refresh());
+    if (s.isActive) {
+      state = state.copyWith(process: s);
+      return;
     }
+    // Our node is gone, so whatever the API said belongs to it: forget it
+    // now instead of showing a stale "reachable" (which would look like a
+    // node started elsewhere), then re-check, since another node may
+    // still answer on the port.
+    state = state.copyWith(
+      process: s,
+      api: ApiReachability.unknown,
+      clearChain: true,
+    );
+    _refreshAgain = true;
+    unawaited(refresh());
   }
 
   void _schedule(Duration every) {
@@ -86,7 +125,12 @@ class NodeController extends Notifier<NodeStatus> {
   }
 
   Future<void> refresh() async {
-    if (_polling || !ref.mounted) return;
+    if (!ref.mounted) return;
+    if (_polling) {
+      _refreshAgain = true;
+      return;
+    }
+    _refreshAgain = false;
     _polling = true;
     try {
       final info = await _rpc.getBlockchainInfo();
@@ -106,14 +150,23 @@ class NodeController extends Notifier<NodeStatus> {
             _rpc.getUptime(),
           ).wait;
           if (!ref.mounted) return;
+          final now = DateTime.now();
+          final before = state.chain;
+          final moved =
+              before == null ||
+              state.lastProgressAt == null ||
+              before.headerHeight != chain.headerHeight ||
+              before.validatedHeight != chain.validatedHeight;
           state = state.copyWith(
             api: ApiReachability.reachable,
             chain: chain,
             peers: peers.toNullable(),
             uptime: uptime.toNullable(),
             clearFailure: true,
-            lastUpdated: DateTime.now(),
+            lastUpdated: now,
+            lastProgressAt: moved ? now : null,
           );
+          await _checkElectrum(now);
         },
       );
       final steady =
@@ -121,7 +174,24 @@ class NodeController extends Notifier<NodeStatus> {
       _schedule(steady ? _pollSteady : _pollActive);
     } finally {
       _polling = false;
+      if (_refreshAgain && ref.mounted) unawaited(refresh());
     }
+  }
+
+  Future<void> _checkElectrum(DateTime now) async {
+    final last = _electrumCheckedAt;
+    if (state.electrum == ElectrumCheck.ok &&
+        last != null &&
+        now.difference(last) < _electrumEvery) {
+      return;
+    }
+    if (last != null && now.difference(last) < const Duration(seconds: 5)) {
+      return;
+    }
+    _electrumCheckedAt = now;
+    final network = ref.read(settingsControllerProvider).network;
+    final result = await ref.read(electrumProbeProvider).check(network);
+    if (ref.mounted) state = state.copyWith(electrum: result);
   }
 
   Future<Either<Failure, Unit>> start() async {
@@ -135,11 +205,31 @@ class NodeController extends Notifier<NodeStatus> {
       );
     }
     final detection = await ref.read(installationDetectionProvider.future);
-    return detection.match((failure) async => Left(failure), (install) {
+    return detection.match((failure) async => Left(failure), (install) async {
+      final settings = ref.read(settingsControllerProvider);
+      final issues = evaluatePreflight(
+        await ref.read(preflightProbeProvider).gather(settings),
+      );
+      if (!ref.mounted) return const Left(ProcessStateFailure('Closed.'));
+      state = state.copyWith(
+        preflightWarnings: [
+          for (final i in issues)
+            if (!i.blocks) i,
+        ],
+      );
+      if (issues.where((i) => i.blocks).firstOrNull case final b?) {
+        return Left(
+          PreflightFailure(
+            title: b.title,
+            message: b.message,
+            recovery: b.recovery,
+          ),
+        );
+      }
       _schedule(_pollActive);
       return _manager.start(
         executablePath: install.executablePath,
-        settings: ref.read(settingsControllerProvider),
+        settings: settings,
       );
     });
   }
@@ -161,6 +251,23 @@ class NodeController extends Notifier<NodeStatus> {
     return start();
   }
 }
+
+/// Readiness derived from the latest status; recomputed on every poll.
+final nodeReadinessProvider = Provider<NodeReadiness>((ref) {
+  final status = ref.watch(nodeControllerProvider);
+  final network = ref.watch(
+    settingsControllerProvider.select((s) => s.network),
+  );
+  final logs = ref.watch(nodeLogsProvider);
+  return assessReadiness(
+    status,
+    expected: network,
+    now: DateTime.now(),
+    noUtreexoPeersLogged: logsShowNoUtreexoPeers(
+      logs.reversed.take(100).map((l) => l.text),
+    ),
+  );
+});
 
 /// Snapshot of daemon output, throttled so a chatty node cannot cause a
 /// rebuild per line.

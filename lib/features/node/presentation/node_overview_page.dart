@@ -10,7 +10,9 @@ import '../../installation/domain/next_action.dart';
 import '../../installation/presentation/installation_providers.dart';
 import '../../settings/presentation/settings_controller.dart';
 import '../domain/node_process_state.dart';
+import '../domain/node_readiness.dart';
 import '../domain/node_status.dart';
+import '../domain/verification_breakdown.dart';
 import '../domain/peer.dart';
 import 'node_controller.dart';
 import 'status_labels.dart';
@@ -21,6 +23,7 @@ class NodeOverviewPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(nodeControllerProvider);
+    final readiness = ref.watch(nodeReadinessProvider);
     final settings = ref.watch(settingsControllerProvider);
     final next = ref.watch(nextActionProvider);
     final installed =
@@ -55,6 +58,28 @@ class NodeOverviewPage extends ConsumerWidget {
           _CrashNotice(crashed),
           const SizedBox(height: 16),
         ],
+        if (readiness.stalledFor case final idle?) ...[
+          Notice(
+            tone: Tone.danger,
+            title: 'The node is not making progress',
+            message:
+                'Heights have not changed for ${formatDuration(idle)}. '
+                '${readiness.missingUtreexoPeers
+                    ? 'Floresta needs at least $minUtreexoPeers peers that serve Utreexo proofs to verify new blocks, and has ${status.peers?.where((p) => p.isReady && p.supportsUtreexo).length ?? 0} right now. It keeps looking; this depends on how many such peers the network has, not on your setup.'
+                    : (status.peers?.where((p) => p.isReady).length ?? 0) == 0
+                    ? 'It has no connected peers: check your internet connection or firewall.'
+                    : 'It has peers, so they may not be serving the data it needs; the log below may say why.'}',
+          ),
+          const SizedBox(height: 16),
+        ],
+        for (final w in status.preflightWarnings) ...[
+          Notice(
+            tone: Tone.warning,
+            title: w.title,
+            message: [w.message, ?w.recovery].join(' '),
+          ),
+          const SizedBox(height: 16),
+        ],
         if (settings.network.isMainnet) ...[
           const Notice(
             tone: Tone.info,
@@ -62,8 +87,17 @@ class NodeOverviewPage extends ConsumerWidget {
             message: 'This node follows the real Bitcoin network.',
           ),
           const SizedBox(height: 16),
+        ] else ...[
+          Notice(
+            tone: Tone.warning,
+            title: '${settings.network.label}: test network',
+            message:
+                'Coins on this network have no value. Switch to Mainnet in '
+                'Settings to follow the real Bitcoin network.',
+          ),
+          const SizedBox(height: 16),
         ],
-        _StatusStrip(status),
+        _StatusStrip(status, readiness),
         const SizedBox(height: 16),
         _SyncPanel(status),
         const SizedBox(height: 16),
@@ -137,8 +171,9 @@ class NodeOverviewPage extends ConsumerWidget {
 }
 
 class _StatusStrip extends StatelessWidget {
-  const _StatusStrip(this.status);
+  const _StatusStrip(this.status, this.readiness);
   final NodeStatus status;
+  final NodeReadiness readiness;
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +198,7 @@ class _StatusStrip extends StatelessWidget {
           cell('Process', StatusLabels.process(status)),
           cell('Node API', StatusLabels.api(status)),
           cell('Blockchain', StatusLabels.sync(status)),
+          cell('Readiness', StatusLabels.readiness(readiness, status)),
         ],
       ),
     );
@@ -188,39 +224,78 @@ class _SyncPanel extends StatelessWidget {
         ),
       );
     }
-    final progress = chain.verificationProgress;
+    final network = chain.network;
+    final b = network == null ? null : VerificationBreakdown.of(chain, network);
+    final fraction = b?.fraction;
     return Panel(
       title: 'Synchronization',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Semantics(
-            label: 'Validation progress ${formatPercent(progress)}',
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                backgroundColor: context.colors.border,
+          // Only blocks this node checked itself count as verified; the
+          // assumed snapshot is shown separately (SYNC-02).
+          if (b != null && fraction != null && b.verifiedByNode > 0) ...[
+            Semantics(
+              label:
+                  'Verified by this node: ${formatPercent(fraction)} of '
+                  '${b.snapshotApplied ? 'blocks after the snapshot' : 'blocks'}',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: fraction,
+                  minHeight: 6,
+                  backgroundColor: context.colors.border,
+                ),
               ),
             ),
+            const SizedBox(height: 6),
+            Text(
+              '${formatPercent(fraction)} of the '
+              '${b.snapshotApplied ? 'blocks after the snapshot' : 'blocks'} '
+              'verified by this node.',
+              style: context.text.bodySmall,
+            ),
+            const SizedBox(height: 14),
+          ],
+          KeyValueRow('Block headers known', formatInt(chain.headerHeight)),
+          KeyValueRow(
+            'Verified by this node',
+            b == null
+                ? 'Block ${formatInt(chain.validatedHeight)} (network unknown)'
+                : b.verifiedByNode == 0
+                ? 'None yet'
+                : 'Blocks ${formatInt(b.acceptedUpTo + 1)} to '
+                      '${formatInt(chain.validatedHeight)} '
+                      '(${formatInt(b.verifiedByNode)})',
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${formatPercent(progress)} validated. Estimated from block '
-            'timestamps.',
-            style: context.text.bodySmall,
-          ),
-          const SizedBox(height: 14),
-          KeyValueRow('Validated height', formatInt(chain.validatedHeight)),
-          KeyValueRow('Best known header', formatInt(chain.headerHeight)),
+          if (b != null && b.snapshotApplied)
+            KeyValueRow(
+              'Accepted from snapshot',
+              'Blocks 0 to ${formatInt(b.acceptedUpTo)}: the Utreexo state '
+                  'built into Floresta, not yet re-checked here. Floresta '
+                  're-checks it in the background; version 0.9.1 does not '
+                  'report that progress.',
+            )
+          else if (b != null && b.snapshotHeight > 0 && b.verifiedByNode == 0)
+            KeyValueRow(
+              'Snapshot',
+              'Will be used at block ${formatInt(b.snapshotHeight)} once the '
+                  'headers reach it.',
+            ),
+          if (b != null && b.scriptsSkippedUpTo > 0)
+            KeyValueRow(
+              'Signature checks',
+              'Skipped up to block ${formatInt(b.scriptsSkippedUpTo)} '
+                  '(assume-valid, as in Bitcoin Core)',
+            ),
           KeyValueRow(
             'Initial block download',
             chain.initialBlockDownload ? 'In progress' : 'Complete',
           ),
           KeyValueRow('Latest block time', _formatTime(chain.tipTime)),
           KeyValueRow('Best block hash', chain.bestBlockHash, mono: true),
-          KeyValueRow('Chain state on disk', formatBytes(chain.sizeOnDisk)),
+          if (chain.sizeOnDisk case final size?)
+            KeyValueRow('Chain state on disk', formatBytes(size)),
           if (chain.network == null) KeyValueRow('Reported chain', chain.chain),
           for (final w in chain.warnings) ...[
             const SizedBox(height: 8),
@@ -344,6 +419,9 @@ class _CrashNotice extends StatelessWidget {
         ? 'The RPC or Electrum port is already in use. Another Floresta or '
               'Bitcoin Core instance may be running. Stop it, or change the '
               'RPC port in Settings.'
+        : crashed.exitCode == null
+        ? 'Floresta stopped on its own while this app was reconnected to it. '
+              'Its debug.log in the data folder explains why.'
         : 'Floresta stopped with exit code ${crashed.exitCode}. The last log '
               'lines below usually explain why.';
     return Notice(

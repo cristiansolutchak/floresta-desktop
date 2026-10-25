@@ -7,7 +7,12 @@ import 'package:floresta_gui/features/installation/domain/installation_repositor
 import 'package:floresta_gui/features/node/domain/blockchain_info.dart';
 import 'package:floresta_gui/features/node/domain/node_process_manager.dart';
 import 'package:floresta_gui/features/node/domain/node_process_state.dart';
+import 'package:floresta_gui/features/node/data/electrum_probe.dart';
+import 'package:floresta_gui/features/node/data/preflight_probe.dart';
+import 'package:floresta_gui/features/node/domain/node_readiness.dart';
+import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:floresta_gui/features/node/domain/node_rpc_repository.dart';
+import 'package:floresta_gui/features/node/domain/preflight.dart';
 import 'package:floresta_gui/features/node/domain/peer.dart';
 import 'package:floresta_gui/features/settings/domain/node_settings.dart';
 import 'package:floresta_gui/features/wallet/domain/descriptor_input.dart';
@@ -40,6 +45,14 @@ class FakeNodeRpcRepository implements NodeRpcRepository {
 
   @override
   Future<Either<Failure, List<Peer>>> getPeers() async => Right(peers);
+
+  final blockHashes = <int, String>{};
+
+  @override
+  Future<Either<Failure, String>> getBlockHash(int height) async =>
+      blockHashes.containsKey(height)
+      ? Right(blockHashes[height]!)
+      : const Left(RpcUnreachableFailure('127.0.0.1:38332'));
 
   @override
   Future<Either<Failure, Duration>> getUptime() async =>
@@ -87,8 +100,42 @@ class FakeProcessManager implements NodeProcessManager {
     return const Right(unit);
   }
 
+  /// When set, [reattach] adopts this state (as after an app restart).
+  NodeProcessState? adoptable;
+
+  @override
+  Future<bool> reattach() async {
+    final s = adoptable;
+    if (s == null) return false;
+    emit(s);
+    return true;
+  }
+
   @override
   Future<void> dispose() => _states.close();
+}
+
+/// Returns scripted facts instead of probing this machine.
+class FakePreflightProbe extends PreflightProbe {
+  FakePreflightProbe([PreflightFacts? facts])
+    : facts =
+          facts ??
+          const PreflightFacts(
+            rpcPort: 38332,
+            rpcPortFree: true,
+            electrumPort: 60001,
+            electrumPortFree: true,
+            dataDir: '/Users/a/.floresta/signet',
+            dataDirWritable: true,
+            freeBytes: 100 * 1024 * 1024 * 1024,
+            looksLikeBitcoinCore: false,
+          ),
+      super(homeDir: '/Users/a');
+
+  PreflightFacts facts;
+
+  @override
+  Future<PreflightFacts> gather(NodeSettings settings) async => facts;
 }
 
 class FakeWalletRepository implements WalletRepository {
@@ -107,4 +154,17 @@ class FakeWalletRepository implements WalletRepository {
   @override
   Future<Either<Failure, Unit>> rescan({int? fromHeight}) async =>
       const Right(unit);
+}
+
+/// Returns a scripted Electrum identity instead of opening a socket.
+class FakeElectrumProbe extends ElectrumProbe {
+  FakeElectrumProbe([this.result = ElectrumCheck.ok]);
+  ElectrumCheck result;
+  int checks = 0;
+
+  @override
+  Future<ElectrumCheck> check(BitcoinNetwork network, {int? port}) async {
+    checks++;
+    return result;
+  }
 }

@@ -45,7 +45,9 @@ class BlockchainInfo extends Equatable {
   final double verificationProgress;
   final bool initialBlockDownload;
   final DateTime tipTime;
-  final int sizeOnDisk;
+
+  /// Null when the node version does not report it (v0.9.x).
+  final int? sizeOnDisk;
   final List<String> warnings;
 
   SyncPhase get phase {

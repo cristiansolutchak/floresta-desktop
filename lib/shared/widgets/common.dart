@@ -164,24 +164,39 @@ class PageHeader extends StatelessWidget {
 }
 
 /// Scrollable page body with a readable max width.
-class PageBody extends StatelessWidget {
+class PageBody extends StatefulWidget {
   const PageBody({super.key, required this.children, this.maxWidth = 960});
 
   final List<Widget> children;
   final double maxWidth;
 
   @override
+  State<PageBody> createState() => _PageBodyState();
+}
+
+class _PageBodyState extends State<PageBody> {
+  late final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scrollbar(
+      controller: _scrollController,
       child: SingleChildScrollView(
+        controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(32, 28, 32, 40),
         child: Align(
           alignment: Alignment.topLeft,
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
+            constraints: BoxConstraints(maxWidth: widget.maxWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: children,
+              children: widget.children,
             ),
           ),
         ),

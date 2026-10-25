@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/build_flavor.dart';
 import '../../../core/providers.dart';
 import '../../../shared/widgets/common.dart';
 import '../domain/bitcoin_network.dart';
 import '../domain/node_settings.dart';
 
-class NetworkSelector extends StatelessWidget {
+/// Mainnet first; the test networks sit under an advanced section
+/// (owner decision 3). Development builds open that section by default.
+class NetworkSelector extends ConsumerWidget {
   const NetworkSelector({
     super.key,
     required this.value,
@@ -19,7 +22,15 @@ class NetworkSelector extends StatelessWidget {
   final ValueChanged<BitcoinNetwork> onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dev = ref.watch(buildFlavorProvider) == BuildFlavor.development;
+    Widget tile(BitcoinNetwork n) => RadioListTile<BitcoinNetwork>(
+      value: n,
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      title: Text(n.label),
+      subtitle: Text(n.description),
+    );
     return Panel(
       title: 'Network',
       child: RadioGroup<BitcoinNetwork>(
@@ -28,15 +39,31 @@ class NetworkSelector extends StatelessWidget {
           if (n != null) onChanged(n);
         },
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final n in BitcoinNetwork.values)
-              RadioListTile<BitcoinNetwork>(
-                value: n,
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: Text(n.label),
-                subtitle: Text(n.description),
+            tile(BitcoinNetwork.bitcoin),
+            Theme(
+              data: Theme.of(
+                context,
+              ).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                initiallyExpanded: dev || !value.isMainnet,
+                title: Text(
+                  'Test networks (advanced)',
+                  style: context.text.bodyMedium,
+                ),
+                subtitle: Text(
+                  'For learning and development. Their coins have no value.',
+                  style: context.text.bodySmall,
+                ),
+                children: [
+                  for (final n in BitcoinNetwork.values)
+                    if (!n.isMainnet) tile(n),
+                ],
               ),
+            ),
             if (value.isMainnet) ...[
               const SizedBox(height: 8),
               const Notice(

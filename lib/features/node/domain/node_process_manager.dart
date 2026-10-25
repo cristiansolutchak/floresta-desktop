@@ -22,5 +22,9 @@ abstract interface class NodeProcessManager {
   /// Graceful stop with escalation; completes once the process has exited.
   Future<Either<Failure, Unit>> stop();
 
+  /// Takes over a florestad this app started before it last quit, if it is
+  /// still running (same pid and executable). True when one was adopted.
+  Future<bool> reattach();
+
   Future<void> dispose();
 }

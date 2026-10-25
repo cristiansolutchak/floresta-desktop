@@ -5,11 +5,9 @@ import 'package:floresta_gui/core/platform/host_platform.dart';
 import 'package:floresta_gui/core/processes/process_starter.dart';
 import 'package:floresta_gui/features/installation/data/executable_locator.dart';
 import 'package:floresta_gui/features/installation/data/installation_repository_impl.dart';
-import 'package:floresta_gui/features/installation/data/mock_installer.dart';
 import 'package:floresta_gui/features/installation/data/version_probe.dart';
 import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
 import 'package:floresta_gui/features/installation/domain/installation.dart';
-import 'package:floresta_gui/features/installation/domain/installer.dart';
 import 'package:floresta_gui/features/installation/domain/next_action.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
@@ -250,25 +248,6 @@ void main() {
       expect(
         NextAction.resolve(const Right(old), onboardingComplete: true),
         isA<UpdateFloresta>(),
-      );
-    });
-  });
-
-  group('MockInstaller', () {
-    test('is labelled as a mock', () {
-      expect(const MockInstaller().isMock, isTrue);
-    });
-
-    test('verifies before finishing and never reports success', () async {
-      final states = await const MockInstaller(
-        stepDelay: Duration.zero,
-      ).install(_mac).toList();
-      expect(states.first, isA<InstallResolving>());
-      expect(states.whereType<InstallCompleted>(), isEmpty);
-      expect(states.last, isA<InstallFailed>());
-      expect(
-        states.indexWhere((s) => s is InstallVerifying),
-        lessThan(states.length - 1),
       );
     });
   });

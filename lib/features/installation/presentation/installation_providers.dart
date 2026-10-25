@@ -4,9 +4,14 @@ import 'package:fpdart/fpdart.dart';
 import '../../../core/errors/failure.dart';
 import '../../../core/providers.dart';
 import '../../settings/presentation/settings_controller.dart';
+import '../../../core/platform/app_paths.dart';
+import '../data/artifact_downloader.dart';
 import '../data/executable_locator.dart';
 import '../data/installation_repository_impl.dart';
-import '../data/mock_installer.dart';
+import '../data/managed_install_store.dart';
+import '../data/managed_installer.dart';
+import '../data/release_source.dart';
+import '../data/release_trust_store.dart';
 import '../data/version_probe.dart';
 import '../domain/installation.dart';
 import '../domain/installation_repository.dart';
@@ -20,10 +25,22 @@ final executableLocatorProvider = Provider<ExecutableLocator>(
   ),
 );
 
+final appPathsProvider = Provider<AppPaths>(
+  (ref) => AppPaths.forPlatform(
+    ref.watch(hostPlatformProvider),
+    ref.watch(environmentProvider),
+  ),
+);
+
+final managedInstallStoreProvider = Provider<ManagedInstallStore>(
+  (ref) => ManagedInstallStore(ref.watch(appPathsProvider)),
+);
+
 final installationRepositoryProvider = Provider<InstallationRepository>(
   (ref) => InstallationRepositoryImpl(
     locator: ref.watch(executableLocatorProvider),
     probe: VersionProbe(),
+    managed: ref.watch(managedInstallStoreProvider),
   ),
 );
 
@@ -48,5 +65,25 @@ final nextActionProvider = Provider<AsyncValue<NextAction>>((ref) {
       .whenData((d) => NextAction.resolve(d, onboardingComplete: onboarded));
 });
 
-/// Only a mock exists; see `MockInstaller` and ADR-0005.
-final installerProvider = Provider<Installer>((ref) => const MockInstaller());
+/// The release source compiled into this build, or null when none is
+/// configured (the default until hosting and signing are decided; see
+/// docs/distribution-pipeline-design.md).
+final releaseSourceProvider = Provider<ReleaseSource?>(
+  (ref) => ReleaseSource.fromEnvironment(),
+);
+
+/// The installer for the configured release source, or null when this build
+/// has none (then the app offers no automatic installation).
+final installerProvider = Provider<Installer?>((ref) {
+  final source = ref.watch(releaseSourceProvider);
+  if (source == null) return null;
+  final paths = ref.watch(appPathsProvider);
+  return ManagedInstaller(
+    paths: paths,
+    source: source,
+    downloader: ArtifactDownloader(),
+    probe: VersionProbe(),
+    store: ref.watch(managedInstallStoreProvider),
+    trust: ReleaseTrustStore(paths),
+  );
+});

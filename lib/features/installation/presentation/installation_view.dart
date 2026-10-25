@@ -13,6 +13,8 @@ import '../domain/floresta_version.dart';
 import '../domain/installation.dart';
 import '../domain/installer.dart';
 import '../domain/next_action.dart';
+import '../data/artifact_downloader.dart' show isLoopbackUrl;
+import 'install_controller.dart';
 import 'installation_providers.dart';
 
 /// Detection result, next action and install guidance. Shared by the
@@ -31,6 +33,7 @@ class InstallationView extends ConsumerWidget {
     final configured = ref.watch(
       settingsControllerProvider.select((s) => s.executablePath),
     );
+    final automatic = ref.watch(installerProvider) != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -86,11 +89,14 @@ class InstallationView extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         if (next.value case final action?)
-          _NextActionPanel(action, primaryAction: primaryAction),
+          _NextActionPanel(
+            action,
+            primaryAction: primaryAction,
+            automaticInstall: automatic,
+          ),
         const SizedBox(height: 16),
+        if (automatic) ...[const _InstallerPanel(), const SizedBox(height: 16)],
         _BuildFromSourcePanel(platform),
-        const SizedBox(height: 16),
-        const _MockInstallerPanel(),
       ],
     );
   }
@@ -225,17 +231,26 @@ class _DetectionResult extends StatelessWidget {
 }
 
 class _NextActionPanel extends StatelessWidget {
-  const _NextActionPanel(this.action, {this.primaryAction});
+  const _NextActionPanel(
+    this.action, {
+    this.primaryAction,
+    this.automaticInstall = false,
+  });
   final NextAction action;
   final Widget? primaryAction;
+  final bool automaticInstall;
 
   @override
   Widget build(BuildContext context) {
     final (title, message, tone) = switch (action) {
       InstallFloresta() => (
         'Next: install Floresta',
-        'Floresta does not publish ready-made downloads yet, so it is built '
-            'from source. Follow the steps below, then check again.',
+        automaticInstall
+            ? 'Install it automatically below. Building from source is '
+                  'still possible if you prefer.'
+            : 'Automatic installation is not configured in this build. '
+                  'Choose an existing florestad above, or build it from '
+                  'source with the steps below, then check again.',
         Tone.info,
       ),
       FixInstallation(:final failure) => (
@@ -334,71 +349,84 @@ class _BuildFromSourcePanel extends StatelessWidget {
   }
 }
 
-class _MockInstallerPanel extends ConsumerStatefulWidget {
-  const _MockInstallerPanel();
+/// Runs the configured [Installer]. Shown only when this build has a
+/// release source.
+class _InstallerPanel extends ConsumerWidget {
+  const _InstallerPanel();
 
   @override
-  ConsumerState<_MockInstallerPanel> createState() =>
-      _MockInstallerPanelState();
-}
-
-class _MockInstallerPanelState extends ConsumerState<_MockInstallerPanel> {
-  InstallProgress? _progress;
-  bool _running = false;
-
-  Future<void> _run() async {
-    final installer = ref.read(installerProvider);
-    final platform = ref.read(hostPlatformProvider);
-    setState(() => _running = true);
-    await for (final p in installer.install(platform)) {
-      if (!mounted) return;
-      setState(() => _progress = p);
-    }
-    if (mounted) setState(() => _running = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final installer = ref.watch(installerProvider);
+    if (installer == null) return const SizedBox.shrink();
+    final source = ref.watch(releaseSourceProvider);
+    final run = ref.watch(installControllerProvider);
+    final controller = ref.read(installControllerProvider.notifier);
+    final platform = ref.watch(hostPlatformProvider);
+    final badge = source != null && isLoopbackUrl(source.manifestUrl)
+        ? 'DEVELOPMENT SOURCE'
+        : null;
+    final supported = installer.supports(platform);
+    final done = run.progress is InstallCompleted;
+
     return Panel(
       title: 'Automatic installation',
-      trailing: installer.isMock
-          ? Container(
+      trailing: badge == null
+          ? null
+          : Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 border: Border.all(color: context.colors.warning),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                'SIMULATION',
+                badge,
                 style: context.text.labelSmall?.copyWith(
                   color: context.colors.warning,
                 ),
               ),
-            )
-          : null,
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Not available yet. Floresta publishes no signed binaries, and '
-            'this app will not install software it cannot verify. The '
-            'simulation below only shows how the installer will behave; it '
-            'downloads and installs nothing.',
+            'Downloads Floresta, checks its signature and checksum, confirms '
+            'that it runs on this computer, and installs it for your user '
+            'only. No administrator password is needed, and your blockchain '
+            'data is never touched.',
             style: context.text.bodySmall,
           ),
+          if (!supported) ...[
+            const SizedBox(height: 12),
+            Notice(
+              tone: Tone.warning,
+              title: 'Not available for ${platform.label}',
+              message: 'Choose an existing florestad executable instead.',
+            ),
+          ],
           const SizedBox(height: 12),
-          if (_progress case final p?) ...[
+          if (run.progress case final p?) ...[
             _ProgressLine(p),
             const SizedBox(height: 12),
           ],
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton(
-              onPressed: _running ? null : _run,
-              child: const Text('Run simulation'),
+          if (!done)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: run.running
+                  ? OutlinedButton(
+                      onPressed: controller.cancel,
+                      child: const Text('Cancel'),
+                    )
+                  : OutlinedButton(
+                      onPressed: run.running || !supported
+                          ? null
+                          : controller.start,
+                      child: Text(
+                        run.progress is InstallFailed
+                            ? 'Try again'
+                            : 'Install Floresta',
+                      ),
+                    ),
             ),
-          ),
         ],
       ),
     );
@@ -412,23 +440,26 @@ class _ProgressLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (progress) {
-      InstallResolving() => const Text('Resolving release (simulated)…'),
+      InstallResolving() => const Text('Checking the published release…'),
       InstallDownloading(:final fraction) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Downloading (simulated) ${(fraction * 100).round()}%'),
+          Text('Downloading ${(fraction * 100).round()}%'),
           const SizedBox(height: 6),
           LinearProgressIndicator(value: fraction),
         ],
       ),
-      InstallVerifying() => const Text('Verifying signature (simulated)…'),
-      InstallCompleted(:final executablePath) => Text(
-        'Installed at $executablePath',
+      InstallVerifying() => const Text('Verifying the download…'),
+      InstallInstalling() => const Text('Installing…'),
+      InstallCompleted(:final executablePath) => StatusIndicator(
+        label: 'Floresta installed',
+        caption: executablePath,
+        tone: Tone.success,
       ),
-      InstallFailed(:final reason) => Notice(
+      InstallFailed(:final reason, :final recovery) => Notice(
         tone: Tone.warning,
         title: 'Nothing was installed',
-        message: reason,
+        message: [reason, ?recovery].join(' '),
       ),
     };
   }

@@ -12,7 +12,7 @@ class NodeSettings extends Equatable {
   const NodeSettings({
     this.onboardingComplete = false,
     this.executablePath,
-    this.network = BitcoinNetwork.signet,
+    this.network = BitcoinNetwork.bitcoin,
     this.dataDir,
     this.rpcPort,
     this.logToFile = true,
@@ -24,8 +24,8 @@ class NodeSettings extends Equatable {
   /// Explicit florestad path. Null means auto-detect.
   final String? executablePath;
 
-  /// Signet by default so a first-time user cannot touch real funds by
-  /// accident while learning the app.
+  /// Mainnet by default (production builds); development builds and the
+  /// advanced settings offer the test networks. See `BuildFlavor`.
   final BitcoinNetwork network;
 
   /// Base data directory passed as `--data-dir`. Null keeps florestad's own
