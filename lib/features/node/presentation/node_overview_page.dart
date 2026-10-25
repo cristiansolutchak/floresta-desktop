@@ -114,7 +114,7 @@ class NodeOverviewPage extends ConsumerWidget {
         ],
         _StatusStrip(status, readiness),
         const SizedBox(height: 16),
-        _SyncPanel(status),
+        _SyncPanel(status, readiness),
         const SizedBox(height: 16),
         _PeersPanel(status),
         const SizedBox(height: 16),
@@ -221,8 +221,9 @@ class _StatusStrip extends StatelessWidget {
 }
 
 class _SyncPanel extends StatelessWidget {
-  const _SyncPanel(this.status);
+  const _SyncPanel(this.status, this.readiness);
   final NodeStatus status;
+  final NodeReadiness readiness;
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +241,13 @@ class _SyncPanel extends StatelessWidget {
       );
     }
     final network = chain.network;
-    final b = network == null ? null : VerificationBreakdown.of(chain, network);
+    final b = network == null
+        ? null
+        : VerificationBreakdown.of(
+            chain,
+            network,
+            snapshotHeight: readiness.snapshotHeight,
+          );
     final fraction = b?.fraction;
     return Panel(
       title: 'Synchronization',

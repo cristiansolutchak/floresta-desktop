@@ -48,6 +48,26 @@ void main() {
         '--no-cfilters',
       ]);
     });
+
+    test('fast start: no backfill keeps assume-utreexo', () {
+      final args = florestadLaunchArgs(
+        const NodeSettings(logToFile: false, backfill: false),
+      );
+      expect(args, contains('--no-backfill'));
+      expect(args, isNot(contains('--no-assume-utreexo')));
+    });
+
+    test('fast start: no assume-utreexo makes backfill moot', () {
+      final args = florestadLaunchArgs(
+        const NodeSettings(
+          logToFile: false,
+          assumeUtreexo: false,
+          backfill: false,
+        ),
+      );
+      expect(args, contains('--no-assume-utreexo'));
+      expect(args, isNot(contains('--no-backfill')));
+    });
   });
 
   group('FlorestadProcessManager', () {

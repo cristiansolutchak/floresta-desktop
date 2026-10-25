@@ -19,13 +19,16 @@ class VerificationBreakdown extends Equatable {
     required this.assumeValidHeight,
   });
 
+  /// [snapshotHeight] is 0 when assume-utreexo is off (nothing accepted on
+  /// trust); by default the network's built-in snapshot height.
   factory VerificationBreakdown.of(
     BlockchainInfo chain,
-    BitcoinNetwork network,
-  ) => VerificationBreakdown(
+    BitcoinNetwork network, {
+    int? snapshotHeight,
+  }) => VerificationBreakdown(
     headers: chain.headerHeight,
     validated: chain.validatedHeight,
-    snapshotHeight: network.assumeUtreexoHeight,
+    snapshotHeight: snapshotHeight ?? network.assumeUtreexoHeight,
     assumeValidHeight: network.assumeValidHeight,
   );
 

@@ -54,7 +54,11 @@ class NodeReadiness extends Equatable {
     this.electrum = ElectrumCheck.unknown,
     this.missingUtreexoPeers = false,
     this.peerTip,
+    this.snapshotHeight = 0,
   });
+
+  /// Height accepted on trust at startup (assume-utreexo), 0 when off.
+  final int snapshotHeight;
 
   final ReadinessStage stage;
 
@@ -92,6 +96,7 @@ class NodeReadiness extends Equatable {
     electrum,
     missingUtreexoPeers,
     peerTip,
+    snapshotHeight,
   ];
 }
 
@@ -118,6 +123,7 @@ NodeReadiness assessReadiness(
   required DateTime now,
   Duration stallAfter = readinessStallAfter,
   bool noUtreexoPeersLogged = false,
+  int? snapshotHeight,
 }) {
   final chain = s.chain;
   final wrongNetwork =
@@ -157,6 +163,7 @@ NodeReadiness assessReadiness(
     wrongNetwork: wrongNetwork,
     electrum: s.electrum,
     peerTip: peerTip,
+    snapshotHeight: snapshotHeight ?? expected.assumeUtreexoHeight,
     missingUtreexoPeers:
         stage == ReadinessStage.validatingBlocks &&
         (noUtreexoPeersLogged ||

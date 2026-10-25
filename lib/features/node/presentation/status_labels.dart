@@ -113,12 +113,12 @@ abstract final class StatusLabels {
       ),
       ReadinessStage.validatingBlocks when r.missingUtreexoPeers => (
         label: 'Waiting for Utreexo peers',
-        caption: verifiedCaption(s),
+        caption: verifiedCaption(s, r),
         tone: Tone.warning,
       ),
       ReadinessStage.validatingBlocks => (
         label: 'Verifying blocks',
-        caption: verifiedCaption(s),
+        caption: verifiedCaption(s, r),
         tone: Tone.warning,
       ),
       ReadinessStage.ready => switch (r.electrum) {
@@ -181,7 +181,7 @@ abstract final class StatusLabels {
       ),
       ReadinessStage.validatingBlocks => (
         label: 'Verifying blocks',
-        caption: verifiedCaption(s),
+        caption: verifiedCaption(s, r),
         tone: Tone.warning,
       ),
       ReadinessStage.stopped ||
@@ -211,11 +211,15 @@ abstract final class StatusLabels {
 
   /// "X of Y blocks since the snapshot verified by this node": never counts
   /// the assumed snapshot as verified (SYNC-02).
-  static String? verifiedCaption(NodeStatus s) {
+  static String? verifiedCaption(NodeStatus s, [NodeReadiness? r]) {
     final chain = s.chain;
     final network = chain?.network;
     if (chain == null || network == null) return null;
-    final b = VerificationBreakdown.of(chain, network);
+    final b = VerificationBreakdown.of(
+      chain,
+      network,
+      snapshotHeight: r?.snapshotHeight,
+    );
     final scope = b.snapshotApplied ? 'blocks after the snapshot' : 'blocks';
     return '${formatInt(b.verifiedByNode)} of ${formatInt(b.toVerify)} '
         '$scope verified by this node';

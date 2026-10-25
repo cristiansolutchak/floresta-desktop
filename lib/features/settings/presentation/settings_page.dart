@@ -146,6 +146,31 @@ class _AdvancedPanelState extends State<_AdvancedPanel> {
             value: s.logToFile,
             onChanged: (v) => widget.onSave(s.copyWith(logToFile: v)),
           ),
+          if (s.network.assumeUtreexoHeight > 0) ...[
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Assume Utreexo'),
+              subtitle: Text(
+                'Start from the chain state built into Floresta at block '
+                '${formatInt(s.network.assumeUtreexoHeight)}. Off validates '
+                'from the first block, which can take days.',
+              ),
+              value: s.assumeUtreexo,
+              onChanged: (v) => widget.onSave(s.copyWith(assumeUtreexo: v)),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Backfill in background'),
+              subtitle: const Text(
+                'Re-check the assumed history in the background so nothing '
+                'stays assumed.',
+              ),
+              value: s.assumeUtreexo && s.backfill,
+              onChanged: s.assumeUtreexo
+                  ? (v) => widget.onSave(s.copyWith(backfill: v))
+                  : null,
+            ),
+          ],
           if (!s.disableCompactFilters) ...[
             const SizedBox(height: 8),
             _WalletBirthdayField(settings: s, onSave: widget.onSave),

@@ -19,6 +19,8 @@ class NodeSettings extends Equatable {
     this.logToFile = true,
     this.disableCompactFilters = false,
     this.walletBirthdayYear,
+    this.assumeUtreexo = true,
+    this.backfill = true,
   });
 
   final bool onboardingComplete;
@@ -43,6 +45,19 @@ class NodeSettings extends Equatable {
   /// Year the watched wallet was first used (mainnet). Bounds where compact
   /// filters, and so history searches, begin. Null: recent history only.
   final int? walletBirthdayYear;
+
+  /// Start from the Utreexo state built into Floresta (on by default upstream
+  /// and here: docs/audit/assume-utreexo-v0.9.1.md). Off validates from
+  /// genesis (`--no-assume-utreexo`), which needs Utreexo-serving peers for
+  /// the whole history.
+  final bool assumeUtreexo;
+
+  /// Re-check the history skipped by [assumeUtreexo] in the background
+  /// (`--no-backfill` turns it off). Only meaningful with [assumeUtreexo].
+  final bool backfill;
+
+  /// Height accepted on trust at startup, or 0 when nothing is assumed.
+  int get snapshotHeight => assumeUtreexo ? network.assumeUtreexoHeight : 0;
 
   /// `--filters-start-height`, or null when filters are off or start at
   /// block 1 (see [WalletBirthday.filtersStartHeight]).
@@ -114,6 +129,8 @@ class NodeSettings extends Equatable {
     bool? logToFile,
     bool? disableCompactFilters,
     Option<int>? walletBirthdayYear,
+    bool? assumeUtreexo,
+    bool? backfill,
   }) {
     return NodeSettings(
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
@@ -129,6 +146,8 @@ class NodeSettings extends Equatable {
       walletBirthdayYear: walletBirthdayYear == null
           ? this.walletBirthdayYear
           : walletBirthdayYear.toNullable(),
+      assumeUtreexo: assumeUtreexo ?? this.assumeUtreexo,
+      backfill: backfill ?? this.backfill,
     );
   }
 
@@ -142,5 +161,7 @@ class NodeSettings extends Equatable {
     logToFile,
     disableCompactFilters,
     walletBirthdayYear,
+    assumeUtreexo,
+    backfill,
   ];
 }

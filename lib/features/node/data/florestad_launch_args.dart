@@ -15,6 +15,9 @@ List<String> florestadLaunchArgs(NodeSettings settings) {
     '127.0.0.1:${settings.effectiveRpcPort}',
     if (settings.logToFile) '--log-to-file',
     if (settings.disableCompactFilters) '--no-cfilters',
+    if (!settings.assumeUtreexo) '--no-assume-utreexo',
+    // Backfill only re-checks what assume-utreexo skipped.
+    if (settings.assumeUtreexo && !settings.backfill) '--no-backfill',
     if (settings.filtersStartHeight case final h?) ...[
       '--filters-start-height',
       '$h',

@@ -11,6 +11,7 @@ import 'package:floresta_gui/features/node/presentation/node_controller.dart';
 import 'package:floresta_gui/features/node/domain/node_process_state.dart';
 import 'package:floresta_gui/features/node/domain/node_status.dart';
 import 'package:floresta_gui/features/node/domain/preflight.dart';
+import 'package:floresta_gui/features/onboarding/presentation/wizard_widgets.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:floresta_gui/features/wallet/presentation/wallet_controller.dart';
 import 'package:floresta_gui/shared/widgets/common.dart';
@@ -90,17 +91,105 @@ void main() {
     expect(find.text('Found florestad v0.9.1'), findsOneWidget);
   });
 
-  testWidgets('onboarding finishes on the node page', (tester) async {
-    final h = _Harness();
-    await h.pump(tester, onboarded: false);
+  Future<void> toWizard(WidgetTester tester) async {
     await tester.tap(find.text('Get started'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    expect(find.text('Set up your node'), findsOneWidget);
-    await tester.tap(find.text('Finish setup'));
+  }
+
+  Future<void> tapNext(WidgetTester tester, [String label = 'Next']) async {
+    await tester.tap(find.text(label));
     await tester.pumpAndSettle();
+  }
+
+  testWidgets('the setup wizard walks every step and saves on Finish', (
+    tester,
+  ) async {
+    final h = _Harness();
+    await h.pump(tester, onboarded: false);
+    await toWizard(tester);
+    expect(find.text('Choose a network'), findsOneWidget);
+    await tapNext(tester);
+    expect(find.text('Storage'), findsWidgets);
+    expect(find.text('/Users/a/.floresta'), findsOneWidget);
+    expect(find.textContaining('free on this disk'), findsOneWidget);
+    await tapNext(tester);
+    expect(find.textContaining('Assume Utreexo'), findsOneWidget);
+    await tapNext(tester);
+    expect(find.textContaining('Electrum server'), findsOneWidget);
+    expect(find.text('Remote RPC'), findsNothing);
+    await tapNext(tester, 'Review configuration');
+    expect(find.text('Ready to start'), findsOneWidget);
+    expect(find.text('Pruned, Assume Utreexo with backfill'), findsOneWidget);
+
+    await tester.tap(find.text('Start Floresta now'));
+    await tester.pumpAndSettle();
+    await tapNext(tester, 'Finish');
     expect(find.text('Start node'), findsOneWidget);
+    expect(h.manager.starts, isEmpty);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('settings.onboardingComplete'), isTrue);
+  });
+
+  testWidgets('Back returns to the previous step, keeping choices', (
+    tester,
+  ) async {
+    await _Harness().pump(tester, onboarded: false);
+    await toWizard(tester);
+    await tapNext(tester);
+    await tapNext(tester);
+    await tester.tap(find.textContaining('Assume Utreexo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Starting from the first block is slow'), findsOneWidget);
+    await tapNext(tester, 'Back');
+    expect(find.text('Data directory'), findsOneWidget);
+    await tapNext(tester);
+    expect(find.text('Starting from the first block is slow'), findsOneWidget);
+  });
+
+  testWidgets('Finish with "start now" launches the chosen configuration', (
+    tester,
+  ) async {
+    final h = _Harness();
+    await h.pump(tester, onboarded: false);
+    await toWizard(tester);
+    await tapNext(tester);
+    await tapNext(tester);
+    await tester.tap(find.textContaining('Backfill in background'));
+    await tester.pumpAndSettle();
+    expect(find.text('History stays assumed'), findsOneWidget);
+    await tapNext(tester);
+    await tapNext(tester, 'Review configuration');
+    expect(find.text('Pruned, Assume Utreexo, no backfill'), findsOneWidget);
+    await tapNext(tester, 'Finish');
+    final (exe, settings) = h.manager.starts.single;
+    expect(exe, _found.executablePath);
+    expect(settings.network, BitcoinNetwork.bitcoin);
+    expect(settings.assumeUtreexo, isTrue);
+    expect(settings.backfill, isFalse);
+    expect(settings.onboardingComplete, isTrue);
+  });
+
+  testWidgets('the wizard shows real folder problems from the preflight', (
+    tester,
+  ) async {
+    final h = _Harness();
+    h.preflight.facts = const PreflightFacts(
+      rpcPort: 8332,
+      rpcPortFree: true,
+      electrumPort: 50001,
+      electrumPortFree: true,
+      dataDir: '/Users/a/.floresta',
+      dataDirWritable: true,
+      freeBytes: 2 * 1024 * 1024 * 1024,
+      looksLikeBitcoinCore: true,
+    );
+    await h.pump(tester, onboarded: false);
+    await toWizard(tester);
+    await tapNext(tester);
+    expect(find.text('This folder belongs to Bitcoin Core'), findsOneWidget);
+    expect(find.text('Disk space is low'), findsOneWidget);
   });
 
   testWidgets('missing executable points to installation', (tester) async {
@@ -160,16 +249,15 @@ void main() {
     tester,
   ) async {
     await _Harness().pump(tester, onboarded: false);
-    await tester.tap(find.text('Get started'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle();
+    await toWizard(tester);
     expect(find.text('Test networks (advanced)'), findsOneWidget);
     expect(find.text('Signet'), findsNothing);
     await tester.tap(find.text('Test networks (advanced)'));
     await tester.pumpAndSettle();
-    expect(find.text('Signet'), findsOneWidget);
     expect(find.text('Regtest'), findsOneWidget);
+    await tester.tap(find.text('Signet'));
+    await tester.pumpAndSettle();
+    expect(find.text('Test network: coins have no value'), findsOneWidget);
   });
 
   testWidgets('development builds default to signet with the section open', (
@@ -177,19 +265,26 @@ void main() {
   ) async {
     final h = _Harness()..flavor = BuildFlavor.development;
     await h.pump(tester, onboarded: false);
-    await tester.tap(find.text('Get started'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle();
-    expect(find.text('Signet'), findsWidgets);
+    await toWizard(tester);
     expect(
       find.text('Development build'),
       findsNothing,
     ); // onboarding has no sidebar
-    final radio = tester.widget<RadioGroup<BitcoinNetwork>>(
-      find.byType(RadioGroup<BitcoinNetwork>),
+    final signet = tester.widget<OptionCard>(
+      find.widgetWithText(OptionCard, 'Signet'),
     );
-    expect(radio.groupValue, BitcoinNetwork.signet);
+    expect(signet.selected, isTrue);
+  });
+
+  testWidgets('networks without a built-in state skip the fast start choice', (
+    tester,
+  ) async {
+    await _Harness().pump(tester, onboarded: false, network: 'regtest');
+    await toWizard(tester);
+    await tapNext(tester);
+    await tapNext(tester);
+    expect(find.text('Validates from the first block'), findsOneWidget);
+    expect(find.textContaining('Assume Utreexo'), findsNothing);
   });
 
   testWidgets('a blocking preflight problem prevents the start', (

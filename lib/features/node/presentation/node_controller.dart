@@ -291,14 +291,14 @@ class NodeController extends Notifier<NodeStatus> {
 /// Readiness derived from the latest status; recomputed on every poll.
 final nodeReadinessProvider = Provider<NodeReadiness>((ref) {
   final status = ref.watch(nodeControllerProvider);
-  final network = ref.watch(
-    settingsControllerProvider.select((s) => s.network),
-  );
+  final settings = ref.watch(settingsControllerProvider);
+  final network = settings.network;
   final logs = ref.watch(nodeLogsProvider);
   return assessReadiness(
     status,
     expected: network,
     now: DateTime.now(),
+    snapshotHeight: settings.snapshotHeight,
     noUtreexoPeersLogged: logsShowNoUtreexoPeers(
       logs.reversed.take(100).map((l) => l.text),
     ),

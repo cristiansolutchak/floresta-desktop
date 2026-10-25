@@ -25,6 +25,8 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
   static const _kLogToFile = 'settings.logToFile';
   static const _kNoCfilters = 'settings.disableCompactFilters';
   static const _kBirthday = 'settings.walletBirthdayYear';
+  static const _kAssumeUtreexo = 'settings.assumeUtreexo';
+  static const _kBackfill = 'settings.backfill';
 
   @override
   NodeSettings load() {
@@ -41,6 +43,8 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
       disableCompactFilters:
           _prefs.getBool(_kNoCfilters) ?? defaults.disableCompactFilters,
       walletBirthdayYear: _prefs.getInt(_kBirthday),
+      assumeUtreexo: _prefs.getBool(_kAssumeUtreexo) ?? defaults.assumeUtreexo,
+      backfill: _prefs.getBool(_kBackfill) ?? defaults.backfill,
     );
     // Values edited outside the app could be invalid. Keep the onboarding flag
     // and network but drop the paths/port so the node is never launched
@@ -68,6 +72,8 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
           : await _prefs.setInt(_kRpcPort, port);
       await _prefs.setBool(_kLogToFile, settings.logToFile);
       await _prefs.setBool(_kNoCfilters, settings.disableCompactFilters);
+      await _prefs.setBool(_kAssumeUtreexo, settings.assumeUtreexo);
+      await _prefs.setBool(_kBackfill, settings.backfill);
       final year = settings.walletBirthdayYear;
       year == null
           ? await _prefs.remove(_kBirthday)
