@@ -140,51 +140,63 @@ void main() {
     });
   });
 
-  group('shouldRestartStuckChainSelection (SYNC-09)', () {
-    final now = DateTime(2026, 10, 25, 9);
-    bool restart({
+  group('StuckSelectionTracker (SYNC-09)', () {
+    final t0 = DateTime(2026, 10, 25, 10, 39);
+    bool sample(
+      StuckSelectionTracker t,
+      Duration at, {
+      int validated = 0,
+      int headers = 973075,
+      int? tip = 973075,
       bool own = true,
       int snapshot = 939969,
-      int validated = 0,
-      int headers = 973070,
-      int? tip = 973071,
-      Duration? idle = const Duration(minutes: 9),
-      int done = 0,
-      DateTime? last,
-    }) => shouldRestartStuckChainSelection(
+    }) => t.sample(
       ownNode: own,
       snapshotHeight: snapshot,
       validatedHeight: validated,
       headerHeight: headers,
       peerTip: tip,
-      sinceProgress: idle,
-      restartsSoFar: done,
-      lastRestart: last,
-      now: now,
+      now: t0.add(at),
     );
 
-    test('restarts a node stuck after all headers (observed numbers)', () {
-      expect(restart(), isTrue);
-    });
-
-    test('not while headers download, validation runs, or briefly idle', () {
-      expect(restart(headers: 600000), isFalse);
-      expect(restart(validated: 939969), isFalse);
-      expect(restart(idle: const Duration(minutes: 2)), isFalse);
-      expect(restart(snapshot: 0), isFalse, reason: 'assume-utreexo off');
-      expect(restart(own: false), isFalse);
-      expect(restart(tip: null), isFalse);
-    });
-
-    test('at most 3 times, 15 minutes apart', () {
-      expect(restart(done: 3), isFalse);
+    test('restarts after 5 min with all headers and nothing validated, '
+        'even while new headers keep arriving (observed case)', () {
+      final t = StuckSelectionTracker();
+      expect(sample(t, Duration.zero), isFalse);
       expect(
-        restart(done: 1, last: now.subtract(const Duration(minutes: 5))),
+        sample(t, const Duration(minutes: 3), headers: 973077, tip: 973077),
         isFalse,
       );
       expect(
-        restart(done: 1, last: now.subtract(const Duration(minutes: 16))),
+        sample(t, const Duration(minutes: 5), headers: 973078, tip: 973078),
         isTrue,
+      );
+      expect(t.restarts, hasLength(1));
+    });
+
+    test('never while downloading headers or once validation runs', () {
+      final t = StuckSelectionTracker();
+      expect(sample(t, Duration.zero, headers: 600000), isFalse);
+      expect(sample(t, const Duration(minutes: 10), headers: 600000), isFalse);
+      expect(sample(t, const Duration(minutes: 11)), isFalse); // window starts
+      expect(
+        sample(t, const Duration(minutes: 20), validated: 939970),
+        isFalse,
+      );
+      expect(sample(t, const Duration(minutes: 30), own: false), isFalse);
+      expect(sample(t, const Duration(minutes: 40), snapshot: 0), isFalse);
+    });
+
+    test('at most 3 restarts, 15 minutes apart', () {
+      final t = StuckSelectionTracker();
+      var restarts = 0;
+      for (var m = 0; m <= 120; m++) {
+        if (sample(t, Duration(minutes: m))) restarts++;
+      }
+      expect(restarts, 3);
+      expect(
+        t.restarts[1].difference(t.restarts[0]).inMinutes,
+        greaterThanOrEqualTo(15),
       );
     });
   });

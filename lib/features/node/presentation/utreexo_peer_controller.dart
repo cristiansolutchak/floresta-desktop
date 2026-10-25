@@ -89,29 +89,27 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
   }
 
   bool _restarting = false;
+  final _stuck = StuckSelectionTracker();
 
   void _maybeRestart(NodeStatus status) {
     final chain = status.chain;
-    final since = status.lastProgressAt;
     if (chain == null || _restarting) return;
     final now = DateTime.now();
-    final restart = shouldRestartStuckChainSelection(
+    final readiness = ref.read(nodeReadinessProvider);
+    final restart = _stuck.sample(
       ownNode:
           status.process is ProcessRunning &&
           status.api == ApiReachability.reachable &&
           !status.isExternallyManaged,
-      snapshotHeight: ref.read(nodeReadinessProvider).snapshotHeight,
+      snapshotHeight: readiness.snapshotHeight,
       validatedHeight: chain.validatedHeight,
       headerHeight: chain.headerHeight,
-      peerTip: ref.read(nodeReadinessProvider).peerTip,
-      sinceProgress: since == null ? null : now.difference(since),
-      restartsSoFar: state.restarts.length,
-      lastRestart: state.restarts.lastOrNull,
+      peerTip: readiness.peerTip,
       now: now,
     );
     if (!restart) return;
     _restarting = true;
-    state = state.copyWith(restarts: [...state.restarts, now]);
+    state = state.copyWith(restarts: List.of(_stuck.restarts));
     unawaited(() async {
       try {
         await ref.read(nodeControllerProvider.notifier).restart();
