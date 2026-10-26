@@ -4,6 +4,7 @@
 // signature is made offline (see `assemble`).
 //
 //   dart run tool/release/release_tool.dart keygen   --out <seed file>
+//   dart run tool/release/release_tool.dart pubkey   --key <seed file>
 //   dart run tool/release/release_tool.dart manifest --artifacts <dir> --serial <n> [--valid-days 90]
 //   dart run tool/release/release_tool.dart sign     --artifacts <dir> --key <seed file> [--key-id dev]
 //   dart run tool/release/release_tool.dart assemble --artifacts <dir> --signature <64-byte file> --key-id <id>
@@ -248,6 +249,9 @@ Future<void> main(List<String> args) async {
   switch (args.first) {
     case 'keygen':
       _keygen(f);
+    case 'pubkey':
+      // Only the public half, for the app's development configuration.
+      stdout.writeln(_publicKeyHex(_readSeed(_need(f, 'key'))));
     case 'manifest':
       _manifest(f);
     case 'sign':
