@@ -547,7 +547,7 @@ class _ServicesCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const DashCardHeader(
-            asset: DashIcons.activeServices,
+            asset: DashIcons.syncingIbd,
             title: 'Active Services',
           ),
           const SizedBox(height: 24),

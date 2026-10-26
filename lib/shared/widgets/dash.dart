@@ -78,7 +78,7 @@ abstract final class DashIcons {
   static const logs = 'assets/icons/overview/header/logs.svg';
   static const gear = 'assets/icons/overview/header/settings.svg';
   static const activeServices =
-      'assets/icons/overview/header/active-services.svg';
+      'assets/icons/overview/body/active-services.svg';
   static const statusSyncing = 'assets/icons/overview/body/status-syncing.svg';
   static const syncingIbd = 'assets/icons/overview/body/syncing-ibd.svg';
   static const backfill = 'assets/icons/overview/body/backfill.svg';
