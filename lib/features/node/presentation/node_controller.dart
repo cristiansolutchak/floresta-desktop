@@ -264,6 +264,8 @@ class NodeController extends Notifier<NodeStatus> {
           ),
         );
       }
+      await ref.read(preflightProbeProvider).restrictDataDir(settings);
+      if (!ref.mounted) return const Left(ProcessStateFailure('Closed.'));
       _schedule(_pollActive);
       return _manager.start(
         executablePath: install.executablePath,

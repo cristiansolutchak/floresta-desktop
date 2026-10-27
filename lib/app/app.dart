@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/node/presentation/node_controller.dart';
+import 'brand/startup_splash.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
@@ -46,6 +47,8 @@ class _FlorestaAppState extends ConsumerState<FlorestaApp> {
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       routerConfig: ref.watch(appRouterProvider),
+      builder: (context, child) =>
+          StartupSplash(child: child ?? const SizedBox.shrink()),
     );
   }
 }

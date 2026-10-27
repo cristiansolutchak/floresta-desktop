@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/dash.dart';
 
 /// Layout of the first-run screens, after the Figma "Setup Wizard" frames
 /// (light `1:14372`…`1:14457`): logo, optional stepper, one white card with
@@ -122,16 +124,21 @@ class _Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          Icons.forest_outlined,
-          size: 22,
-          color: Theme.of(context).colorScheme.primary,
+    // The brand logo, as in the sidebar.
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Semantics(
+        label: 'Floresta',
+        excludeSemantics: true,
+        child: SvgPicture.asset(
+          DashIcons.logo,
+          height: 28,
+          colorFilter: ColorFilter.mode(
+            Theme.of(context).colorScheme.onSurface,
+            BlendMode.srcIn,
+          ),
         ),
-        const SizedBox(width: 8),
-        Text('Floresta', style: context.text.titleMedium),
-      ],
+      ),
     );
   }
 }

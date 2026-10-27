@@ -29,11 +29,11 @@ trap 'rm -rf "$work"' EXIT
 
 pkg="$work/$name"
 mkdir -p "$pkg/DEBIAN" "$pkg/opt/floresta-gui" "$pkg/usr/bin" \
-  "$pkg/usr/share/applications" "$pkg/usr/share/icons/hicolor/256x256/apps"
+  "$pkg/usr/share/applications" "$pkg/usr/share/icons"
 cp -R "$bundle/." "$pkg/opt/floresta-gui/"
 ln -s /opt/floresta-gui/floresta_gui "$pkg/usr/bin/floresta-gui"
-cp "$root/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png" \
-  "$pkg/usr/share/icons/hicolor/256x256/apps/floresta-gui.png"
+# Every size from tool/brand/render_app_icon.swift (16-512 px).
+cp -R "$root/linux/icons/hicolor" "$pkg/usr/share/icons/"
 cat > "$pkg/usr/share/applications/floresta-gui.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
@@ -41,6 +41,7 @@ Name=Floresta
 Comment=Run and monitor a Floresta Bitcoin node
 Exec=/opt/floresta-gui/floresta_gui
 Icon=floresta-gui
+StartupWMClass=io.github.cristiansolutchak.floresta_gui
 Categories=Network;Finance;
 Terminal=false
 DESKTOP

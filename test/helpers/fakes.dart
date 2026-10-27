@@ -156,6 +156,15 @@ class FakePreflightProbe extends PreflightProbe {
 
   @override
   Future<PreflightFacts> gather(NodeSettings settings) async => facts;
+
+  /// Folders the app asked to make private (never touched on disk here).
+  final restricted = <String>[];
+
+  @override
+  Future<bool> restrictDataDir(NodeSettings settings) async {
+    restricted.add(settings.effectiveDataDir(homeDir: homeDir));
+    return true;
+  }
 }
 
 class FakeWalletRepository implements WalletRepository {

@@ -245,7 +245,9 @@ void main() {
                   .substring(prefix.length, t.length - suffix.length)
                   .replaceAll(',', '');
               final n = int.tryParse(digits);
-              return n != null && (n - value).abs() <= 5;
+              // Never ahead of the node; at most one poll behind it (a
+              // node verifying fast moves tens of blocks between polls).
+              return n != null && n <= value + 5 && n >= value - 500;
             });
         final tip = max(r.peerTip ?? 0, headers);
         final result = {
@@ -285,7 +287,11 @@ void main() {
       _step('banner: $banner');
       expect(banner, anyOf('Status: SYNCING', 'Status: STALLED'));
       expect(find.text('Phase: Blocks'), findsOneWidget);
-      expect(overview['headerHeightShown'], isTrue);
+      // Narrow windows (below 860 px for the header) hide the height there
+      // by design; when it is shown it must be the node's.
+      if (find.textContaining('Height: ').evaluate().isNotEmpty) {
+        expect(overview['headerHeightShown'], isTrue);
+      }
       expect(overview['validatedShown'], isTrue);
       expect(overview['tipShown'], isTrue);
       expect(overview['progressNotShown'], isTrue);
@@ -314,6 +320,9 @@ void main() {
 
       // The other Figma screens, against the same node.
       Future<void> open(String item, String shot) async {
+        // Small windows scroll the sidebar (10 items).
+        await tester.ensureVisible(find.text(item).first);
+        await tester.pump();
         await tester.tap(find.text(item).first);
         await tester.pump(const Duration(seconds: 1));
         shots.add(await _screenshot(tester, shot));
@@ -383,6 +392,8 @@ void main() {
       }
 
       _step('stopping from the Overview banner');
+      await tester.ensureVisible(find.text('Overview').first);
+      await tester.pump();
       await tester.tap(find.text('Overview').first);
       await tester.pump(const Duration(seconds: 1));
       await tester.tap(find.text('Stop'));

@@ -65,8 +65,9 @@ class _Harness {
     WidgetTester tester, {
     bool onboarded = true,
     String? network,
+    Size size = const Size(1280, 860),
   }) async {
-    tester.view.physicalSize = const Size(1280, 860);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     SharedPreferences.setMockInitialValues({
@@ -410,6 +411,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(h.manager.starts.single.$1, _found.executablePath);
     expect(find.text('Running'), findsWidgets);
+    // The data folder holds the watch-only wallet: made private first.
+    expect(h.preflight.restricted, ['/Users/a/.floresta']);
   });
 
   testWidgets('production builds default to mainnet and say so', (
@@ -1047,6 +1050,50 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('New tip!'), findsNothing);
     expect(find.textContaining('Peer timed out'), findsOneWidget);
+  });
+
+  testWidgets('every screen fits the smallest window (960x640)', (
+    tester,
+  ) async {
+    // macOS MainFlutterWindow.minSize; the screens must scroll, not overflow.
+    for (final dark in [false, true]) {
+      tester.platformDispatcher.platformBrightnessTestValue = dark
+          ? Brightness.dark
+          : Brightness.light;
+      final h = _Harness()
+        ..rpc.info = Right(RpcModels.blockchainInfo(signetAfterSnapshot))
+        ..rpc.peers = const [
+          Peer(
+            id: 1,
+            address: '1.2.3.4:38333',
+            userAgent: '/Satoshi:30.0.0/',
+            inbound: false,
+            kind: 'regular',
+            state: 'Ready',
+            transport: 'V2',
+            initialHeight: 327900,
+            services: ['NETWORK', 'WITNESS'],
+          ),
+        ];
+      await h.pump(tester, network: 'signet', size: const Size(960, 640));
+      for (final item in [
+        'Overview',
+        'Sync',
+        'Peers',
+        'Wallet',
+        'RPC Console',
+        'Electrum',
+        'Logs',
+        'Installation',
+        'Settings',
+        'Help',
+      ]) {
+        await tester.tap(find.text(item).first);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull, reason: '$item dark=$dark');
+      }
+    }
+    tester.platformDispatcher.clearPlatformBrightnessTestValue();
   });
 
   testWidgets('node status reflects an unreachable API while starting', (

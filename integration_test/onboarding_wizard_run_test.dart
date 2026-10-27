@@ -102,7 +102,10 @@ void main() {
 
       Future<void> waitFor(Finder f, [int seconds = 30]) async {
         final end = DateTime.now().add(Duration(seconds: seconds));
-        while (f.evaluate().isEmpty) {
+        // The startup splash covers the app until florestad is detected;
+        // nothing underneath can be tapped yet.
+        final splash = find.bySemanticsLabel('Floresta is starting');
+        while (f.evaluate().isEmpty || splash.evaluate().isNotEmpty) {
           if (DateTime.now().isAfter(end)) fail('timed out waiting for $f');
           await tester.pump(const Duration(milliseconds: 200));
         }

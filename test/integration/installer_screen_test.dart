@@ -114,7 +114,10 @@ void main() {
       /// frames until [done] or the deadline.
       Future<void> waitFor(Finder done, {int seconds = 60}) async {
         final deadline = DateTime.now().add(Duration(seconds: seconds));
-        while (done.evaluate().isEmpty) {
+        // The startup splash covers the app until florestad is detected;
+        // nothing underneath can be tapped yet.
+        final splash = find.bySemanticsLabel('Floresta is starting');
+        while (done.evaluate().isEmpty || splash.evaluate().isNotEmpty) {
           if (DateTime.now().isAfter(deadline)) {
             final texts = find
                 .byType(Text)
@@ -140,7 +143,8 @@ void main() {
           await tester.runAsync(
             () => Future<void>.delayed(const Duration(milliseconds: 100)),
           );
-          await tester.pump();
+          // Moves the fake clock too, so animations (the splash fade) run.
+          await tester.pump(const Duration(milliseconds: 100));
         }
       }
 

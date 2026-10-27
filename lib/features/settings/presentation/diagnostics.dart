@@ -6,7 +6,7 @@ import '../../node/presentation/node_controller.dart';
 import 'settings_controller.dart';
 
 /// App version shown in diagnostics; keep in sync with pubspec.yaml.
-const appVersion = '0.1.0';
+const appVersion = '0.0.1';
 
 /// What the app reports about itself for support: versions, paths, ports
 /// and node state. No wallet data, descriptors or keys.

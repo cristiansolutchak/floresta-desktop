@@ -58,6 +58,38 @@ class PreflightProbe {
     );
   }
 
+  /// Makes the node's data folder readable by this user only (mode 700) before
+  /// florestad starts: it holds the watch-only wallet (`db`), and florestad
+  /// creates it world-readable (755/644, observed with v0.9.1 on macOS,
+  /// 2026-10-26). Only the folder's own mode changes, never its contents. A
+  /// folder that already holds other things (a user-chosen folder on mainnet,
+  /// which florestad uses as is) is left alone. No-op on Windows, whose
+  /// per-user folders are private by default. Returns whether it restricted.
+  Future<bool> restrictDataDir(NodeSettings settings) async {
+    if (_isWindows) return false;
+    final dir = Directory(
+      settings.effectiveDataDir(homeDir: homeDir, separator: '/'),
+    );
+    try {
+      if (!dir.existsSync()) {
+        dir.createSync(recursive: true);
+      } else {
+        final names = dir
+            .listSync(followLinks: false)
+            .map((e) => e.uri.pathSegments.where((p) => p.isNotEmpty).last)
+            .toSet();
+        final ours =
+            names.isEmpty ||
+            names.contains('chaindata') ||
+            names.contains('conf');
+        if (!ours) return false;
+      }
+    } on FileSystemException {
+      return false; // preflight already reports unwritable folders
+    }
+    return await _run('/bin/chmod', ['700', dir.path]) != null;
+  }
+
   /// True when nothing listens on 127.0.0.1:[port] (the bind succeeds).
   static Future<bool> portIsFree(int port) async {
     try {

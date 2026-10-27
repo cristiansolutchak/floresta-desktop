@@ -76,7 +76,9 @@ void main() {
       // (polling, debounce) need the fake clock to move too.
       Future<void> waitFor(Finder f, {int seconds = 60}) async {
         final deadline = DateTime.now().add(Duration(seconds: seconds));
-        while (f.evaluate().isEmpty) {
+        // The startup splash covers the app until florestad is detected.
+        final splash = find.bySemanticsLabel('Floresta is starting');
+        while (f.evaluate().isEmpty || splash.evaluate().isNotEmpty) {
           if (DateTime.now().isAfter(deadline)) {
             final texts = [
               for (final e in find.byType(Text).evaluate())
