@@ -1,7 +1,8 @@
-// Development release tooling: makes, signs and serves a manifest for
-// artifacts built by build_florestad_artifact.sh. Nothing here publishes
-// anything, and production keys never pass through this tool: a production
-// signature is made offline (see `assemble`).
+// Release tooling: makes, signs and serves a manifest for artifacts built by
+// build_florestad_artifact.sh. Nothing here publishes anything. Production
+// manifests are signed with `sign` on the owner's Mac, whose keys live in
+// ~/.config/floresta-gui-release/ (owner's decision, 2026-10-27); `assemble`
+// remains for a signature made on an offline machine instead.
 //
 //   dart run tool/release/release_tool.dart keygen   --out <seed file>
 //   dart run tool/release/release_tool.dart pubkey   --key <seed file>

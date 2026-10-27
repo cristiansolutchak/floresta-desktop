@@ -1,5 +1,5 @@
 {
   "FLORESTA_FLAVOR": "production",
-  "FLORESTA_RELEASE_MANIFEST_URL": "",
+  "FLORESTA_RELEASE_MANIFEST_URL": "https://raw.githubusercontent.com/cristiansolutchak/floresta-gui-release/main/florestad/manifest.json",
   "FLORESTA_RELEASE_REDIRECT_HOSTS": ""
 }

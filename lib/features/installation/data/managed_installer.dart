@@ -20,7 +20,8 @@ import 'version_probe.dart';
 typedef MakeExecutable = Future<bool> Function(String path);
 
 /// The running system's version in the form artifacts record `minOs`:
-/// `26.3.1` on macOS, `glibc 2.35` on Linux. Null when unknown.
+/// `26.3.1` on macOS, `glibc 2.35` on Linux, `10.0.19045` on Windows. Null
+/// when unknown.
 typedef HostOsVersion = Future<String?> Function();
 
 Future<String?> readHostOsVersion() async {
@@ -41,7 +42,18 @@ Future<String?> readHostOsVersion() async {
       return null;
     }
   }
+  if (Platform.isWindows) {
+    return windowsVersionFrom(Platform.operatingSystemVersion);
+  }
   return null;
+}
+
+/// `"Windows 10 Pro" 10.0 (Build 19045)` (Dart's
+/// `Platform.operatingSystemVersion`) as `10.0.19045`, the form Windows
+/// artifacts record `minOs` in (Rust's MSVC target needs 10.0.10240).
+String? windowsVersionFrom(String osVersion) {
+  final m = RegExp(r'(\d+)\.(\d+) \(Build (\d+)\)').firstMatch(osVersion);
+  return m == null ? null : '${m.group(1)}.${m.group(2)}.${m.group(3)}';
 }
 
 Future<bool> chmodExecutable(String path) async {

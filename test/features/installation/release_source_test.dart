@@ -24,9 +24,12 @@ void main() {
     test('no URL or no trusted key means no source', () {
       expect(ReleaseSource.resolve(manifestUrl: ''), isNull);
       expect(
-        ReleaseSource.resolve(manifestUrl: 'https://r.example/m.json'),
+        ReleaseSource.resolve(
+          manifestUrl: 'https://r.example/m.json',
+          productionKeys: const [],
+        ),
         isNull,
-        reason: 'no production keys are compiled in yet',
+        reason: 'a URL alone is never trusted',
       );
     });
 
@@ -36,6 +39,7 @@ void main() {
           manifestUrl: 'http://127.0.0.1:8080/manifest.json',
           devKeyHex: devKey,
           allowDevKey: false,
+          productionKeys: const [],
         ),
         isNull,
       );
@@ -55,6 +59,7 @@ void main() {
       final local = ReleaseSource.resolve(
         manifestUrl: 'http://127.0.0.1:8080/manifest.json',
         devKeyHex: devKey,
+        productionKeys: const [],
       )!;
       expect(local.trustedKeys.single.id, ReleaseSource.developmentKeyId);
 
@@ -62,6 +67,7 @@ void main() {
         ReleaseSource.resolve(
           manifestUrl: 'https://r.example/m.json',
           devKeyHex: devKey,
+          productionKeys: const [],
         ),
         isNull,
       );
@@ -78,6 +84,7 @@ void main() {
         ReleaseSource.resolve(
           manifestUrl: 'http://127.0.0.1:8080/manifest.json',
           devKeyHex: 'xyz',
+          productionKeys: const [],
         ),
         isNull,
       );
@@ -88,6 +95,7 @@ void main() {
         manifestUrl: 'http://localhost:1/m.json',
         devKeyHex: devKey,
         redirectHosts: ' Assets.Example , ,cdn.example',
+        productionKeys: const [],
       )!;
       expect(s.redirectHosts, {'assets.example', 'cdn.example'});
     });

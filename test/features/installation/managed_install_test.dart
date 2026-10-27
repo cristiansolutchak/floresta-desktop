@@ -241,8 +241,21 @@ void main() {
       );
     });
 
-    test('ships no production keys until signing ownership is decided', () {
-      expect(productionReleaseKeys, isEmpty);
+    test('ships exactly the owner\'s production keys, never the dev key', () {
+      // Pinned so a key change is always a visible, reviewed diff.
+      expect(
+        {for (final k in productionReleaseKeys) k.id: k.publicKeyHex},
+        {
+          'prod-2026a':
+              '3f0fcbf73c0e4fe3e31d22d2d16c77631abf73d193e1db4d78d758d5ee1aa2f0',
+          'prod-2026b':
+              '6599cea56f7c2efb4f2bbec8a8b66455a8e24c4dd44f72746daf53e216f30706',
+        },
+      );
+      expect(
+        productionReleaseKeys.map((k) => k.id),
+        isNot(contains(ReleaseSource.developmentKeyId)),
+      );
     });
   });
 
@@ -406,6 +419,22 @@ void main() {
       expect(r.getLeft().toNullable()?.message, contains('cancelled'));
       expect(downloader.partFile(dir, artifact).existsSync(), isTrue);
     });
+  });
+
+  test('Windows versions read in the form artifacts record', () {
+    // Dart's Platform.operatingSystemVersion on Windows 10 and 11.
+    expect(
+      windowsVersionFrom('"Windows 10 Pro" 10.0 (Build 19045)'),
+      '10.0.19045',
+    );
+    expect(
+      windowsVersionFrom('"Windows 11 Home" 10.0 (Build 22631)'),
+      '10.0.22631',
+    );
+    expect(windowsVersionFrom('something else'), isNull);
+    // Rust's MSVC target needs Windows 10 (10.0.10240).
+    expect(satisfiesMinOs('10.0.10240', '10.0.19045'), isTrue);
+    expect(satisfiesMinOs('10.0.10240', '6.3.9600'), isFalse);
   });
 
   group('satisfiesMinOs (INS-09)', () {
