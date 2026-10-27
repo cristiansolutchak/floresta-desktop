@@ -85,9 +85,11 @@ class PreflightIssue extends Equatable {
   List<Object?> get props => [severity, title, message, recovery];
 }
 
-/// Provisional thresholds: florestad keeps a pruned chain, but its real
-/// footprint (headers, accumulator, compact filters) has not been measured
-/// per network yet (docs/audit/master-todo.md NODE-05).
+/// Thresholds. florestad keeps a pruned chain: a mainnet data folder
+/// measured 202.2 MB at block ~940,800 with compact filters off (headers,
+/// Utreexo accumulator, wallet; 2026-10-26). Compact filters add to that
+/// from the wallet's start height and have not been measured on mainnet, so
+/// the warning keeps a wide margin.
 const preflightMinFreeBytes = 1024 * 1024 * 1024; // 1 GiB: refuse below
 const preflightLowFreeBytes = 5 * 1024 * 1024 * 1024; // 5 GiB: warn below
 

@@ -129,7 +129,10 @@ class AppShell extends ConsumerWidget {
                   _HeaderBar(title: current.label),
                   Expanded(
                     child: ShellTitleScope(
-                      child: FocusTraversalGroup(child: child),
+                      child: Theme(
+                        data: _dashButtons(Theme.of(context), context.dash),
+                        child: FocusTraversalGroup(child: child),
+                      ),
                     ),
                   ),
                 ],
@@ -142,6 +145,31 @@ class AppShell extends ConsumerWidget {
   }
 }
 
+/// Material buttons inside the dashboard look like its own buttons
+/// (DashButton): square corners, black primary, outlined secondary.
+ThemeData _dashButtons(ThemeData base, DashTokens t) {
+  final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(2));
+  return base.copyWith(
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: t.primaryButton,
+        foregroundColor: t.onPrimaryButton,
+        shape: shape,
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: t.textPrimary,
+        side: BorderSide(color: t.borderStrong),
+        shape: shape,
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: t.textPrimary, shape: shape),
+    ),
+  );
+}
+
 class _Sidebar extends ConsumerWidget {
   const _Sidebar({required this.location});
   final String location;
@@ -149,7 +177,9 @@ class _Sidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.dash;
-    final width = MediaQuery.sizeOf(context).width >= 1360 ? 328.0 : 264.0;
+    final size = MediaQuery.sizeOf(context);
+    final width = size.width >= 1360 ? 328.0 : 264.0;
+    final compact = size.height < 820;
     final pad = width > 300 ? 32.0 : 20.0;
     return Container(
       width: width,
@@ -163,7 +193,7 @@ class _Sidebar extends ConsumerWidget {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(pad, 32, pad, 24),
+                padding: EdgeInsets.fromLTRB(pad, compact ? 20 : 32, pad, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -182,14 +212,19 @@ class _Sidebar extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: compact ? 16 : 32),
                     for (final d in _destinations)
                       _NavItem(
+                        compact: compact,
                         destination: d,
                         selected: location.startsWith(d.path),
                       ),
-                    const SizedBox(height: 48),
-                    const _ValidationCard(),
+                    // Decorative: dropped on short windows so every
+                    // destination fits without scrolling.
+                    if (!compact) ...[
+                      const SizedBox(height: 48),
+                      const _ValidationCard(),
+                    ],
                   ],
                 ),
               ),
@@ -209,9 +244,16 @@ class _Sidebar extends ConsumerWidget {
 }
 
 class _NavItem extends StatelessWidget {
-  const _NavItem({required this.destination, required this.selected});
+  const _NavItem({
+    required this.destination,
+    required this.selected,
+    this.compact = false,
+  });
   final _Destination destination;
   final bool selected;
+
+  /// 40 px items on short windows (10 destinations must fit at 640 px).
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +267,7 @@ class _NavItem extends StatelessWidget {
         child: InkWell(
           onTap: () => context.go(destination.path),
           child: SizedBox(
-            height: 56,
+            height: compact ? 40 : 56,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -234,7 +276,7 @@ class _NavItem extends StatelessWidget {
                     context,
                     icon: destination.icon,
                     asset: destination.asset,
-                    size: 24,
+                    size: compact ? 20 : 24,
                     color: color,
                   ),
                   const SizedBox(width: 12),

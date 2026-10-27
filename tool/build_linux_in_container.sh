@@ -5,9 +5,12 @@
 # "undefined symbol: g_once_init_enter_pointer" (2026-10-25).
 #
 #   tool/build_linux_in_container.sh [production|development] [config.json]
+#   FLORESTA_LINUX_ARCH=x64 tool/build_linux_in_container.sh production
 #
 # Needs Docker. Uses Flutter 3.35.5 from its git tag, the repository mounted
-# read-only, and writes dist/ (deb + tar.gz for the host architecture).
+# read-only, and writes dist/ (deb + tar.gz). FLORESTA_LINUX_ARCH picks the
+# architecture (arm64 or x64; default: the host's). x64 on Apple Silicon runs
+# as linux/amd64 under Rosetta or QEMU, which is slow.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -15,8 +18,15 @@ flavor="${1:-production}"
 config="${2:-config/release/$flavor.json}"
 flutter_tag="3.35.5"
 mkdir -p "$root/dist"
+platform=()
+case "${FLORESTA_LINUX_ARCH:-}" in
+  "") ;;
+  arm64) platform=(--platform linux/arm64) ;;
+  x64) platform=(--platform linux/amd64) ;;
+  *) echo "FLORESTA_LINUX_ARCH must be arm64 or x64" >&2; exit 1 ;;
+esac
 
-docker run --rm \
+docker run --rm ${platform[@]+"${platform[@]}"} \
   -v "$root:/src:ro" -v "$root/dist:/out" \
   -e FLAVOR="$flavor" -e CONFIG="$config" -e FLUTTER_TAG="$flutter_tag" \
   debian:bookworm bash -euo pipefail -c '

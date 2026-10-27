@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/logging/log_buffer.dart';
+
 import '../../../core/providers.dart';
 import '../../installation/presentation/installation_providers.dart';
 import '../../node/presentation/node_controller.dart';
@@ -51,3 +53,19 @@ final diagnosticsReportProvider = Provider<String>(
       .map((r) => '${r.$1}: ${r.$2}')
       .join('\n'),
 );
+
+/// The file Logs > Export Diagnostics writes: the app report and the
+/// daemon output, which [LogBuffer] has already redacted (extended keys).
+String diagnosticsFileText({
+  required String report,
+  required List<String> lines,
+  required DateTime now,
+}) => [
+  'Floresta GUI diagnostics (${now.toIso8601String()})',
+  'No wallet data. Extended keys in the log are redacted.',
+  '',
+  report,
+  '',
+  'Daemon output (last ${lines.length} lines):',
+  ...lines,
+].join('\n');

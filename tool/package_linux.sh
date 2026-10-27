@@ -34,6 +34,9 @@ cp -R "$bundle/." "$pkg/opt/floresta-gui/"
 ln -s /opt/floresta-gui/floresta_gui "$pkg/usr/bin/floresta-gui"
 # Every size from tool/brand/render_app_icon.swift (16-512 px).
 cp -R "$root/linux/icons/hicolor" "$pkg/usr/share/icons/"
+mkdir -p "$pkg/usr/share/doc/floresta-gui"
+cp "$root/LICENSE-MIT" "$root/LICENSE-APACHE" "$root/README.md" \
+  "$pkg/usr/share/doc/floresta-gui/"
 cat > "$pkg/usr/share/applications/floresta-gui.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
@@ -58,6 +61,8 @@ Description: Desktop app to install, configure and run a Floresta node
  child process and shows its state. Watch-only; never handles keys.
 CONTROL
 dpkg-deb --root-owner-group --build "$pkg" "$out/$name.deb" >/dev/null
-tar -C "$bundle/.." -czf "$out/floresta-gui-$version-linux-$flutter_arch.tar.gz" bundle
+cp "$root/LICENSE-MIT" "$root/LICENSE-APACHE" "$root/README.md" "$work/"
+tar -C "$bundle/.." -czf "$out/floresta-gui-$version-linux-$flutter_arch.tar.gz" \
+  bundle -C "$work" LICENSE-MIT LICENSE-APACHE README.md
 (cd "$out" && sha256sum "$name.deb" "floresta-gui-$version-linux-$flutter_arch.tar.gz" | tee SHA256SUMS-linux-$flutter_arch)
 echo "package_linux: wrote $out/$name.deb"

@@ -112,7 +112,9 @@ class DashTokens extends ThemeExtension<DashTokens> {
     sidebarActive: Color(0xFFF1F4F8),
     brand: Color(0xFF266F52),
     warning: Color(0xFFF79009), // Warning/500
-    warningText: Color(0xFFDC6803), // Warning/600
+    // Warning/700: Figma's Warning/600 (#DC6803) is 3.4:1 on white, below
+    // WCAG's 4.5:1 for text; checked by the accessibility test.
+    warningText: Color(0xFFB54708),
     warningBg: Color(0xFFFFFCF5), // Warning/25
     warningBorder: Color(0xFFF2EDE0),
     info: Color(0xFF175CD3), // Blue/700

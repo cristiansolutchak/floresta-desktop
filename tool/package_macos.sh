@@ -50,6 +50,7 @@ stage="$work/dmg"
 mkdir -p "$stage"
 cp -R "$work/Floresta.app" "$stage/"
 ln -s /Applications "$stage/Applications"
+cp "$root/LICENSE-MIT" "$root/LICENSE-APACHE" "$stage/"
 dmg="$out/$name.dmg"
 rm -f "$dmg"
 hdiutil create -quiet -volname "Floresta $version" -srcfolder "$stage" \

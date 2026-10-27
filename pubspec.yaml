@@ -31,9 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.3.2
   go_router: ^17.2.3
   fpdart: ^1.2.0
@@ -78,6 +75,11 @@ flutter:
     - assets/icons/sidebar/
     - assets/icons/overview/header/
     - assets/icons/overview/body/
+    # This app's licence (MIT OR Apache-2.0) and Floresta's, whose florestad
+    # binary the app installs; listed on Help > Licences.
+    - LICENSE-MIT
+    - LICENSE-APACHE
+    - assets/licenses/floresta-LICENSE-MIT
     # Shipped with the font, as the SIL OFL 1.1 requires.
     - assets/fonts/Space_Grotesk/OFL.txt
 

@@ -45,6 +45,18 @@ class HelpPage extends ConsumerWidget {
           subtitle: '$version  •  ${network.label}',
           actions: [
             DashButton(
+              'Licences',
+              style: DashButtonStyle.secondary,
+              onPressed: () => showLicensePage(
+                context: context,
+                applicationName: 'Floresta GUI',
+                applicationVersion: appVersion,
+                applicationLegalese:
+                    'MIT OR Apache-2.0. florestad is MIT OR Apache-2.0, '
+                    '© The Floresta Project Developers.',
+              ),
+            ),
+            DashButton(
               'Logs',
               style: DashButtonStyle.secondary,
               onPressed: () => context.go('/logs'),

@@ -28,6 +28,29 @@ void main() {
       expect(args, isNot(contains('--daemon')));
     });
 
+    test('never asks florestad for debug logs, whatever the settings', () {
+      // v0.9.1 logs loaded descriptors at debug level
+      // (json_rpc/server.rs "Descriptor pushed"); they are private.
+      for (final n in BitcoinNetwork.values) {
+        for (final s in [
+          NodeSettings(network: n),
+          NodeSettings(
+            network: n,
+            dataDir: '/d',
+            rpcPort: 9999,
+            disableCompactFilters: true,
+            assumeUtreexo: false,
+            walletBirthdayYear: 2020,
+          ),
+        ]) {
+          final args = florestadLaunchArgs(s);
+          expect(args, isNot(contains('--debug')));
+          expect(args, isNot(contains('-d')));
+          expect(args, isNot(contains('--daemon')));
+        }
+      }
+    });
+
     test('passes optional flags only when set', () {
       final args = florestadLaunchArgs(
         const NodeSettings(

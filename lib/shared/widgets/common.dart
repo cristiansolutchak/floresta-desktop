@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/theme/app_theme.dart';
+import '../../app/theme/dash_tokens.dart';
 import '../../core/errors/failure.dart';
 
 enum Tone { success, warning, danger, neutral, info }
@@ -86,14 +87,21 @@ class Panel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Inside the dashboard shell: the dashboard's card (square corners, its
+    // border and surface tokens, 24 px padding, 18 px titles), so these
+    // screens match the Figma ones. Elsewhere (onboarding) the interim look.
+    final dash = ShellTitleScope.active(context);
+    final t = context.dash;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.colors.border),
+        color: dash ? t.surface : Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(dash ? 0 : 10),
+        border: Border.all(color: dash ? t.border : context.colors.border),
       ),
       child: Padding(
-        padding: padding,
+        padding: dash && padding == const EdgeInsets.all(20)
+            ? const EdgeInsets.all(24)
+            : padding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -103,13 +111,23 @@ class Panel extends StatelessWidget {
                   Expanded(
                     child: Semantics(
                       header: true,
-                      child: Text(title!, style: context.text.titleMedium),
+                      child: Text(
+                        title!,
+                        style: dash
+                            ? TextStyle(
+                                fontSize: 18,
+                                height: 1.3,
+                                fontWeight: FontWeight.w500,
+                                color: t.textPrimary,
+                              )
+                            : context.text.titleMedium,
+                      ),
                     ),
                   ),
                   ?trailing,
                 ],
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: dash ? 16 : 14),
             ],
             child,
           ],
@@ -203,15 +221,20 @@ class _PageBodyState extends State<PageBody> {
 
   @override
   Widget build(BuildContext context) {
-    return Scrollbar(
+    // Inside the dashboard shell: its page background, 952 px centred
+    // column and 24 px margins, like the Figma screens.
+    final dash = ShellTitleScope.active(context);
+    final body = Scrollbar(
       controller: _scrollController,
       child: SingleChildScrollView(
         controller: _scrollController,
-        padding: const EdgeInsets.fromLTRB(32, 28, 32, 40),
+        padding: dash
+            ? const EdgeInsets.fromLTRB(24, 24, 24, 40)
+            : const EdgeInsets.fromLTRB(32, 28, 32, 40),
         child: Align(
-          alignment: Alignment.topLeft,
+          alignment: dash ? Alignment.topCenter : Alignment.topLeft,
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: widget.maxWidth),
+            constraints: BoxConstraints(maxWidth: dash ? 952 : widget.maxWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: widget.children,
@@ -220,6 +243,7 @@ class _PageBodyState extends State<PageBody> {
         ),
       ),
     );
+    return dash ? ColoredBox(color: context.dash.page, child: body) : body;
   }
 }
 
@@ -335,7 +359,9 @@ class Notice extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(
+          ShellTitleScope.active(context) ? 0 : 8,
+        ),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(

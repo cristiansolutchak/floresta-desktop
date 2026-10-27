@@ -63,15 +63,11 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         '${two(now.hour)}${two(now.minute)}.txt';
     final location = await getSaveLocation(suggestedName: name);
     if (location == null || !mounted) return;
-    final text = [
-      'Floresta GUI diagnostics (${now.toIso8601String()})',
-      'No wallet data. Extended keys in the log are redacted.',
-      '',
-      ref.read(diagnosticsReportProvider),
-      '',
-      'Daemon output (last ${all.length} lines):',
-      for (final l in all) l.text,
-    ].join('\n');
+    final text = diagnosticsFileText(
+      report: ref.read(diagnosticsReportProvider),
+      lines: [for (final l in all) l.text],
+      now: now,
+    );
     final result = await writeTextFile(location.path, text);
     if (!mounted) return;
     result.fold(

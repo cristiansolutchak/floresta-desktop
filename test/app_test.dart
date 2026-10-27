@@ -1,4 +1,5 @@
 import 'package:floresta_gui/app/app.dart';
+import 'package:floresta_gui/app/licenses.dart';
 import 'package:floresta_gui/core/build_flavor.dart';
 import 'package:floresta_gui/core/logging/log_buffer.dart';
 import 'package:floresta_gui/features/console/domain/console_repository.dart';
@@ -1052,11 +1053,10 @@ void main() {
     expect(find.textContaining('Peer timed out'), findsOneWidget);
   });
 
-  testWidgets('every screen fits the smallest window (960x640)', (
-    tester,
-  ) async {
-    // macOS MainFlutterWindow.minSize; the screens must scroll, not overflow.
-    for (final dark in [false, true]) {
+  for (final dark in [false, true]) {
+    testWidgets('every screen fits the smallest window (960x640, '
+        '${dark ? 'dark' : 'light'})', (tester) async {
+      // The macOS/Windows minimum; screens scroll, never overflow.
       tester.platformDispatcher.platformBrightnessTestValue = dark
           ? Brightness.dark
           : Brightness.light;
@@ -1088,13 +1088,19 @@ void main() {
         'Settings',
         'Help',
       ]) {
+        // Every destination is reachable without scrolling the sidebar.
+        expect(
+          find.text(item).first.hitTestable(),
+          findsOneWidget,
+          reason: '$item visible at 640 px',
+        );
         await tester.tap(find.text(item).first);
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull, reason: '$item dark=$dark');
       }
-    }
-    tester.platformDispatcher.clearPlatformBrightnessTestValue();
-  });
+      tester.platformDispatcher.clearPlatformBrightnessTestValue();
+    });
+  }
 
   testWidgets('a damaged wallet store is explained and repaired on request', (
     tester,
@@ -1121,6 +1127,57 @@ void main() {
     await tester.pumpAndSettle();
     expect(h.manager.starts, isEmpty);
   });
+
+  testWidgets('Help lists the app, florestad and font licences', (
+    tester,
+  ) async {
+    registerLicenses();
+    final h = _Harness();
+    await h.pump(tester);
+    await tester.tap(find.text('Help').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Licences'));
+    await tester.pumpAndSettle();
+    for (final name in [
+      'Floresta GUI',
+      'florestad (Floresta)',
+      'Space Grotesk',
+    ]) {
+      expect(find.text(name), findsWidgets, reason: name);
+    }
+  });
+
+  for (final dark in [false, true]) {
+    testWidgets('every screen has labelled tap targets and readable text '
+        '(${dark ? 'dark' : 'light'})', (tester) async {
+      final semantics = tester.ensureSemantics();
+      tester.platformDispatcher.platformBrightnessTestValue = dark
+          ? Brightness.dark
+          : Brightness.light;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      final h = _Harness()
+        ..rpc.info = Right(RpcModels.blockchainInfo(signetAfterSnapshot));
+      await h.pump(tester, network: 'signet');
+      for (final item in [
+        'Overview',
+        'Sync',
+        'Peers',
+        'Wallet',
+        'RPC Console',
+        'Electrum',
+        'Logs',
+        'Installation',
+        'Settings',
+        'Help',
+      ]) {
+        await tester.tap(find.text(item).first);
+        await tester.pumpAndSettle();
+        await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
+      }
+      semantics.dispose();
+    });
+  }
 
   testWidgets('node status reflects an unreachable API while starting', (
     tester,
