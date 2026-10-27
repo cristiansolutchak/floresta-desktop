@@ -181,7 +181,7 @@ class RegtestCluster {
         '--disable-dns-seeds',
         ...florestadExtraArgs,
       ]),
-      requestGracefulStop: () async =>
+      requestGracefulStop: (_) async =>
           (await floRpcRepo.requestStop()).isRight(),
     );
     await startFlorestad();

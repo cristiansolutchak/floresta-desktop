@@ -67,7 +67,7 @@ void main() {
           '127.0.0.1:$deadPeer',
           '--disable-dns-seeds',
         ]),
-        requestGracefulStop: () async => (await rpc.requestStop()).isRight(),
+        requestGracefulStop: (_) async => (await rpc.requestStop()).isRight(),
       );
       addTearDown(manager.dispose);
       await manager.start(executablePath: _florestad!, settings: settings);

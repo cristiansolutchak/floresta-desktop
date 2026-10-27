@@ -16,7 +16,10 @@ import 'florestad_launch_args.dart';
 import 'managed_node_store.dart';
 
 /// Requests a graceful shutdown over RPC; returns true if the node accepted.
-typedef GracefulStopRequest = Future<bool> Function();
+/// Sends florestad's `stop` RPC to 127.0.0.1:[rpcPort] and says whether it
+/// was accepted. The port is the one the node was started with: the
+/// settings may already point at another network (network switch).
+typedef GracefulStopRequest = Future<bool> Function(int rpcPort);
 
 /// Supervises florestad as a direct child process.
 ///
@@ -60,6 +63,9 @@ class FlorestadProcessManager implements NodeProcessManager {
   bool _checking = false;
 
   final GracefulStopRequest _requestGracefulStop;
+
+  /// RPC port of the node this manager started.
+  int? _rpcPort;
   final ProcessStarter _start;
   final bool _isWindows;
   final Duration gracefulTimeout;
@@ -94,6 +100,7 @@ class FlorestadProcessManager implements NodeProcessManager {
       return const Left(ProcessStateFailure('The node is already running.'));
     }
     final args = florestadLaunchArgs(settings);
+    _rpcPort = settings.effectiveRpcPort;
     _stopRequested = false;
     _setState(const ProcessStarting());
     _appLog('Starting $executablePath ${args.join(' ')}');
@@ -203,7 +210,9 @@ class FlorestadProcessManager implements NodeProcessManager {
     }
     _stopRequested = true;
     _setState(ProcessStopping(record.pid));
-    final accepted = await _requestGracefulStop().catchError((_) => false);
+    final accepted = await _requestGracefulStop(
+      record.rpcPort,
+    ).catchError((_) => false);
     _appLog(
       accepted
           ? 'Sent "stop" over RPC; waiting for shutdown.'
@@ -255,7 +264,9 @@ class FlorestadProcessManager implements NodeProcessManager {
     _stopRequested = true;
     _setState(ProcessStopping(process.pid));
 
-    final accepted = await _requestGracefulStop().catchError((_) => false);
+    final accepted = await _requestGracefulStop(
+      _rpcPort ?? 0,
+    ).catchError((_) => false);
     _appLog(
       accepted
           ? 'Sent "stop" over RPC; waiting for shutdown.'

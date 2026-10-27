@@ -157,7 +157,7 @@ void main() {
           '127.0.0.1:$deadPeerPort',
           '--disable-dns-seeds',
         ]),
-        requestGracefulStop: () async => (await rpc.requestStop()).isRight(),
+        requestGracefulStop: (_) async => (await rpc.requestStop()).isRight(),
       );
       addTearDown(manager.dispose);
       expect(

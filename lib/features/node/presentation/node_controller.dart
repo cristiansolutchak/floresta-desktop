@@ -14,6 +14,7 @@ import '../data/florestad_process_manager.dart';
 import '../data/electrum_probe.dart';
 import '../data/managed_node_store.dart';
 import '../data/preflight_probe.dart';
+import '../data/wallet_store_repair.dart';
 import '../data/node_rpc_repository_impl.dart';
 import '../domain/node_process_manager.dart';
 import '../domain/node_process_state.dart';
@@ -42,13 +43,24 @@ final nodeRpcRepositoryProvider = Provider<NodeRpcRepository>(
 /// so a running child is never orphaned by a rebuild.
 final nodeProcessManagerProvider = Provider<NodeProcessManager>((ref) {
   final manager = FlorestadProcessManager(
-    requestGracefulStop: () async =>
-        (await ref.read(nodeRpcRepositoryProvider).requestStop()).isRight(),
+    // To the port the node was started on, not the current settings'.
+    requestGracefulStop: (port) async {
+      final client = JsonRpcClient(
+        endpoint: Uri.parse('http://127.0.0.1:$port/'),
+        httpClient: ref.read(httpClientProvider),
+      );
+      return (await NodeRpcRepositoryImpl(client).requestStop()).isRight();
+    },
     store: ManagedNodeStore(ref.read(appPathsProvider)),
     inspector: SystemProcessInspector(),
   );
   ref.onDispose(manager.dispose);
   return manager;
+});
+
+final walletStoreRepairProvider = Provider<WalletStoreRepair>((ref) {
+  final env = ref.watch(environmentProvider);
+  return WalletStoreRepair(homeDir: env['HOME'] ?? env['USERPROFILE']);
 });
 
 final preflightProbeProvider = Provider<PreflightProbe>((ref) {

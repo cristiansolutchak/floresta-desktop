@@ -406,6 +406,15 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       shots.add(await _screenshot(tester, '06-stopped-again'));
       expect(find.text('Start node'), findsOneWidget);
+      // Stopped over RPC on the node's own port, without signals.
+      final appLines = container
+          .read(nodeLogsProvider)
+          .map((l) => l.text)
+          .where((t) => t.contains('stop') || t.contains('SIG'))
+          .toList();
+      _step('stop path: $appLines');
+      expect(appLines, contains('Sent "stop" over RPC; waiting for shutdown.'));
+      expect(appLines.where((t) => t.contains('SIGINT')), isEmpty);
       stopped = true;
       temp.deleteSync(recursive: true);
     },

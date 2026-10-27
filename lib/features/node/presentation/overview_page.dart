@@ -592,6 +592,9 @@ class CrashNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (crashed.looksLikeDamagedWalletStore) {
+      return const DamagedWalletStoreNotice();
+    }
     final message = crashed.looksLikePortConflict
         ? 'The RPC or Electrum port is already in use. Another Floresta or '
               'Bitcoin Core instance may be running. Stop it, or change the '
@@ -606,6 +609,82 @@ class CrashNotice extends StatelessWidget {
       icon: Icons.error_outline,
       title: 'The node exited unexpectedly',
       message: message,
+    );
+  }
+}
+
+/// florestad could not open its watch-only store. Offers to move the store's
+/// files aside (never delete them) and start again.
+class DamagedWalletStoreNotice extends ConsumerStatefulWidget {
+  const DamagedWalletStoreNotice({super.key});
+
+  @override
+  ConsumerState<DamagedWalletStoreNotice> createState() =>
+      _DamagedWalletStoreNoticeState();
+}
+
+class _DamagedWalletStoreNoticeState
+    extends ConsumerState<DamagedWalletStoreNotice> {
+  var _busy = false;
+
+  Future<void> _repair() async {
+    final settings = ref.read(settingsControllerProvider);
+    final repair = ref.read(walletStoreRepairProvider);
+    final dir = repair.dataDir(settings);
+    final bytes = repair.dbBytes(settings);
+    final ok = await confirm(
+      context,
+      title: 'Move the wallet store aside?',
+      message:
+          "Floresta's watch-only wallet files in $dir (conf, db, snap.*, "
+          'blobs) will be moved into a new "damaged-wallet-store" folder '
+          'there. Nothing is deleted, and the blockchain data stays. '
+          '${bytes == 0 ? "The store's database file is empty, so it holds no wallet data. " : 'Descriptors the node was watching must be added again in Wallet afterwards. '}'
+          'Floresta then starts with a new, empty store.',
+      confirmLabel: 'Move aside and start',
+    );
+    if (!ok || !mounted) return;
+    setState(() => _busy = true);
+    final moved = await repair.moveAside(settings);
+    if (!mounted) return;
+    await moved.match(
+      (f) async {
+        setState(() => _busy = false);
+        showFailure(context, f);
+      },
+      (m) async {
+        showMessage(
+          context,
+          'Moved ${m.names.join(', ')} to ${m.folder}. Starting Floresta.',
+        );
+        final started = await ref.read(nodeControllerProvider.notifier).start();
+        if (!mounted) return;
+        setState(() => _busy = false);
+        started.fold((f) => showFailure(context, f), (_) {});
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(settingsControllerProvider);
+    final repair = ref.watch(walletStoreRepairProvider);
+    final bytes = repair.dbBytes(settings);
+    return Notice(
+      tone: Tone.danger,
+      icon: Icons.error_outline,
+      title: "Floresta's wallet store cannot be read",
+      message:
+          'Floresta stopped while opening its watch-only wallet store in '
+          '${repair.dataDir(settings)}. '
+          '${bytes == 0 ? 'Its database file is empty, so the store holds no data; it was probably left behind by an interrupted start. ' : 'Its files are damaged. '}'
+          'Moving them aside lets Floresta start with a new store; nothing is '
+          'deleted.',
+      action: DashButton(
+        _busy ? 'Working…' : 'Move aside and start',
+        style: DashButtonStyle.primary,
+        onPressed: _busy ? null : _repair,
+      ),
     );
   }
 }

@@ -97,7 +97,7 @@ void main() {
           '127.0.0.1:$deadPeerPort',
           '--disable-dns-seeds',
         ]),
-        requestGracefulStop: () async {
+        requestGracefulStop: (_) async {
           gracefulAccepted = (await rpc.requestStop()).isRight();
           return gracefulAccepted;
         },

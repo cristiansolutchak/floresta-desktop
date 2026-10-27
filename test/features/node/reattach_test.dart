@@ -51,7 +51,7 @@ void main() {
   FlorestadProcessManager manager({FakeProcess? process}) =>
       FlorestadProcessManager(
         startProcess: (_, _) async => process ?? FakeProcess(),
-        requestGracefulStop: () async => rpcStopAccepted,
+        requestGracefulStop: (_) async => rpcStopAccepted,
         store: store,
         inspector: inspector,
         isWindows: false,

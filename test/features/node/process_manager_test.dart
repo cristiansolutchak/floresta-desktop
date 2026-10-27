@@ -81,7 +81,7 @@ void main() {
             launches.add((exe, args));
             return process;
           },
-          requestGracefulStop: () async => rpcStopAccepted,
+          requestGracefulStop: (_) async => rpcStopAccepted,
           isWindows: isWindows,
           gracefulTimeout: const Duration(milliseconds: 50),
           interruptTimeout: const Duration(milliseconds: 50),
@@ -111,6 +111,29 @@ void main() {
       expect(m.logs.last.text, contains('Electrum Server is running'));
     });
 
+    test('stop goes to the port the node was started on', () async {
+      // Regression (2026-10-26): switching signet -> mainnet changed the
+      // settings first, so "stop" went to 8332 while signet listened on
+      // 38332, and the app had to escalate to SIGINT.
+      final ports = <int>[];
+      final m = FlorestadProcessManager(
+        startProcess: (exe, args) async => process,
+        requestGracefulStop: (port) async {
+          ports.add(port);
+          process.exit(0);
+          return true;
+        },
+        gracefulTimeout: const Duration(milliseconds: 50),
+      );
+      await m.start(
+        executablePath: '/f',
+        settings: const NodeSettings(network: BitcoinNetwork.signet),
+      );
+      final r = await m.stop();
+      expect(r.isRight(), isTrue);
+      expect(ports, [38332]);
+    });
+
     test('refuses a second start while active', () async {
       final m = manager();
       await m.start(executablePath: '/f', settings: const NodeSettings());
@@ -126,7 +149,7 @@ void main() {
       final m = FlorestadProcessManager(
         startProcess: (e, a) async =>
             throw const ProcessException('/f', [], 'No such file', 2),
-        requestGracefulStop: () async => true,
+        requestGracefulStop: (_) async => true,
       );
       final r = await m.start(
         executablePath: '/f',

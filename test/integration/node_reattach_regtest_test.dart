@@ -81,7 +81,7 @@ void main() {
           '127.0.0.1:$deadPeer',
           '--disable-dns-seeds',
         ]),
-        requestGracefulStop: () async => (await rpc.requestStop()).isRight(),
+        requestGracefulStop: (_) async => (await rpc.requestStop()).isRight(),
         store: ManagedNodeStore(paths),
       );
       expect(
@@ -109,7 +109,7 @@ void main() {
 
       // Session B: a fresh manager with the same app data adopts it.
       final sessionB = FlorestadProcessManager(
-        requestGracefulStop: () async => (await rpc.requestStop()).isRight(),
+        requestGracefulStop: (_) async => (await rpc.requestStop()).isRight(),
         store: ManagedNodeStore(paths),
         inspector: SystemProcessInspector(),
       );

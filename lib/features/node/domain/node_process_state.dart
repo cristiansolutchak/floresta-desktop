@@ -83,6 +83,14 @@ final class ProcessCrashed extends NodeProcessState {
         lower.contains('address already in use');
   });
 
+  /// florestad v0.9.1 exits with "Cannot open a key-value database: …" when
+  /// its watch-only store (the Sled files `conf`, `db`, `snap.*` and `blobs/`
+  /// in the data folder) cannot be read (`floresta-node/src/error.rs`,
+  /// `CouldNotOpenKvDatabase`). Seen 2026-10-26 with an empty `db` beside a
+  /// stale snapshot.
+  bool get looksLikeDamagedWalletStore =>
+      lastOutput.any((l) => l.contains('Cannot open a key-value database'));
+
   @override
   List<Object?> get props => [exitCode, lastOutput];
 }

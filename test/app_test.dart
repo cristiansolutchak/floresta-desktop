@@ -1096,6 +1096,32 @@ void main() {
     tester.platformDispatcher.clearPlatformBrightnessTestValue();
   });
 
+  testWidgets('a damaged wallet store is explained and repaired on request', (
+    tester,
+  ) async {
+    final h = _Harness();
+    await h.pump(tester);
+    // The exact exit of florestad v0.9.1 seen on 2026-10-26.
+    h.manager.emit(
+      const ProcessCrashed(1, [
+        'Failed to start florestad: Cannot open a key-value database: '
+            'KvError: Error in Sled: Read corrupted data at file offset '
+            'Some(Inline(413)) backtrace ()',
+      ]),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("Floresta's wallet store cannot be read"), findsOneWidget);
+    expect(find.text('The node exited unexpectedly'), findsNothing);
+
+    // Nothing moves without confirmation.
+    await tester.tap(find.text('Move aside and start'));
+    await tester.pumpAndSettle();
+    expect(find.text('Move the wallet store aside?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(h.manager.starts, isEmpty);
+  });
+
   testWidgets('node status reflects an unreachable API while starting', (
     tester,
   ) async {
