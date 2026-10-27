@@ -179,6 +179,21 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_GETMINMAXINFO: {
+      // The dashboard's minimum (960x640 logical, as on macOS), scaled for
+      // the window's DPI and its frame.
+      UINT dpi = FlutterDesktopGetDpiForMonitor(
+          MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST));
+      double scale = (dpi == 0 ? 96 : dpi) / 96.0;
+      RECT frame = {0, 0, static_cast<LONG>(960 * scale),
+                    static_cast<LONG>(640 * scale)};
+      AdjustWindowRectEx(&frame, GetWindowLong(hwnd, GWL_STYLE), FALSE,
+                         GetWindowLong(hwnd, GWL_EXSTYLE));
+      auto info = reinterpret_cast<MINMAXINFO*>(lparam);
+      info->ptMinTrackSize.x = frame.right - frame.left;
+      info->ptMinTrackSize.y = frame.bottom - frame.top;
+      return 0;
+    }
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();

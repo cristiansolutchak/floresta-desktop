@@ -25,8 +25,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
+  // The dashboard's full layout (as on macOS); Create() scales for DPI.
   Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+  Win32Window::Size size(1280, 820);
   if (!window.Create(L"Floresta", origin, size)) {
     return EXIT_FAILURE;
   }
