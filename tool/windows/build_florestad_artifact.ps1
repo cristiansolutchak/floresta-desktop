@@ -25,19 +25,28 @@ Prerequisites (as upstream's CI, .github/workflows/rust.yml at v0.9.1):
 Run from "x64 Native Tools Command Prompt for VS 2022" -> powershell.
 
   powershell -ExecutionPolicy Bypass -File tool\windows\build_florestad_artifact.ps1 [-OutDir <dir>]
+    [-Tag v<x.y.z> -Commit <40-hex sha>]
+
+-Tag and -Commit build another upstream release (both, from upstream's
+release page); the tag must still resolve to that commit and be VALIDSIG by
+the pinned key. .github/workflows/florestad-artifacts.yml runs it that way.
 
 Written 2026-10-27 without a Windows machine: NOT yet run. Validate it on
 Windows before publishing its output.
 #>
 param(
-  [string]$OutDir = "$env:USERPROFILE\.cache\floresta-gui-tools\release-artifacts"
+  [string]$OutDir = "$env:USERPROFILE\.cache\floresta-gui-tools\release-artifacts",
+  [string]$Tag = 'v0.9.1',
+  [string]$Commit = 'bc2db8d07e72651f9981ce589c5688f4d575dc7a'
 )
 $ErrorActionPreference = 'Stop'
 
 $FlorestaRepo = 'https://github.com/getfloresta/Floresta.git'
-$FlorestaTag = 'v0.9.1'
+$FlorestaTag = $Tag
+$FlorestaCommit = $Commit
+if ($FlorestaTag -cnotmatch '^v\d+\.\d+\.\d+$') { Write-Error '-Tag must look like v1.2.3'; exit 1 }
+if ($FlorestaCommit -cnotmatch '^[0-9a-f]{40}$') { Write-Error '-Commit must be a full sha'; exit 1 }
 $FlorestaVersion = $FlorestaTag.TrimStart('v')
-$FlorestaCommit = 'bc2db8d07e72651f9981ce589c5688f4d575dc7a'
 $TagSignerPrimary = '2C8E0F836FD7DBBBB9E9B2EF89964EC3AB22B2E3'
 $RustVersion = '1.95.0'
 $Target = 'x86_64-pc-windows-msvc'
@@ -67,11 +76,15 @@ try {
   # Isolated keyring: never touches the user's GnuPG state.
   $env:GNUPGHOME = Join-Path $work 'gnupg'
   New-Item -ItemType Directory $env:GNUPGHOME | Out-Null
+  # gpg and git verify-tag write to stderr, which Windows PowerShell 5.1
+  # turns into terminating errors under 'Stop'; the checks below decide.
+  $ErrorActionPreference = 'Continue'
   gpg --batch --quiet --import $SignerKey 2>$null
   git -C $src fetch --quiet --force origin "refs/tags/${FlorestaTag}:refs/tags/$FlorestaTag"
-  $commit = (git -C $src rev-parse "$FlorestaTag^{commit}").Trim()
-  if ($commit -ne $FlorestaCommit) { Die "$FlorestaTag points to $commit, expected $FlorestaCommit" }
+  $commit = (git -C $src rev-parse "$FlorestaTag^{commit}" | Out-String).Trim()
   $status = git -C $src verify-tag --raw $FlorestaTag 2>&1 | Out-String
+  $ErrorActionPreference = 'Stop'
+  if ($commit -ne $FlorestaCommit) { Die "$FlorestaTag points to $commit, expected $FlorestaCommit" }
   $valid = $status -split "`n" | Where-Object { $_ -match ' VALIDSIG ' } | Select-Object -First 1
   if (-not $valid -or ($valid.Trim() -split '\s+')[-1] -ne $TagSignerPrimary) {
     Die "$FlorestaTag is not validly signed by $TagSignerPrimary"

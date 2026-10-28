@@ -1,0 +1,218 @@
+# Builds unsigned florestad release artifacts for every platform the app
+# installs on, from a PGP-signed upstream tag, with the same checks as a local
+# build (it runs the same scripts):
+#
+#   1. the tag is VALIDSIG by the pinned upstream key (tool/release/keys);
+#   2. the tag resolves to the commit given here;
+#   3. the build uses a `git archive` export (no .git);
+#   4. architecture, minimum OS and system-only libraries;
+#   5. `--version` prints exactly "florestad <tag>".
+#
+# Started by hand (Actions -> florestad artifacts -> Run workflow) with the
+# upstream tag and its commit. Nothing is signed or published: download the
+# "florestad-<tag>-unsigned" artifact, review it, then sign and publish on
+# the machine that holds the release key (docs/release/florestad-ci.md).
+name: florestad artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Upstream release tag (for example v0.9.1)
+        required: true
+        default: v0.9.1
+      commit:
+        description: Full commit sha the tag must point to (from upstream's release page)
+        required: true
+        default: bc2db8d07e72651f9981ce589c5688f4d575dc7a
+
+permissions:
+  contents: read
+
+env:
+  # Inputs reach scripts only through the environment, never inlined into
+  # shell code. The scripts re-check both formats.
+  FLORESTA_TAG: ${{ inputs.tag }}
+  FLORESTA_COMMIT: ${{ inputs.commit }}
+  RUST_VERSION: 1.95.0
+
+jobs:
+  inputs:
+    name: Check inputs
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Tag and commit formats
+        run: |
+          [[ "$FLORESTA_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::tag must look like v1.2.3"; exit 1; }
+          [[ "$FLORESTA_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::commit must be a full 40-character sha"; exit 1; }
+
+  macos:
+    name: macOS ${{ matrix.arch }}
+    needs: inputs
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: arm64, runner: macos-15, target: aarch64-apple-darwin }
+          # Native Intel runner, so the --version probe runs on real x86_64.
+          - { arch: x64, runner: macos-15-intel, target: x86_64-apple-darwin }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build tools
+        run: |
+          brew install boost@1.85 gnupg
+          command -v cmake >/dev/null || brew install cmake
+          command -v rustup >/dev/null ||
+            curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Rust ${{ env.RUST_VERSION }}
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal --target ${{ matrix.target }}
+          echo "RUSTUP_TOOLCHAIN=$RUST_VERSION" >> "$GITHUB_ENV"
+      - name: Build and check florestad
+        env:
+          FLORESTA_TOOLS_DIR: ${{ runner.temp }}/tools
+        run: tool/release/build_florestad_artifact.sh ${{ matrix.target }} "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: part-macos-${{ matrix.arch }}
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+
+  linux:
+    name: Linux ${{ matrix.arch }}
+    needs: inputs
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+          - { arch: x64, runner: ubuntu-24.04 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Debian 12 container, the same base (and glibc) as the app's Linux build.
+      - name: Build and check florestad
+        run: tool/release/build_florestad_linux_in_container.sh ${{ matrix.arch }} "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: part-linux-${{ matrix.arch }}
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+
+  windows:
+    name: Windows x64
+    needs: inputs
+    runs-on: windows-2025
+    timeout-minutes: 180
+    env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg-cache
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: GnuPG
+        shell: pwsh
+        run: |
+          choco install gnupg -y --no-progress
+          $gpg = @("$env:ProgramFiles\GnuPG\bin", "${env:ProgramFiles(x86)}\GnuPG\bin") |
+            Where-Object { Test-Path "$_\gpg.exe" } | Select-Object -First 1
+          if (-not $gpg) { Write-Error 'gpg.exe not found after installing GnuPG'; exit 1 }
+          $gpg >> $env:GITHUB_PATH
+          # git verify-tag must use the same gpg that imported the key.
+          git config --global gpg.program "$gpg\gpg.exe"
+      - name: Rust ${{ env.RUST_VERSION }}
+        shell: pwsh
+        run: rustup toolchain install $env:RUST_VERSION --profile minimal --target x86_64-pc-windows-msvc
+      - name: Restore Boost build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}\vcpkg-cache
+          key: vcpkg-boost-x64-windows-static-${{ hashFiles('tool/windows/build_florestad_artifact.ps1') }}
+          restore-keys: vcpkg-boost-x64-windows-static-
+      - name: Boost, LLVM and the MSVC environment
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install boost-system boost-filesystem boost-thread boost-multi-index --triplet x64-windows-static
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "BOOST_ROOT=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static" >> $env:GITHUB_ENV
+          $llvm = "$env:ProgramFiles\LLVM\bin"
+          if (-not (Test-Path "$llvm\libclang.dll")) { Write-Error "libclang.dll not found in $llvm"; exit 1 }
+          "LIBCLANG_PATH=$llvm" >> $env:GITHUB_ENV
+          # What the "x64 Native Tools" prompt sets up (cl, link, dumpbin).
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { Write-Error 'Visual Studio C++ tools not found'; exit 1 }
+          cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') { "$($Matches[1])=$($Matches[2])" >> $env:GITHUB_ENV }
+          }
+      - name: Build and check florestad
+        shell: pwsh
+        run: |
+          tool\windows\build_florestad_artifact.ps1 -Tag $env:FLORESTA_TAG -Commit $env:FLORESTA_COMMIT -OutDir "$env:RUNNER_TEMP\out"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: part-windows-x64
+          path: ${{ runner.temp }}\out\
+          if-no-files-found: error
+
+  collect:
+    name: Collect unsigned artifacts
+    # Runs when at least one platform built, so a partial set can still be
+    # reviewed; the summary lists what is missing.
+    needs: [inputs, macos, linux, windows]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: part-*
+          path: florestad-${{ inputs.tag }}-unsigned
+          merge-multiple: true
+      - name: Cross-check, checksums and summary
+        working-directory: florestad-${{ inputs.tag }}-unsigned
+        run: |
+          shopt -s nullglob
+          infos=(*.build-info.json)
+          (( ${#infos[@]} )) || { echo "::error::no platform built"; exit 1; }
+          status=0
+          {
+            echo "## florestad $FLORESTA_TAG (unsigned)"
+            echo
+            echo "Upstream commit \`$FLORESTA_COMMIT\`."
+            echo
+            echo "| Artifact | Min OS | Size | SHA-256 | Source tar SHA-256 |"
+            echo "|---|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for info in "${infos[@]}"; do
+            name="$(jq -r .artifact "$info")"
+            # The binary must be the one the build recorded, from the asked-for source.
+            [[ "$(sha256sum "$name" | cut -d' ' -f1)" == "$(jq -r .sha256 "$info")" ]] ||
+              { echo "::error::$name does not match its build-info"; status=1; }
+            [[ "$(jq -r .upstreamTag "$info")" == "$FLORESTA_TAG" &&
+               "$(jq -r .upstreamCommit "$info")" == "$FLORESTA_COMMIT" ]] ||
+              { echo "::error::$name was built from another tag or commit"; status=1; }
+            jq -r '"| \(.artifact) | \(.minOs) | \(.size) | `\(.sha256)` | `\(.sourceTarSha256)` |"' "$info" >> "$GITHUB_STEP_SUMMARY"
+          done
+          missing=()
+          for p in macos-arm64 macos-x64 linux-arm64 linux-x64 windows-x64; do
+            compgen -G "florestad-$FLORESTA_TAG-$p*.build-info.json" >/dev/null || missing+=("$p")
+          done
+          if (( ${#missing[@]} )); then
+            echo "::warning::missing platforms: ${missing[*]}"
+            printf '\n**Missing:** %s\n' "${missing[*]}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          sha256sum $(for i in "${infos[@]}"; do jq -r .artifact "$i"; done) > SHA256SUMS
+          exit "$status"
+      # A tar keeps the executable bits that the artifact zip would drop.
+      - name: Archive
+        run: |
+          tar -cf "florestad-$FLORESTA_TAG-unsigned.tar" "florestad-$FLORESTA_TAG-unsigned"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: florestad-${{ inputs.tag }}-unsigned
+          path: florestad-${{ inputs.tag }}-unsigned.tar
+          if-no-files-found: error
+          retention-days: 30

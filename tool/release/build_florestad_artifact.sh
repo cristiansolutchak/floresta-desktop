@@ -14,6 +14,11 @@
 #
 # Usage: tool/release/build_florestad_artifact.sh [rust-target] [out-dir]
 #
+# Another release: FLORESTA_TAG=v<x.y.z> FLORESTA_COMMIT=<40-hex sha> (both,
+# from upstream's release page; the tag must still resolve to that commit
+# and be VALIDSIG by the pinned key). .github/workflows/florestad-artifacts.yml
+# runs this script that way.
+#
 # Pinned upstream-master mode (UPS-01): FLORESTA_MASTER_COMMIT=<40-hex sha>
 # builds that exact commit instead of the release tag. It must be on
 # upstream master and its commit signature must be VALIDSIG by the same
@@ -23,15 +28,19 @@
 #                x86_64-unknown-linux-gnu | aarch64-unknown-linux-gnu
 #                (default: the host). Windows is not supported yet.
 #
-# Verified locally only for the two macOS targets (2026-10-24); the Linux
-# branch is untested.
+# Verified locally for both macOS targets (2026-10-24) and, through
+# build_florestad_linux_in_container.sh, both Linux targets (2026-10-27).
 set -euo pipefail
 
 TOOLS_DIR="${FLORESTA_TOOLS_DIR:-$HOME/.cache/floresta-gui-tools}"
 FLORESTA_REPO="https://github.com/getfloresta/Floresta.git"
-FLORESTA_TAG="v0.9.1"
+FLORESTA_TAG="${FLORESTA_TAG:-v0.9.1}"
+FLORESTA_COMMIT="${FLORESTA_COMMIT:-bc2db8d07e72651f9981ce589c5688f4d575dc7a}"
+[[ "$FLORESTA_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+  { printf '[artifact] ERROR: FLORESTA_TAG must look like v1.2.3\n' >&2; exit 1; }
+[[ "$FLORESTA_COMMIT" =~ ^[0-9a-f]{40}$ ]] ||
+  { printf '[artifact] ERROR: FLORESTA_COMMIT must be a full sha\n' >&2; exit 1; }
 FLORESTA_VERSION="${FLORESTA_TAG#v}"
-FLORESTA_COMMIT="bc2db8d07e72651f9981ce589c5688f4d575dc7a"
 # Davidson Souza; the tag is signed by its subkey ABBB0415…F31869DC3DF97A86.
 TAG_SIGNER_PRIMARY="2C8E0F836FD7DBBBB9E9B2EF89964EC3AB22B2E3"
 MACOS_MIN="11.0"

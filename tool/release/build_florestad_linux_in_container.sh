@@ -9,7 +9,9 @@
 # x64 runs as linux/amd64 (Rosetta or QEMU on Apple Silicon; slow). Rust is
 # pinned to the version the macOS artifacts were built with. Caches live in
 # ~/.cache/floresta-gui-tools/linux-<arch>; output defaults to
-# ~/.cache/floresta-gui-tools/release-artifacts. Nothing is signed here.
+# ~/.cache/floresta-gui-tools/release-artifacts. FLORESTA_TAG and
+# FLORESTA_COMMIT pass through (see build_florestad_artifact.sh). Nothing is
+# signed here.
 set -euo pipefail
 arch="${1:-}"
 case "$arch" in
@@ -27,6 +29,7 @@ mkdir -p "$cache" "$out"
 docker run --rm --platform "$platform" \
   -v "$root:/src:ro" -v "$cache:/tools" -v "$out:/out" \
   -e TARGET="$target" -e RUST_VERSION="$rust_version" \
+  -e FLORESTA_TAG="${FLORESTA_TAG:-}" -e FLORESTA_COMMIT="${FLORESTA_COMMIT:-}" \
   debian:bookworm bash -euo pipefail -c '
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
