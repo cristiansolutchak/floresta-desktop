@@ -12,16 +12,19 @@ on:
 permissions:
   contents: read
 
+# Runner images and actions are pinned (actions by commit SHA) so a moving
+# "-latest" label or tag never changes the toolchain under us.
+
 env:
   FLUTTER_VERSION: 3.35.5
 
 jobs:
   test:
     name: Format, analyze, test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
@@ -40,11 +43,11 @@ jobs:
         # windows-2022: Flutter 3.35.5 knows only Visual Studio 2022 (major 17)
         # and asks CMake for "Visual Studio 16 2019" on any other version, so
         # an image with a newer Visual Studio fails to generate build files.
-        os: [macos-latest, ubuntu-22.04, windows-2022]
+        os: [macos-15, ubuntu-22.04, windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
@@ -67,9 +70,9 @@ jobs:
 
   dependencies:
     name: Dependency vulnerabilities
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: OSV-Scanner
         run: |
           curl -sSfL -o osv-scanner https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_amd64
