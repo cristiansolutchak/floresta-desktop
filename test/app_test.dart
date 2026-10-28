@@ -28,6 +28,7 @@ import 'package:floresta_gui/features/wallet/presentation/wallet_sync_controller
 import 'package:floresta_gui/features/wallet/data/wallet_sync_engine.dart';
 import 'package:floresta_gui/features/wallet/data/bip32_address_deriver.dart';
 import 'package:floresta_gui/shared/widgets/common.dart';
+import 'package:floresta_gui/shared/widgets/dash.dart' show DashStatRow;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -860,6 +861,7 @@ void main() {
     expect(find.text('Phase: Blocks'), findsOneWidget);
     expect(find.text('0.0%'), findsOneWidget);
     expect(find.textContaining('90.5'), findsNothing);
+    expect(find.text('Current Height'), findsOneWidget);
     expect(find.text('296,870'), findsOneWidget);
     expect(find.text('327,900'), findsOneWidget);
     expect(find.text('~ 31,030 blocks'), findsOneWidget);
@@ -906,6 +908,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('System Logs'), findsOneWidget);
     expect(find.text('Daemon output'), findsOneWidget);
+  });
+
+  testWidgets('during the headers step both cards show headers downloaded', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..rpc.info = Right(
+        RpcModels.blockchainInfo({
+          ...signetAfterSnapshot,
+          'validated': 0,
+          'height': 24000,
+        }),
+      );
+    await h.pump(tester, network: 'signet');
+
+    // Overview: label and count in the same row (with no peers the target
+    // is the header count too, so "24,000" appears twice).
+    final row = find.ancestor(
+      of: find.text('Headers Downloaded'),
+      matching: find.byType(DashStatRow),
+    );
+    expect(row, findsOneWidget);
+    expect(find.descendant(of: row, matching: find.text('24,000')), findsOne);
+    expect(find.text('Current Height'), findsNothing);
+
+    await tester.ensureVisible(find.text('View Sync Details'));
+    await tester.tap(find.text('View Sync Details'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Step 1/3'), findsOneWidget);
+    expect(find.text('Headers Downloaded'), findsOneWidget);
+    expect(find.text('24,000'), findsWidgets);
+    expect(find.text('Current Height'), findsNothing);
   });
 
   testWidgets('UX-05..09: every Figma sidebar screen opens', (tester) async {

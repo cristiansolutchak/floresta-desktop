@@ -74,6 +74,29 @@ void main() {
       expect(p.fraction, 0.25);
     });
 
+    test('the first stat is the header count while headers download', () {
+      final fresh = RpcModels.blockchainInfo({
+        ...signetAfterSnapshot,
+        'validated': 0,
+        'height': 24000,
+      });
+      final headers = SyncProgress.of(
+        fresh,
+        const NodeReadiness(ReadinessStage.downloadingHeaders, peerTip: 973490),
+        null,
+      );
+      // 0 validated next to 2.5 % is what confused users (2026-10-28).
+      expect(headers.currentHeight, 0);
+      expect(headers.leadingStat, (label: 'Headers Downloaded', value: 24000));
+
+      final blocks = SyncProgress.of(
+        chain,
+        const NodeReadiness(ReadinessStage.validatingBlocks, peerTip: 327900),
+        breakdown,
+      );
+      expect(blocks.leadingStat, (label: 'Current Height', value: 296870));
+    });
+
     test('the fraction is against the network tip, not own headers', () {
       final behind = RpcModels.blockchainInfo({
         ...signetAfterSnapshot,

@@ -152,9 +152,9 @@ class _StepCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   stat(
-                    'Current Height',
+                    p?.leadingStat.label ?? 'Current Height',
                     Text(
-                      p == null ? '—' : formatInt(p.currentHeight),
+                      p == null ? '—' : formatInt(p.leadingStat.value),
                       style: DashText.value(context),
                     ),
                   ),

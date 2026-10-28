@@ -350,8 +350,8 @@ class _SyncCard extends ConsumerWidget {
             const SizedBox(height: 12),
           const SizedBox(height: 24),
           DashStatRow(
-            'Current Height',
-            p == null ? '—' : formatInt(p.currentHeight),
+            p?.leadingStat.label ?? 'Current Height',
+            p == null ? '—' : formatInt(p.leadingStat.value),
           ),
           DashStatRow(
             'Target Height',

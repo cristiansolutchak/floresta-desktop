@@ -33,6 +33,7 @@ class SyncProgress extends Equatable {
     required this.step,
     required this.fraction,
     required this.currentHeight,
+    required this.headerHeight,
     required this.targetHeight,
     required this.behind,
     required this.tipIsEstimate,
@@ -46,6 +47,9 @@ class SyncProgress extends Equatable {
   /// Highest block this node has validated (or accepted from the snapshot).
   final int currentHeight;
 
+  /// Block headers the node has downloaded so far.
+  final int headerHeight;
+
   /// Network tip: the height most peers agree on, else the node's headers.
   final int targetHeight;
 
@@ -54,6 +58,14 @@ class SyncProgress extends Equatable {
 
   /// [targetHeight] comes from peers' heights at connection time.
   final bool tipIsEstimate;
+
+  /// The first figure on the sync cards. While headers download, no block
+  /// is validated yet, so [currentHeight] stays 0 next to a growing
+  /// percentage; the header count is what moves. Later steps show the
+  /// validated height.
+  ({String label, int value}) get leadingStat => step == SyncStep.headers
+      ? (label: 'Headers Downloaded', value: headerHeight)
+      : (label: 'Current Height', value: currentHeight);
 
   /// Pure: derives the progress from a chain snapshot and readiness.
   static SyncProgress of(
@@ -85,6 +97,7 @@ class SyncProgress extends Equatable {
       step: step,
       fraction: fraction?.clamp(0.0, 1.0),
       currentHeight: current,
+      headerHeight: chain.headerHeight,
       targetHeight: tip,
       behind: max(0, tip - current),
       tipIsEstimate: (readiness.peerTip ?? 0) > chain.headerHeight,
@@ -96,6 +109,7 @@ class SyncProgress extends Equatable {
     step,
     fraction,
     currentHeight,
+    headerHeight,
     targetHeight,
     behind,
     tipIsEstimate,
