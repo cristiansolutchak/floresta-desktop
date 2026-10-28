@@ -1026,7 +1026,7 @@ void main() {
     await tester.tap(find.text('Add descriptor'));
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byType(TextField),
+      find.widgetWithText(TextField, 'Descriptor'),
       vectorType('wpkh')['multipath']! as String,
     );
     await tester.tap(find.text('Add'));
@@ -1036,6 +1036,112 @@ void main() {
       vectorType('wpkh')['internal'],
     ]);
     expect(find.textContaining('1 wallet · 2 descriptors'), findsOneWidget);
+    // Named with the suggestion when the user keeps it.
+    expect(find.textContaining('Wallet 1'), findsWidgets);
+  });
+
+  Future<void> addWallet(WidgetTester tester, {required String name}) async {
+    await tester.tap(find.text('Add descriptor'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Name'), name);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Descriptor'),
+      vectorType('wpkh')['multipath']! as String,
+    );
+    await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('a wallet is named when added, renamed and kept by its id', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    await h.pump(tester, network: 'regtest');
+    await tester.tap(find.text('Wallet'));
+    await tester.pumpAndSettle();
+    await addWallet(tester, name: '  Savings  ');
+    expect(find.textContaining('Savings'), findsWidgets);
+
+    await tester.tap(find.byTooltip('Rename Savings'));
+    await tester.pumpAndSettle();
+    // Key material is refused as a name; a private key is also cleared.
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Name'),
+      'mine ${FakeKeys.xprv}',
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('extended private key'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(find.widgetWithText(TextField, 'Name'))
+          .controller!
+          .text,
+      isEmpty,
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Name'),
+      FakeKeys.tpub,
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('cannot contain a key'), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Name'),
+      'Cold storage',
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Cold storage'), findsWidgets);
+    expect(find.textContaining('Savings'), findsNothing);
+
+    // Stored by account id only: no descriptor or key in preferences.
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString('wallet.labels')!;
+    expect(stored, contains('Cold storage'));
+    expect(stored, isNot(contains('pub')));
+    expect(stored, isNot(contains('wpkh')));
+  });
+
+  testWidgets('a key typed as the name never reaches the node', (tester) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    await h.pump(tester, network: 'regtest');
+    await tester.tap(find.text('Wallet'));
+    await tester.pumpAndSettle();
+    await addWallet(tester, name: FakeKeys.wifCompressed);
+    expect(find.textContaining('WIF private key'), findsOneWidget);
+    expect(h.wallet.loaded, isEmpty);
+  });
+
+  testWidgets('removing a wallet hides it here; showing it again brings it '
+      'back (the node keeps watching)', (tester) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    await h.pump(tester, network: 'regtest');
+    await tester.tap(find.text('Wallet'));
+    await tester.pumpAndSettle();
+    await addWallet(tester, name: 'Spending');
+    expect(find.textContaining('1 wallet · 2 descriptors'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Remove Spending'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Floresta itself keeps watching'), findsOne);
+    await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('0 wallets'), findsOneWidget);
+    expect(find.byTooltip('Remove Spending'), findsNothing);
+    expect(find.text('Removed from this app (1)'), findsOneWidget);
+    // Nothing was asked of the node: it cannot forget a descriptor.
+    expect(h.wallet.loaded, hasLength(2));
+
+    await tester.tap(find.text('Removed from this app (1)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Show again'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 wallet · 2 descriptors'), findsOneWidget);
+    expect(find.byTooltip('Remove Spending'), findsOneWidget);
   });
 
   testWidgets('import dialog refuses private keys and clears them', (
@@ -1050,7 +1156,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byType(TextField),
+      find.widgetWithText(TextField, 'Descriptor'),
       'wpkh(${FakeKeys.xprv}/0/*)',
     );
     await tester.tap(find.text('Add'));
@@ -1058,7 +1164,9 @@ void main() {
 
     expect(find.text('Private key material detected'), findsOneWidget);
     expect(h.wallet.loaded, isEmpty);
-    final field = tester.widget<TextField>(find.byType(TextField));
+    final field = tester.widget<TextField>(
+      find.widgetWithText(TextField, 'Descriptor'),
+    );
     expect(field.controller!.text, isEmpty);
   });
 

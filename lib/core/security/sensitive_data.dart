@@ -44,6 +44,12 @@ abstract final class SensitiveData {
     return null;
   }
 
+  /// Whether [input] contains an extended key, public or private. Public
+  /// keys are not secret but reveal a wallet's whole history, so they are
+  /// kept out of free-text fields that end up in preferences.
+  static bool containsExtendedKey(String input) =>
+      _extendedPublicKey.hasMatch(input) || _extendedPrivateKey.hasMatch(input);
+
   /// Masks extended keys so log output can be displayed and copied safely.
   static String redact(String text) {
     return text

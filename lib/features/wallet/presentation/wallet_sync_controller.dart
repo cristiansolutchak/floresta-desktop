@@ -72,9 +72,15 @@ class WalletOverview extends Equatable {
   const WalletOverview({
     this.watched = const WatchedAccounts(),
     this.snapshots = const {},
+    this.removed = const [],
   });
 
+  /// What the node watches, minus the wallets removed from this app.
   final WatchedAccounts watched;
+
+  /// Complete accounts the user removed from this app: not synced, still
+  /// watched by the node (it cannot forget a descriptor).
+  final List<WalletAccount> removed;
 
   /// Latest snapshot per account id; missing until its engine reports.
   final Map<String, WalletSnapshot> snapshots;
@@ -82,7 +88,7 @@ class WalletOverview extends Equatable {
   WalletSnapshot? snapshotOf(WalletAccount a) => snapshots[a.id];
 
   @override
-  List<Object?> get props => [watched.accounts, snapshots];
+  List<Object?> get props => [watched.accounts, snapshots, removed];
 }
 
 /// Runs one [WalletSyncEngine] per complete account while the node's API is
@@ -100,6 +106,8 @@ class WalletSyncController extends Notifier<WalletOverview> {
       nodeControllerProvider.select((s) => s.api),
       (_, _) => _reconcile(),
     );
+    // Removing or restoring a wallet stops or starts its engine.
+    ref.listen(walletLabelsProvider, (_, _) => _reconcile());
     // Electrum can announce a block before the node's RPC reports it as
     // validated; the engine then marks it "pending validation" and gets no
     // further notification. Re-sync whenever the validated height moves
@@ -124,13 +132,23 @@ class WalletSyncController extends Notifier<WalletOverview> {
         ref.read(nodeControllerProvider).api == ApiReachability.reachable;
     final listed = ref.read(walletDescriptorsProvider).value?.toNullable();
     final network = ref.read(settingsControllerProvider).network;
-    final watched = listed == null
+    final all = listed == null
         ? const WatchedAccounts()
         : WatchedAccounts.fromListed(
             listed.descriptors,
             network,
             parser: ref.read(descriptorParserProvider),
           );
+    final labels = ref.read(walletLabelsProvider);
+    bool removed(WalletAccount a) => labels[a.id]?.hidden ?? false;
+    final watched = WatchedAccounts(
+      accounts: [
+        for (final a in all.accounts)
+          if (!removed(a)) a,
+      ],
+      receiveOnly: all.receiveOnly,
+      unsupported: all.unsupported,
+    );
     final wanted = apiUp
         ? {for (final a in watched.accounts) a.id: a}
         : const <String, WalletAccount>{};
@@ -147,6 +165,7 @@ class WalletSyncController extends Notifier<WalletOverview> {
         if (!ref.mounted) return;
         state = WalletOverview(
           watched: state.watched,
+          removed: state.removed,
           snapshots: {...state.snapshots, id: snap},
         );
       });
@@ -154,6 +173,10 @@ class WalletSyncController extends Notifier<WalletOverview> {
     }
     state = WalletOverview(
       watched: watched,
+      removed: [
+        for (final a in all.accounts)
+          if (removed(a)) a,
+      ],
       snapshots: {
         for (final e in state.snapshots.entries)
           if (wanted.containsKey(e.key) || !apiUp) e.key: e.value,

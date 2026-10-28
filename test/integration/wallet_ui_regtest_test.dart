@@ -113,10 +113,18 @@ void main() {
                   as Map)['desc']
               as String;
       await tester.tap(find.text('Add descriptor'));
-      await waitFor(find.byType(TextField));
-      await tester.enterText(find.byType(TextField), desc(false));
+      await waitFor(find.widgetWithText(TextField, 'Descriptor'));
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Name'),
+        'Core test wallet',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Descriptor'),
+        desc(false),
+      );
       await tester.runAsync(() async => tester.tap(find.text('Add')));
       await waitFor(find.textContaining('1 wallet · 2 descriptors'));
+      expect(find.textContaining('Core test wallet'), findsWidgets);
 
       // Fund the subject wallet: two payments, one block.
       await real(() async {
@@ -169,6 +177,45 @@ void main() {
         'wallet UI matches Core: trusted=${after['trusted']} '
         'txs=${coreTxs.length} receive#0=$first',
       );
+
+      // Rename, remove from the app, show again: the node keeps watching,
+      // and the restored wallet syncs back to Core's balance.
+      final trusted = formatBtc(_sats(after['trusted']));
+      await tester.ensureVisible(find.byTooltip('Rename Core test wallet'));
+      await tester.tap(find.byTooltip('Rename Core test wallet'));
+      await waitFor(find.text('Rename wallet'));
+      await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Regtest');
+      await tester.tap(find.text('Save'));
+      await waitFor(find.byTooltip('Remove Regtest'));
+      await tester.ensureVisible(find.byTooltip('Remove Regtest'));
+      await tester.tap(find.byTooltip('Remove Regtest'));
+      await waitFor(find.widgetWithText(FilledButton, 'Remove'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
+      await waitFor(find.text('Removed from this app (1)'));
+      expect(find.text(trusted), findsNothing);
+      final listed = ((await real(
+        () => cluster.floRpcRepo.getBlockchainInfo(),
+      ))).isRight();
+      expect(listed, isTrue);
+      await tester.ensureVisible(find.text('Removed from this app (1)'));
+      await tester.tap(find.text('Removed from this app (1)'));
+      await waitFor(find.text('Show again'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Show again'));
+      await tester.tap(find.text('Show again'));
+      await waitFor(find.text(trusted), seconds: 90);
+      expect(find.textContaining('Regtest'), findsWidgets);
+      // ignore: avoid_print
+      print('renamed, removed and restored; balance back at $trusted');
+
+      // The restored wallet's engine may be mid-pass; unmount the app and
+      // let its real I/O finish and the fake clock pass the RPC timeouts it
+      // armed.
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(seconds: 3)),
+      );
+      await tester.pump(const Duration(minutes: 1));
     },
     skip: RegtestCluster.missingTools != null,
     timeout: const Timeout(Duration(minutes: 5)),

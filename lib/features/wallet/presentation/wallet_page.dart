@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart' hide State;
 
@@ -13,6 +14,7 @@ import '../../settings/domain/bitcoin_network.dart';
 import '../../settings/presentation/settings_controller.dart';
 import '../domain/address_activity.dart';
 import '../domain/wallet_account.dart';
+import '../domain/wallet_labels.dart';
 import '../domain/wallet_state.dart';
 import '../domain/watched_list.dart';
 import 'amount_format.dart';
@@ -128,6 +130,7 @@ class _WalletPageState extends ConsumerState<WalletPage> {
           _AccountPicker(
             accounts: accounts,
             selected: account!,
+            labels: ref.watch(walletLabelsProvider),
             onChanged: (a) => setState(() => _selected = a.id),
           ),
           const SizedBox(height: 16),
@@ -152,7 +155,10 @@ class _WalletPageState extends ConsumerState<WalletPage> {
   Future<void> _showImport(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => const _ImportDescriptorDialog(),
+      builder: (_) => _ImportDescriptorDialog(
+        suggestedName:
+            'Wallet ${ref.read(walletSyncProvider).watched.accounts.length + 1}',
+      ),
     );
     if (ok != true || !context.mounted) return;
     final synced =
@@ -289,8 +295,207 @@ class _DescriptorRowState extends State<_DescriptorRow> {
   }
 }
 
+/// A wallet's name and type, with Rename and Remove.
+class _AccountHeader extends ConsumerWidget {
+  const _AccountHeader({required this.account, required this.index});
+  final WalletAccount account;
+  final int index;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final labels = ref.watch(walletLabelsProvider);
+    final type = _scriptLabel(account.external.scriptType);
+    final name = WalletName.display(
+      account,
+      index: index,
+      labels: labels,
+      scriptLabel: type,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Icon(
+            Icons.account_balance_wallet_outlined,
+            size: 18,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                text: name,
+                style: context.text.titleSmall,
+                children: [
+                  if (labels[account.id]?.name != null)
+                    TextSpan(text: '  $type', style: context.text.bodySmall),
+                ],
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Rename $name',
+            iconSize: 18,
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => _rename(context, ref, labels[account.id]?.name),
+          ),
+          IconButton(
+            tooltip: 'Remove $name',
+            iconSize: 18,
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _remove(context, ref, name),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _rename(
+    BuildContext context,
+    WidgetRef ref,
+    String? current,
+  ) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => _RenameDialog(id: account.id, current: current),
+    );
+    if (saved == true && context.mounted) showMessage(context, 'Name saved.');
+  }
+
+  Future<void> _remove(BuildContext context, WidgetRef ref, String name) async {
+    final ok = await confirm(
+      context,
+      title: 'Remove $name from this app?',
+      message:
+          'This app stops showing and syncing it. Floresta itself keeps '
+          'watching its addresses: it has no way to forget a descriptor until '
+          'its wallet data is reset. Nothing about your coins changes, and '
+          'you can show it again from "Removed from this app".',
+      confirmLabel: 'Remove',
+      destructive: true,
+    );
+    if (!ok || !context.mounted) return;
+    await ref.read(walletLabelsProvider.notifier).remove(account.id);
+    if (context.mounted) showMessage(context, 'Removed $name from this app.');
+  }
+}
+
+class _RenameDialog extends ConsumerStatefulWidget {
+  const _RenameDialog({required this.id, required this.current});
+  final String id;
+  final String? current;
+
+  @override
+  ConsumerState<_RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends ConsumerState<_RenameDialog> {
+  late final _name = TextEditingController(text: widget.current ?? '');
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final result = await ref
+        .read(walletLabelsProvider.notifier)
+        .rename(widget.id, _name.text);
+    if (!mounted) return;
+    result.fold((f) {
+      if (f is SecretMaterialRejectedFailure) _name.clear();
+      setState(() => _error = f.message);
+    }, (_) => Navigator.of(context).pop(true));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Rename wallet'),
+      content: SizedBox(
+        width: 420,
+        child: TextField(
+          controller: _name,
+          autofocus: true,
+          maxLength: WalletName.maxLength,
+          // Counter only: cutting a pasted key short would let a piece of it
+          // past the checks. WalletName refuses names that are too long.
+          maxLengthEnforcement: MaxLengthEnforcement.none,
+          decoration: InputDecoration(
+            labelText: 'Name',
+            helperText: 'Only on this computer.',
+            errorText: _error,
+          ),
+          onSubmitted: (_) => _save(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _save, child: const Text('Save')),
+      ],
+    );
+  }
+}
+
+/// Wallets removed from this app, still watched by the node.
+class _RemovedAccounts extends ConsumerWidget {
+  const _RemovedAccounts({required this.accounts});
+  final List<WalletAccount> accounts;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final labels = ref.watch(walletLabelsProvider);
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        title: Text(
+          'Removed from this app (${accounts.length})',
+          style: context.text.bodyMedium,
+        ),
+        subtitle: Text(
+          'Floresta still watches these; they are not synced or shown above.',
+          style: context.text.bodySmall,
+        ),
+        children: [
+          for (final (i, a) in accounts.indexed)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    WalletName.display(
+                      a,
+                      index: i,
+                      labels: labels,
+                      scriptLabel: _scriptLabel(a.external.scriptType),
+                    ),
+                    style: context.text.bodyMedium,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () =>
+                      ref.read(walletLabelsProvider.notifier).restore(a.id),
+                  child: const Text('Show again'),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ImportDescriptorDialog extends ConsumerStatefulWidget {
-  const _ImportDescriptorDialog();
+  const _ImportDescriptorDialog({required this.suggestedName});
+
+  /// Pre-filled so adding stays one step; the user can type over it.
+  final String suggestedName;
 
   @override
   ConsumerState<_ImportDescriptorDialog> createState() =>
@@ -300,23 +505,34 @@ class _ImportDescriptorDialog extends ConsumerStatefulWidget {
 class _ImportDescriptorDialogState
     extends ConsumerState<_ImportDescriptorDialog> {
   final _controller = TextEditingController();
+  late final _name = TextEditingController(text: widget.suggestedName);
   Failure? _failure;
+  String? _nameError;
   bool _busy = false;
 
   @override
   void dispose() {
     _controller.dispose();
+    _name.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
+    // The name first: a key pasted there must not reach the node either.
+    final name = WalletName.parse(_name.text);
+    if (name case Left(:final value)) {
+      if (value is SecretMaterialRejectedFailure) _name.clear();
+      setState(() => _nameError = value.message);
+      return;
+    }
     setState(() {
       _busy = true;
       _failure = null;
+      _nameError = null;
     });
     final result = await ref
         .read(walletDescriptorsProvider.notifier)
-        .importDescriptor(_controller.text);
+        .importDescriptor(_controller.text, name: _name.text);
     if (!mounted) return;
     result.fold((f) {
       // Never keep pasted secrets in memory or on screen.
@@ -344,6 +560,22 @@ class _ImportDescriptorDialogState
               'Floresta tracks the first 100 addresses of each keychain.',
             ),
             const SizedBox(height: 14),
+            TextField(
+              controller: _name,
+              maxLength: WalletName.maxLength,
+              // Counter only: cutting a pasted key short would let a piece of it
+              // past the checks. WalletName refuses names that are too long.
+              maxLengthEnforcement: MaxLengthEnforcement.none,
+              decoration: InputDecoration(
+                labelText: 'Name',
+                helperText: 'Only on this computer, e.g. "Savings".',
+                errorText: _nameError,
+              ),
+              onChanged: (_) {
+                if (_nameError != null) setState(() => _nameError = null);
+              },
+            ),
+            const SizedBox(height: 8),
             TextField(
               controller: _controller,
               autofocus: true,
@@ -379,11 +611,13 @@ class _AccountPicker extends StatelessWidget {
   const _AccountPicker({
     required this.accounts,
     required this.selected,
+    required this.labels,
     required this.onChanged,
   });
 
   final List<WalletAccount> accounts;
   final WalletAccount selected;
+  final Map<String, WalletLabel> labels;
   final ValueChanged<WalletAccount> onChanged;
 
   @override
@@ -397,7 +631,12 @@ class _AccountPicker extends StatelessWidget {
             DropdownMenuItem(
               value: a.id,
               child: Text(
-                'Wallet ${i + 1} · ${_scriptLabel(a.external.scriptType)}',
+                WalletName.display(
+                  a,
+                  index: i,
+                  labels: labels,
+                  scriptLabel: _scriptLabel(a.external.scriptType),
+                ),
               ),
             ),
         ],
@@ -560,13 +799,14 @@ class _SourcesPanel extends ConsumerWidget {
             ],
           ),
         ),
-        _ when value != null && value.knownEmpty => const EmptyState(
-          icon: Icons.account_balance_wallet_outlined,
-          title: 'No wallets yet',
-          message:
-              'Add a descriptor exported from your wallet to start tracking '
-              'its balance and transactions.',
-        ),
+        _ when value != null && value.knownEmpty && overview.removed.isEmpty =>
+          const EmptyState(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'No wallets yet',
+            message:
+                'Add a descriptor exported from your wallet to start tracking '
+                'its balance and transactions.',
+          ),
         _ when value == null && apiUp => const Padding(
           padding: EdgeInsets.all(16),
           child: Center(child: CircularProgressIndicator()),
@@ -582,10 +822,14 @@ class _SourcesPanel extends ConsumerWidget {
               style: context.text.bodySmall,
             ),
             const SizedBox(height: 8),
-            for (final a in watched.accounts) ...[
+            for (final (i, a) in watched.accounts.indexed) ...[
+              _AccountHeader(account: a, index: i),
               _DescriptorRow(a.external.value),
               _DescriptorRow(a.internal.value),
+              const SizedBox(height: 8),
             ],
+            if (overview.removed.isNotEmpty)
+              _RemovedAccounts(accounts: overview.removed),
             if (watched.receiveOnly.isNotEmpty) ...[
               const SizedBox(height: 12),
               const Notice(
