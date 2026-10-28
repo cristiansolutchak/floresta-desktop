@@ -37,7 +37,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-22.04, windows-latest]
+        # windows-2022: Flutter 3.35.5 knows only Visual Studio 2022 (major 17)
+        # and asks CMake for "Visual Studio 16 2019" on any other version, so
+        # an image with a newer Visual Studio fails to generate build files.
+        os: [macos-latest, ubuntu-22.04, windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

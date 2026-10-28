@@ -106,7 +106,9 @@ jobs:
   windows:
     name: Windows x64
     needs: inputs
-    runs-on: windows-2025
+    # Visual Studio 2022, the toolchain the Windows build was written for
+    # (tool/windows/build_florestad_artifact.ps1).
+    runs-on: windows-2022
     timeout-minutes: 180
     env:
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg-cache
