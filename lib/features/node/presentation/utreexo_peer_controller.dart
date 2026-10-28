@@ -101,17 +101,52 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
       now: DateTime.now(),
       lastAttempt: state.lastAttempt,
     );
+    final inSelection = _inSelection(status);
+    final forkDrop = _forkPeers(status, ready, inSelection);
     _maybeDrop(status, ready);
-    _maybeDropForkPeers(status, ready);
-    _maybeRestart(status);
+    _maybeDropForkPeers(status, forkDrop);
+    _maybeRestart(status, inSelection, blockingPeers: forkDrop.length);
     if (!seek || _inFlight) return;
-    unawaited(_seek(status, network));
+    unawaited(_seek(status, network, inSelection: inSelection));
+  }
+
+  /// The process the baseline belongs to, and its validated height when
+  /// the app first saw it (the fallback when its output is not available).
+  int? _baselinePid;
+  int? _validatedAtStart;
+
+  bool _inSelection(NodeStatus status) {
+    final chain = status.chain;
+    if (chain == null) return false;
+    final pid = switch (status.process) {
+      ProcessRunning(:final pid) || ProcessAdopted(:final pid) => pid,
+      _ => null,
+    };
+    if (pid != _baselinePid) {
+      _baselinePid = pid;
+      _validatedAtStart = pid == null ? null : chain.validatedHeight;
+    }
+    // Only a process this app started has its output in the buffer.
+    final lines = status.process is ProcessRunning
+        ? [for (final l in ref.read(nodeLogsProvider)) l.text]
+        : const <String>[];
+    return inChainSelection(
+      logged: selectionPhaseFromLogs(lines),
+      validatedHeight: chain.validatedHeight,
+      validatedAtStart: _validatedAtStart,
+      headerHeight: chain.headerHeight,
+      peerTip: ref.read(nodeReadinessProvider).peerTip,
+    );
   }
 
   bool _restarting = false;
   final _stuck = StuckSelectionTracker();
 
-  void _maybeRestart(NodeStatus status) {
+  void _maybeRestart(
+    NodeStatus status,
+    bool inSelection, {
+    required int blockingPeers,
+  }) {
     final chain = status.chain;
     if (chain == null || _restarting) return;
     final now = DateTime.now();
@@ -122,10 +157,11 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
           status.api == ApiReachability.reachable &&
           !status.isExternallyManaged,
       snapshotHeight: readiness.snapshotHeight,
-      validatedHeight: chain.validatedHeight,
+      inSelection: inSelection,
       headerHeight: chain.headerHeight,
       peerTip: readiness.peerTip,
       now: now,
+      blockingPeers: blockingPeers,
     );
     if (!restart) return;
     _restarting = true;
@@ -141,30 +177,41 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
 
   DateTime? _lastForkDrop;
 
-  void _maybeDropForkPeers(NodeStatus status, List<Peer> ready) {
+  /// Peers holding chain selection up (on another chain, or a utreexod that
+  /// is behind and ignores `getheaders`).
+  List<String> _forkPeers(
+    NodeStatus status,
+    List<Peer> ready,
+    bool inSelection,
+  ) {
     final chain = status.chain;
-    if (chain == null || status.isExternallyManaged) return;
-    final now = DateTime.now();
-    if (_lastForkDrop case final last?
-        when now.difference(last).inSeconds < 60) {
-      return;
-    }
+    if (chain == null || status.isExternallyManaged) return const [];
     final readiness = ref.read(nodeReadinessProvider);
-    final drop = forkPeersToDrop(
+    return forkPeersToDrop(
       peers: [
         for (final p in ready) (address: p.address, height: p.initialHeight),
       ],
       consensusTip: readiness.peerTip,
       headerHeight: chain.headerHeight,
-      validatedHeight: chain.validatedHeight,
+      inSelection: inSelection,
       snapshotHeight: readiness.snapshotHeight,
     );
+  }
+
+  void _maybeDropForkPeers(NodeStatus status, List<String> drop) {
+    final now = DateTime.now();
+    if (_lastForkDrop case final last?
+        when now.difference(last).inSeconds < 60) {
+      return;
+    }
     if (drop.isEmpty) return;
     _lastForkDrop = now;
     final rpc = ref.read(nodeRpcRepositoryProvider);
+    final ours = state.added.toSet();
     unawaited(() async {
       for (final a in drop) {
-        await rpc.disconnectNode(a);
+        // One the app added would be reconnected at once otherwise.
+        await dropPeer(rpc, a, addedByApp: ours.contains(a));
       }
       if (ref.mounted) {
         state = state.copyWith(
@@ -208,7 +255,11 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
     }());
   }
 
-  Future<void> _seek(NodeStatus status, BitcoinNetwork network) async {
+  Future<void> _seek(
+    NodeStatus status,
+    BitcoinNetwork network, {
+    required bool inSelection,
+  }) async {
     _inFlight = true;
     final started = DateTime.now();
     state = state.copyWith(lastAttempt: started);
@@ -218,6 +269,8 @@ class UtreexoPeerController extends Notifier<UtreexoPeerSearch> {
           .run(
             network,
             validatedHeight: status.chain?.validatedHeight ?? 0,
+            inSelection: inSelection,
+            consensusTip: ref.read(nodeReadinessProvider).peerTip,
             alreadyConnected: {
               for (final p in status.peers ?? const []) p.address,
             },

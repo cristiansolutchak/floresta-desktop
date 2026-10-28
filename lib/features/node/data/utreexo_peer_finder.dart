@@ -20,6 +20,21 @@ Future<List<String>> resolveHost(String host) async {
   }
 }
 
+/// Disconnects [address] so that it stays away. A peer the app added with
+/// `addnode add` is one florestad reconnects within seconds (seen on regtest,
+/// 2026-10-28), which made dropping it useless; it is first taken off that
+/// list (`addnode remove`) and the app adds it again later, when it can help.
+Future<void> dropPeer(
+  NodeRpcRepository rpc,
+  String address, {
+  required bool addedByApp,
+}) async {
+  if (addedByApp) {
+    await rpc.addNode(address, command: AddNodeCommand.remove);
+  }
+  await rpc.disconnectNode(address);
+}
+
 /// Probes one address. Injected so tests need no network.
 typedef ProbeAddress =
     Future<PeerProbe> Function(String host, int port, BitcoinNetwork network);
@@ -42,6 +57,9 @@ class UtreexoPeerAttempt {
 /// - Utreexo bit, right network, height past the snapshot: `addnode add`
 ///   over v1 (v0.9.1 does not fall back to v1 on its own, and utreexod
 ///   nodes may not speak v2);
+/// - a Utreexo node far behind the tip is held back while the node selects
+///   its chain (it would stop selection from finishing), and added on a
+///   later round;
 /// - anything else is skipped, including nodes that do not answer v1. The
 ///   only v2-only Utreexo nodes seen so far (`/bridge:0.1.3/`) never
 ///   answered proof requests and stalled header download when added
@@ -81,6 +99,8 @@ class UtreexoPeerFinder {
   Future<List<UtreexoPeerAttempt>> run(
     BitcoinNetwork network, {
     int validatedHeight = 0,
+    bool inSelection = false,
+    int? consensusTip,
     Set<String> alreadyConnected = const {},
   }) async {
     final list = [
@@ -97,6 +117,8 @@ class UtreexoPeerFinder {
         probe,
         network: network,
         validatedHeight: validatedHeight,
+        inSelection: inSelection,
+        consensusTip: consensusTip,
       );
       String? action;
       if (verdict == UtreexoCandidateVerdict.usable) {

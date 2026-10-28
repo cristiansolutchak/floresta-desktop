@@ -1,11 +1,13 @@
 import 'dart:typed_data';
 
+import 'package:floresta_gui/core/errors/failure.dart';
 import 'package:floresta_gui/features/node/data/p2p_version_probe.dart';
 import 'package:floresta_gui/features/node/data/utreexo_peer_finder.dart';
 import 'package:floresta_gui/features/node/domain/node_rpc_repository.dart';
 import 'package:floresta_gui/features/node/domain/utreexo_peer.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
 
 import '../../helpers/fakes.dart';
 
@@ -39,6 +41,39 @@ void main() {
         );
       },
     );
+
+    test('a behind Utreexo node waits until chain selection is over', () {
+      // It ignores getheaders while behind, which holds selection forever.
+      expect(
+        judgeUtreexoCandidate(
+          _utreexod,
+          network: BitcoinNetwork.bitcoin,
+          validatedHeight: 940045,
+          inSelection: true,
+          consensusTip: 973511,
+        ),
+        UtreexoCandidateVerdict.behindDuringSelection,
+      );
+      expect(
+        judgeUtreexoCandidate(
+          _utreexod,
+          network: BitcoinNetwork.bitcoin,
+          validatedHeight: 940045,
+          consensusTip: 973511,
+        ),
+        UtreexoCandidateVerdict.usable,
+      );
+      // Close to the tip it answers getheaders, so it can be added anytime.
+      expect(
+        judgeUtreexoCandidate(
+          _utreexod,
+          network: BitcoinNetwork.bitcoin,
+          inSelection: true,
+          consensusTip: 970500,
+        ),
+        UtreexoCandidateVerdict.usable,
+      );
+    });
 
     test('a Utreexo node past the snapshot is usable', () {
       expect(
@@ -156,23 +191,103 @@ void main() {
     });
   });
 
+  group('chain selection phase', () {
+    // florestad v0.9.1 lines, from the mainnet debug.log of 2026-10-28.
+    const start =
+        '2026-10-28 03:21:07  INFO floresta_wire::p2p_wire::node::'
+        'chain_selector_ctx: Starting IBD, selecting the best chain';
+    const headers =
+        '2026-10-28 03:22:20  INFO floresta_wire::p2p_wire::node::'
+        'chain_selector_ctx: Downloading headers from peer=10 at height=973512';
+    const assumed =
+        '2026-10-28 03:08:21  INFO floresta_wire::p2p_wire::node::'
+        'chain_selector_ctx: Assuming chain with height=939969 tip=0000';
+    const sync =
+        '2026-10-28 03:08:27  INFO floresta_wire::p2p_wire::node::sync_ctx: '
+        'Starting sync node...';
+
+    test('from the node output: the last start decides', () {
+      expect(selectionPhaseFromLogs(const []), SelectionPhase.unknown);
+      expect(selectionPhaseFromLogs([headers]), SelectionPhase.unknown);
+      expect(
+        selectionPhaseFromLogs([start, headers]),
+        SelectionPhase.selecting,
+      );
+      expect(
+        selectionPhaseFromLogs([start, assumed, sync]),
+        SelectionPhase.done,
+      );
+      // A restart: the previous run's end does not count.
+      expect(
+        selectionPhaseFromLogs([start, sync, start, headers]),
+        SelectionPhase.selecting,
+      );
+      expect(
+        selectionPhaseFromLogs([
+          start,
+          '… INFO floresta_wire::p2p_wire::node::running_ctx: '
+              'Catching up with the network...',
+        ]),
+        SelectionPhase.done,
+      );
+    });
+
+    bool fallback({
+      int validated = 940045,
+      int? atStart = 940045,
+      int headers = 973512,
+      int? tip = 973511,
+    }) => inChainSelection(
+      logged: SelectionPhase.unknown,
+      validatedHeight: validated,
+      validatedAtStart: atStart,
+      headerHeight: headers,
+      peerTip: tip,
+    );
+
+    test('without output: headers in, nothing validated since start', () {
+      // The observed case: an earlier run had validated 940 045.
+      expect(fallback(), isTrue);
+      expect(fallback(validated: 940046), isFalse); // validation resumed
+      expect(fallback(headers: 960000), isFalse); // headers still coming
+      expect(fallback(atStart: null), isFalse); // no process seen
+      expect(fallback(tip: null), isFalse);
+      // A synced node restarted has nothing to validate: not "stuck".
+      expect(fallback(validated: 973510, atStart: 973510), isFalse);
+    });
+
+    test('the node output wins over the fallback', () {
+      bool logged(SelectionPhase p) => inChainSelection(
+        logged: p,
+        validatedHeight: 940046,
+        validatedAtStart: 940045,
+        headerHeight: 973512,
+        peerTip: 973511,
+      );
+      expect(logged(SelectionPhase.selecting), isTrue);
+      expect(logged(SelectionPhase.done), isFalse);
+    });
+  });
+
   group('StuckSelectionTracker (SYNC-09)', () {
     final t0 = DateTime(2026, 10, 25, 10, 39);
     bool sample(
       StuckSelectionTracker t,
       Duration at, {
-      int validated = 0,
+      bool selecting = true,
       int headers = 973075,
       int? tip = 973075,
       bool own = true,
       int snapshot = 939969,
+      int blocking = 0,
     }) => t.sample(
       ownNode: own,
       snapshotHeight: snapshot,
-      validatedHeight: validated,
+      inSelection: selecting,
       headerHeight: headers,
       peerTip: tip,
       now: t0.add(at),
+      blockingPeers: blocking,
     );
 
     test('restarts after 5 min with all headers and nothing validated, '
@@ -190,17 +305,24 @@ void main() {
       expect(t.restarts, hasLength(1));
     });
 
-    test('never while downloading headers or once validation runs', () {
+    test('never while downloading headers or once selection is over', () {
       final t = StuckSelectionTracker();
       expect(sample(t, Duration.zero, headers: 600000), isFalse);
       expect(sample(t, const Duration(minutes: 10), headers: 600000), isFalse);
       expect(sample(t, const Duration(minutes: 11)), isFalse); // window starts
-      expect(
-        sample(t, const Duration(minutes: 20), validated: 939970),
-        isFalse,
-      );
+      expect(sample(t, const Duration(minutes: 20), selecting: false), isFalse);
       expect(sample(t, const Duration(minutes: 30), own: false), isFalse);
       expect(sample(t, const Duration(minutes: 40), snapshot: 0), isFalse);
+    });
+
+    test('drops come first: no restart while a blocking peer is there', () {
+      final t = StuckSelectionTracker();
+      expect(sample(t, Duration.zero), isFalse);
+      // The app drops the behind utreexod at 4 min: the window starts over.
+      expect(sample(t, const Duration(minutes: 4), blocking: 1), isFalse);
+      expect(sample(t, const Duration(minutes: 6)), isFalse);
+      // Still stuck 5 min after the drop, with nobody left to drop: restart.
+      expect(sample(t, const Duration(minutes: 9)), isTrue);
     });
 
     test('at most 3 restarts, 15 minutes apart', () {
@@ -223,12 +345,12 @@ void main() {
       (address: '176.132.253.23:8333', height: 978945),
       (address: '62.99.98.60:8333', height: 961639),
     ];
-    List<String> drop({int headers = 973087, int validated = 0}) =>
+    List<String> drop({int headers = 973087, bool selecting = true}) =>
         forkPeersToDrop(
           peers: peers,
           consensusTip: 973080,
           headerHeight: headers,
-          validatedHeight: validated,
+          inSelection: selecting,
           snapshotHeight: 939969,
         );
 
@@ -236,9 +358,29 @@ void main() {
       expect(drop(), ['176.132.253.23:8333', '62.99.98.60:8333']);
     });
 
-    test('leaves peers alone while headers download or after validation', () {
+    test('leaves peers alone while headers download or after selection', () {
       expect(drop(headers: 600000), isEmpty);
-      expect(drop(validated: 939969), isEmpty);
+      expect(drop(selecting: false), isEmpty);
+    });
+
+    test('drops a behind utreexod in selection, after blocks were validated '
+        '(mainnet 2026-10-28)', () {
+      // Validated 940 045 in an earlier run; after the restart the
+      // utreexod at 970 486 ignored getheaders and selection never ended.
+      expect(
+        forkPeersToDrop(
+          peers: [
+            for (var i = 0; i < 9; i++)
+              (address: 'core$i:8333', height: 973511),
+            (address: '161.97.178.61:8333', height: 970486),
+          ],
+          consensusTip: 973511,
+          headerHeight: 973512,
+          inSelection: true,
+          snapshotHeight: 939969,
+        ),
+        ['161.97.178.61:8333'],
+      );
     });
   });
 
@@ -334,6 +476,48 @@ void main() {
       },
     );
 
+    test(
+      'holds a behind utreexod back during selection, adds it after',
+      () async {
+        final rpc = FakeNodeRpcRepository();
+        final finder = UtreexoPeerFinder(
+          rpc: rpc,
+          resolve: (_) async => const [],
+          probe: (_, _, _) async => _utreexod,
+        );
+        final held = await finder.run(
+          BitcoinNetwork.bitcoin,
+          validatedHeight: 940045,
+          inSelection: true,
+          consensusTip: 973511,
+        );
+        expect(held.single.action, isNull);
+        expect(rpc.addNodeCalls, isEmpty);
+
+        final later = await finder.run(
+          BitcoinNetwork.bitcoin,
+          validatedHeight: 940045,
+          consensusTip: 973511,
+        );
+        expect(later.single.action, 'add');
+      },
+    );
+
+    test(
+      'a peer the app added is taken off the reconnect list first',
+      () async {
+        final calls = <String>[];
+        final rpc = _RecordingRpc(calls);
+        await dropPeer(rpc, '161.97.178.61:8333', addedByApp: true);
+        await dropPeer(rpc, '62.99.98.60:8333', addedByApp: false);
+        expect(calls, [
+          'remove 161.97.178.61:8333',
+          'disconnect 161.97.178.61:8333',
+          'disconnect 62.99.98.60:8333',
+        ]);
+      },
+    );
+
     test('does not re-add peers the node already has', () async {
       final rpc = FakeNodeRpcRepository();
       final finder = UtreexoPeerFinder(
@@ -349,4 +533,26 @@ void main() {
       expect(rpc.addNodeCalls, isEmpty);
     });
   });
+}
+
+/// Records the order of addnode/disconnectnode calls.
+class _RecordingRpc extends FakeNodeRpcRepository {
+  _RecordingRpc(this.calls);
+  final List<String> calls;
+
+  @override
+  Future<Either<Failure, Unit>> addNode(
+    String address, {
+    required AddNodeCommand command,
+    bool v2transport = false,
+  }) async {
+    calls.add('${command.name} $address');
+    return const Right(unit);
+  }
+
+  @override
+  Future<Either<Failure, Unit>> disconnectNode(String address) async {
+    calls.add('disconnect $address');
+    return const Right(unit);
+  }
 }

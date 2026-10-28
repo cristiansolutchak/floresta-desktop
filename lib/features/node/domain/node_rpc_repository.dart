@@ -35,4 +35,8 @@ abstract interface class NodeRpcRepository {
   Future<Either<Failure, Unit>> disconnectNode(String address);
 }
 
-enum AddNodeCommand { add, onetry }
+/// `addnode` commands (florestad v0.9.1 `json_rpc/network.rs` `add_node`):
+/// `add` makes a "manually added" peer that florestad reconnects whenever it
+/// drops; `remove` takes it off that list without disconnecting it
+/// (`peer_man.rs` `handle_addnode_remove_peer`); `onetry` connects once.
+enum AddNodeCommand { add, remove, onetry }

@@ -60,9 +60,21 @@ UtreexoCandidateVerdict judgeUtreexoCandidate(
   required BitcoinNetwork network,
   int validatedHeight = 0,
   int margin = 144,
+  bool inSelection = false,
+  int? consensusTip,
 }) {
   if (!probe.answered) return UtreexoCandidateVerdict.unreachable;
   if (!probe.servesUtreexo) return UtreexoCandidateVerdict.notUtreexo;
+  // While florestad selects the chain it waits for every peer to answer
+  // `getheaders`; a utreexod that is behind ignores those (it only answers
+  // once in sync, utreexod v0.5.2 `server.go` `OnGetHeaders`), so adding
+  // one then keeps the node there (docs/audit/sync-selection-after-restart.md).
+  // Added once selection is over, it serves the proofs as before.
+  if (inSelection &&
+      consensusTip != null &&
+      probe.height + margin < consensusTip) {
+    return UtreexoCandidateVerdict.behindDuringSelection;
+  }
   final needed = [network.assumeUtreexoHeight, validatedHeight].reduce(max);
   if (probe.height <= needed + margin) {
     return UtreexoCandidateVerdict.tooFarBehind;
@@ -70,7 +82,68 @@ UtreexoCandidateVerdict judgeUtreexoCandidate(
   return UtreexoCandidateVerdict.usable;
 }
 
-enum UtreexoCandidateVerdict { usable, notUtreexo, tooFarBehind, unreachable }
+enum UtreexoCandidateVerdict {
+  usable,
+  notUtreexo,
+  tooFarBehind,
+
+  /// Usable later: behind the tip while the node selects its chain.
+  behindDuringSelection,
+  unreachable,
+}
+
+/// Where florestad is in its start-up chain selection, read from its own
+/// output. Every start runs the selector (`running_ctx.rs` `run`), which logs
+/// [selectionStartLine]; when it returns, the node logs one of
+/// [selectionEndLines] (backfill, catch-up, sync node; v0.9.1, the same
+/// strings on master `3a47993`).
+enum SelectionPhase { selecting, done, unknown }
+
+const selectionStartLine = 'Starting IBD, selecting the best chain';
+const selectionEndLines = [
+  'Starting backfill task...',
+  'Catching up with the network...',
+  'Starting sync node...',
+];
+
+/// The phase from daemon output, oldest line first. [SelectionPhase.unknown]
+/// when the start line is not in [lines] (an adopted node's output goes to
+/// debug.log only, or the buffer dropped it).
+SelectionPhase selectionPhaseFromLogs(List<String> lines) {
+  for (var i = lines.length - 1; i >= 0; i--) {
+    final l = lines[i];
+    if (selectionEndLines.any(l.contains)) return SelectionPhase.done;
+    if (l.contains(selectionStartLine)) return SelectionPhase.selecting;
+  }
+  return SelectionPhase.unknown;
+}
+
+/// Whether florestad is selecting its chain now. The node's own output
+/// decides when the app has it; otherwise: all headers in, nothing
+/// validated since the app first saw this process ([validatedAtStart]),
+/// and not simply synced.
+///
+/// The rules that unblock selection used to test "validated == 0" instead.
+/// That is only true before the first validated block: after a restart of a
+/// node that had validated some, selection could hang and nothing helped
+/// (mainnet 2026-10-28, docs/audit/sync-selection-after-restart.md).
+bool inChainSelection({
+  required SelectionPhase logged,
+  required int validatedHeight,
+  required int? validatedAtStart,
+  required int headerHeight,
+  required int? peerTip,
+  int tolerance = 6,
+}) => switch (logged) {
+  SelectionPhase.selecting => true,
+  SelectionPhase.done => false,
+  SelectionPhase.unknown =>
+    validatedAtStart != null &&
+        validatedHeight <= validatedAtStart &&
+        peerTip != null &&
+        headerHeight + tolerance >= peerTip &&
+        validatedHeight + tolerance < headerHeight,
+};
 
 /// DNS seeds that list Utreexo nodes, as upstream Floresta master uses them
 /// (`floresta-chain` `chainparams.rs` `get_chain_dns_seeds` @ 3a47993,
@@ -167,7 +240,7 @@ List<String> stalledUtreexoPeersToDrop({
 /// snapshot in 34 s.
 ///
 /// Tracks how long the node has had all headers (within [tolerance] of the
-/// peers' tip, past the snapshot) with nothing validated. New headers keep
+/// peers' tip, past the snapshot) while still selecting its chain. New headers keep
 /// arriving while it is stuck, so "time since the last height change" is
 /// not the right measure (the first version of this rule used it and never
 /// fired).
@@ -189,23 +262,34 @@ class StuckSelectionTracker {
 
   /// Feeds one status sample; true when the node should be restarted now
   /// (the restart is then recorded).
+  ///
+  /// [inSelection] comes from [inChainSelection]. [blockingPeers] is how many
+  /// peers the app is about to drop for holding selection up
+  /// ([forkPeersToDrop]): dropping them is tried first, so the 5-minute
+  /// window starts over after each drop and a restart only comes when
+  /// selection is still stuck with no one left to drop.
   bool sample({
     required bool ownNode,
     required int snapshotHeight,
-    required int validatedHeight,
+    required bool inSelection,
     required int headerHeight,
     required int? peerTip,
     required DateTime now,
+    int blockingPeers = 0,
   }) {
     final waiting =
         ownNode &&
         snapshotHeight > 0 &&
-        validatedHeight == 0 &&
+        inSelection &&
         headerHeight > snapshotHeight &&
         peerTip != null &&
         headerHeight + tolerance >= peerTip;
     if (!waiting) {
       _headersCompleteSince = null;
+      return false;
+    }
+    if (blockingPeers > 0) {
+      _headersCompleteSince = now;
       return false;
     }
     final since = _headersCompleteSince ??= now;
@@ -232,20 +316,22 @@ class StuckSelectionTracker {
 /// (11 460 *below*) did the same, and disconnecting it took 5 s.
 ///
 /// While the node has all headers ([headerHeight] within [tolerance] of
-/// [consensusTip]) and has validated nothing, returns the peers whose
-/// reported height is more than [awayBy] blocks from the consensus, in
-/// either direction. A same-chain peer that is merely behind does not help
-/// header selection either, and may reconnect later.
+/// [consensusTip]) and is selecting its chain ([inSelection], see
+/// [inChainSelection]), returns the peers whose reported height is more
+/// than [awayBy] blocks from the consensus, in either direction. That
+/// includes a utreexod that is behind: it ignores `getheaders` until it is
+/// in sync, so it holds selection as surely as a fork does. A peer dropped
+/// here may reconnect later, once selection is over.
 List<String> forkPeersToDrop({
   required List<({String address, int height})> peers,
   required int? consensusTip,
   required int headerHeight,
-  required int validatedHeight,
+  required bool inSelection,
   required int snapshotHeight,
   int tolerance = 6,
   int awayBy = 144,
 }) {
-  if (consensusTip == null || validatedHeight != 0 || snapshotHeight == 0) {
+  if (consensusTip == null || !inSelection || snapshotHeight == 0) {
     return const [];
   }
   if (headerHeight <= snapshotHeight) return const [];

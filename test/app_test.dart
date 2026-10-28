@@ -542,6 +542,68 @@ void main() {
     );
   });
 
+  testWidgets('after a restart past the snapshot, a behind utreexod is '
+      'dropped and not re-added while the node selects its chain '
+      '(mainnet 2026-10-28)', (tester) async {
+    Peer peer(int id, String address, int height, List<String> services) =>
+        Peer(
+          id: id,
+          address: address,
+          userAgent: '/Satoshi:31.1.0/',
+          inbound: false,
+          kind: 'regular',
+          state: 'Ready',
+          transport: 'V2',
+          initialHeight: height,
+          services: services,
+        );
+    final h = _Harness()
+      ..probeResult = const PeerProbe(
+        protocolVersion: 70016,
+        services: 0x340d,
+        userAgent: '/btcwire:0.5.0/utreexod:0.5.2/',
+        height: 970486,
+      )
+      ..rpc.peers = [
+        for (var i = 1; i <= 9; i++)
+          peer(i, '10.0.0.$i:8333', 973511, ['NETWORK', 'WITNESS']),
+        peer(12, '161.97.178.61:8333', 970486, ['NETWORK', '0x3000']),
+      ];
+    await h.pump(tester);
+    await tester.tap(find.text('Start node'));
+    await tester.pumpAndSettle();
+    final starts = h.manager.starts.length;
+    // An earlier run validated up to 940 045; this one is selecting.
+    h.manager.logs = [
+      LogLine(
+        DateTime(2026, 10, 28, 3, 21, 7),
+        LogSource.stdout,
+        '2026-10-28 03:21:07  INFO floresta_wire::p2p_wire::node::'
+        'chain_selector_ctx: Starting IBD, selecting the best chain',
+      ),
+    ];
+    h.rpc.info = Right(
+      RpcModels.blockchainInfo({
+        ...signetAfterSnapshot,
+        'chain': 'bitcoin',
+        'height': 973512,
+        'validated': 940045,
+      }),
+    );
+    h.manager.emit(ProcessRunning(9, DateTime(2026)));
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+
+    // Before, "validated == 0" kept these rules off here and the node
+    // waited forever for the utreexod's answer.
+    expect(h.rpc.disconnected, contains('161.97.178.61:8333'));
+    expect(
+      h.rpc.addNodeCalls.where((c) => c.$1 == '161.97.178.61:8333'),
+      isEmpty,
+    );
+    expect(h.manager.starts, hasLength(starts)); // dropped, not restarted
+  });
+
   testWidgets(
     'SYNC-05: silent Utreexo peers do not stop the search (observed)',
     (tester) async {
