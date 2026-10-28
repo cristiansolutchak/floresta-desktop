@@ -435,22 +435,24 @@ class _HeaderBar extends ConsumerWidget {
     final status = ref.watch(nodeControllerProvider);
     final readiness = ref.watch(nodeReadinessProvider);
     final progress = ref.watch(syncProgressProvider);
-    final network = ref.watch(
-      settingsControllerProvider.select((s) => s.network),
+    final electrum = ref.watch(
+      settingsControllerProvider.select((s) => s.electrumAddress),
     );
     final short = StatusLabels.short(readiness, status);
     final tone = DashToneColors.of(short.tone);
-    final endpoint = 'tcp://127.0.0.1:${network.electrumPort}';
+    // Where wallets reach the node's Electrum server (NodeSettings explains
+    // why it is the network default on loopback).
+    final endpoint = 'tcp://$electrum';
     final chain = status.chain;
 
-    // The title, status and figures form one group that takes the free
-    // space and shrinks with ellipses; the actions follow at their natural
-    // size, so they always end at the right edge. (Before, the figures were
-    // Flexible siblings of an Expanded title: Flutter split the free space
-    // between them and the unused share ended up after the last action.)
+    // Title on the left; status, figures and actions together on the right.
+    // The right group is the only flexible child and sizes to its content,
+    // so all free space sits between the two (spaceBetween) and the group
+    // always ends at the right edge. Inside it, only the figures can shrink
+    // (with ellipses), so a long status never pushes the actions off.
     Widget meta(String asset, String text) => Flexible(
       child: Padding(
-        padding: const EdgeInsets.only(left: 12),
+        padding: const EdgeInsets.only(left: 16),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -478,26 +480,37 @@ class _HeaderBar extends ConsumerWidget {
       ),
       child: LayoutBuilder(
         builder: (context, c) {
-          // Below these widths the figures would only show as ellipses.
-          final showHeight = c.maxWidth >= 820;
-          final showBehind = c.maxWidth >= 940;
+          // Below these widths the figures would show only as ellipses.
+          final showHeight = c.maxWidth >= 760;
+          final showBehind = c.maxWidth >= 900;
+          // Narrow windows: the actions become icons (with tooltips, so they
+          // stay labelled) rather than pushing past the edge.
+          final iconActions = c.maxWidth < 760;
+          Future<void> copyEndpoint() async {
+            await Clipboard.setData(ClipboardData(text: endpoint));
+            if (context.mounted) showMessage(context, 'Copied $endpoint');
+          }
+
           return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: c.maxWidth * 0.3),
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DashText.title(context),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Flexible(
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(
-                      child: Semantics(
-                        header: true,
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: DashText.title(context),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
                     DashTag(
                       short.label,
                       tone: tone,
@@ -522,39 +535,60 @@ class _HeaderBar extends ConsumerWidget {
                         'Behind by: ${p.tipIsEstimate ? '~' : ''}'
                         '${formatCompact(p.behind)}',
                       ),
+                    Container(
+                      width: 1,
+                      height: 32,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      color: t.border,
+                    ),
+                    if (iconActions) ...[
+                      IconButton(
+                        tooltip: 'Copy Endpoint: $endpoint',
+                        onPressed: copyEndpoint,
+                        icon: DashSvg(
+                          DashIcons.copy,
+                          size: 20,
+                          color: t.textSecondary,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Logs',
+                        onPressed: () => context.go('/logs'),
+                        icon: DashSvg(
+                          DashIcons.logs,
+                          size: 20,
+                          color: t.textSecondary,
+                        ),
+                      ),
+                    ] else ...[
+                      DashButton(
+                        'Copy Endpoint',
+                        height: 32,
+                        asset: DashIcons.copy,
+                        tooltip:
+                            'Copy the Electrum address for wallets: $endpoint',
+                        onPressed: copyEndpoint,
+                      ),
+                      const SizedBox(width: 8),
+                      DashButton(
+                        'Logs',
+                        height: 32,
+                        asset: DashIcons.logs,
+                        onPressed: () => context.go('/logs'),
+                      ),
+                    ],
+                    const SizedBox(width: 12),
+                    IconButton(
+                      tooltip: 'Settings',
+                      onPressed: () => context.go('/settings'),
+                      icon: DashSvg(
+                        DashIcons.gear,
+                        size: 24,
+                        color: t.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              Container(
-                width: 1,
-                height: 32,
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                color: t.border,
-              ),
-              DashButton(
-                'Copy Endpoint',
-                height: 32,
-                asset: DashIcons.copy,
-                tooltip: 'Copy the Electrum address for wallets: $endpoint',
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: endpoint));
-                  if (context.mounted) {
-                    showMessage(context, 'Copied $endpoint');
-                  }
-                },
-              ),
-              const SizedBox(width: 8),
-              DashButton(
-                'Logs',
-                height: 32,
-                asset: DashIcons.logs,
-                onPressed: () => context.go('/logs'),
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                tooltip: 'Settings',
-                onPressed: () => context.go('/settings'),
-                icon: DashSvg(DashIcons.gear, size: 24, color: t.textSecondary),
               ),
             ],
           );

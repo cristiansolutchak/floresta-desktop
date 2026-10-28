@@ -74,6 +74,17 @@ class NodeSettings extends Equatable {
 
   int get effectiveRpcPort => rpcPort ?? network.rpcPort;
 
+  /// The Electrum server's port. Always the network's default: the app
+  /// launches florestad without `--electrum-address`, so florestad listens
+  /// on its own default, `127.0.0.1:<network port>` (`florestad.rs` at
+  /// v0.9.1), and loopback only, by the security rules. Every screen reads
+  /// it here, so an override (planned for v0.0.2, for nodes that run
+  /// elsewhere on another port) changes one place.
+  int get electrumPort => network.electrumPort;
+
+  /// `127.0.0.1:<port>`, as wallets are told to connect.
+  String get electrumAddress => '127.0.0.1:$electrumPort';
+
   Uri get rpcEndpoint => Uri.parse('http://127.0.0.1:$effectiveRpcPort/');
 
   /// The directory florestad actually writes to, mirroring upstream

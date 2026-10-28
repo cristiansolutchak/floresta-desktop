@@ -933,7 +933,9 @@ class _ExternalWalletsPanel extends ConsumerWidget {
     final network = ref.watch(
       settingsControllerProvider.select((s) => s.network),
     );
-    final address = '127.0.0.1:${network.electrumPort}';
+    final address = ref.watch(
+      settingsControllerProvider.select((s) => s.electrumAddress),
+    );
     return Panel(
       title: 'Connect a wallet',
       child: Column(

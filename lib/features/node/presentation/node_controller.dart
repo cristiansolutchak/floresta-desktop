@@ -239,8 +239,10 @@ class NodeController extends Notifier<NodeStatus> {
       return;
     }
     _electrumCheckedAt = now;
-    final network = ref.read(settingsControllerProvider).network;
-    final result = await ref.read(electrumProbeProvider).check(network);
+    final settings = ref.read(settingsControllerProvider);
+    final result = await ref
+        .read(electrumProbeProvider)
+        .check(settings.network, port: settings.electrumPort);
     if (ref.mounted) state = state.copyWith(electrum: result);
   }
 

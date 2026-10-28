@@ -419,6 +419,47 @@ void main() {
     expect(find.text('View Peers'), findsOneWidget);
   });
 
+  testWidgets('header bar: title left, status and actions at the right edge', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(signetAfterSnapshot));
+    await h.pump(tester, network: 'signet', size: const Size(1600, 900));
+    Rect bar() => tester.getRect(
+      find
+          .ancestor(
+            of: find.byTooltip('Settings'),
+            matching: find.byType(LayoutBuilder),
+          )
+          .first,
+    );
+    final gear = tester.getRect(find.byTooltip('Settings'));
+    final title = tester.getRect(find.text('Overview').last);
+    final tag = tester.getRect(find.text('Syncing'));
+    final height = tester.getRect(find.text('Height: 327,843'));
+    // The last action ends at the bar's edge (the gap used to be after
+    // it), and the status group sits right, away from the title, in order:
+    // status, height, actions.
+    // (The 40 px button sits in a 48 px tap target, hence up to 4 px.)
+    expect(bar().right - gear.right, lessThanOrEqualTo(4));
+    expect(title.left - bar().left, lessThan(1));
+    // The free space is between the title and the status (more than the
+    // fixed 16 px spacer), and the right group is packed together.
+    expect(tag.left - title.right, greaterThan(32));
+    expect(height.left - tag.right, lessThan(48)); // gap + icon
+    expect(height.left, greaterThan(tag.right));
+    expect(find.text('Copy Endpoint'), findsOneWidget);
+
+    // The smallest window: icon actions, still labelled, still at the edge.
+    await h.pump(tester, network: 'signet', size: const Size(960, 640));
+    expect(find.text('Copy Endpoint'), findsNothing);
+    expect(find.byTooltip('Copy Endpoint: tcp://127.0.0.1:60001'), findsOne);
+    expect(
+      bar().right - tester.getRect(find.byTooltip('Settings')).right,
+      lessThanOrEqualTo(4),
+    );
+  });
+
   testWidgets('INS-12: resetting settings brings the wizard back', (
     tester,
   ) async {

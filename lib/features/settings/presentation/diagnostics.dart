@@ -36,7 +36,7 @@ final diagnosticsRowsProvider = Provider<List<(String, String)>>((ref) {
     ),
     ('Network', settings.network.label),
     ('RPC endpoint', settings.rpcEndpoint.toString()),
-    ('Electrum (TCP)', '127.0.0.1:${settings.network.electrumPort}'),
+    ('Electrum (TCP)', settings.electrumAddress),
     ('Data folder', dataDir),
     if (settings.logToFile)
       ('Log file', '$dataDir${platform.pathSeparator}debug.log'),

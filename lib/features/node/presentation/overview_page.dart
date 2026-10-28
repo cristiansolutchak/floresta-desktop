@@ -356,7 +356,7 @@ class _ServicesCard extends ConsumerWidget {
     final status = ref.watch(nodeControllerProvider);
     final settings = ref.watch(settingsControllerProvider);
     final up = status.api == ApiReachability.reachable;
-    final electrum = 'tcp://127.0.0.1:${settings.network.electrumPort}';
+    final electrum = 'tcp://${settings.electrumAddress}';
     final (eStatus, eTone) = switch (status.electrum) {
       ElectrumCheck.ok => ('Ready $electrum', DashTone.success),
       ElectrumCheck.unreachable => ('Not answering', DashTone.warning),

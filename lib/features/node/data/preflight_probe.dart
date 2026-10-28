@@ -42,14 +42,14 @@ class PreflightProbe {
     final existing = _closestExisting(Directory(dataDir));
     final (rpcFree, electrumFree, writable, free) = await (
       portIsFree(settings.effectiveRpcPort),
-      portIsFree(settings.network.electrumPort),
+      portIsFree(settings.electrumPort),
       existing == null ? Future.value(null) : canWrite(existing),
       existing == null ? Future.value(null) : freeBytes(existing.path),
     ).wait;
     return PreflightFacts(
       rpcPort: settings.effectiveRpcPort,
       rpcPortFree: rpcFree,
-      electrumPort: settings.network.electrumPort,
+      electrumPort: settings.electrumPort,
       electrumPortFree: electrumFree,
       dataDir: dataDir,
       dataDirWritable: writable,

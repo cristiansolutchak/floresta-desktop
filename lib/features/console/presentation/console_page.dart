@@ -19,13 +19,10 @@ final rpcConsoleRepositoryProvider = Provider<ConsoleRepository>(
 );
 
 final electrumConsoleRepositoryProvider = Provider<ConsoleRepository>((ref) {
-  final network = ref.watch(
-    settingsControllerProvider.select((s) => s.network),
+  final port = ref.watch(
+    settingsControllerProvider.select((s) => s.electrumPort),
   );
-  return ElectrumConsoleRepository(
-    host: '127.0.0.1',
-    port: network.electrumPort,
-  );
+  return ElectrumConsoleRepository(host: '127.0.0.1', port: port);
 });
 
 /// Figma "RPC Call Console" (1:17085) and "Electrum Console" (1:16524):

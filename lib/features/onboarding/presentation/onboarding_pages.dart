@@ -541,7 +541,7 @@ class _ServicesStep extends StatelessWidget {
         OptionCard(
           icon: Icons.cable_outlined,
           title: 'Electrum server',
-          trailingNote: '127.0.0.1:${draft.network.electrumPort}',
+          trailingNote: draft.electrumAddress,
           subtitle:
               'Lets Sparrow, Electrum and other wallets on this computer use '
               'your node instead of someone else\'s server.',
@@ -749,7 +749,7 @@ class _ReviewStep extends ConsumerWidget {
           title: 'Services',
           onEdit: () => onEdit(3),
           rows: [
-            ('Electrum server', '127.0.0.1:${network.electrumPort}', false),
+            ('Electrum server', draft.electrumAddress, false),
             (
               'Wallet history',
               draft.disableCompactFilters
