@@ -21,6 +21,7 @@ class NodeSettings extends Equatable {
     this.walletBirthdayYear,
     this.assumeUtreexo = true,
     this.backfill = true,
+    this.useExistingNode = false,
   });
 
   final bool onboardingComplete;
@@ -55,6 +56,12 @@ class NodeSettings extends Equatable {
   /// Re-check the history skipped by [assumeUtreexo] in the background
   /// (`--no-backfill` turns it off). Only meaningful with [assumeUtreexo].
   final bool backfill;
+
+  /// Connect to a florestad that runs elsewhere (Docker, a Nix service, a
+  /// terminal) on `127.0.0.1:[effectiveRpcPort]` instead of running one.
+  /// The app then never starts a node and needs no local executable; the
+  /// launch options above do not apply.
+  final bool useExistingNode;
 
   /// Height accepted on trust at startup, or 0 when nothing is assumed.
   int get snapshotHeight => assumeUtreexo ? network.assumeUtreexoHeight : 0;
@@ -131,6 +138,7 @@ class NodeSettings extends Equatable {
     Option<int>? walletBirthdayYear,
     bool? assumeUtreexo,
     bool? backfill,
+    bool? useExistingNode,
   }) {
     return NodeSettings(
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
@@ -148,6 +156,7 @@ class NodeSettings extends Equatable {
           : walletBirthdayYear.toNullable(),
       assumeUtreexo: assumeUtreexo ?? this.assumeUtreexo,
       backfill: backfill ?? this.backfill,
+      useExistingNode: useExistingNode ?? this.useExistingNode,
     );
   }
 
@@ -163,5 +172,6 @@ class NodeSettings extends Equatable {
     walletBirthdayYear,
     assumeUtreexo,
     backfill,
+    useExistingNode,
   ];
 }

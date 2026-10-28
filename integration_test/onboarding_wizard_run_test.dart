@@ -123,7 +123,7 @@ void main() {
       await waitFor(find.text('Welcome to Floresta'));
       await _screenshot('01-welcome', tester);
       await tap('Get started');
-      await waitFor(find.textContaining('Found florestad'));
+      await waitFor(find.textContaining('is ready to use'));
       await _screenshot('02-install', tester);
       await tap('Continue');
 

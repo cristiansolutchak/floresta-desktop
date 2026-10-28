@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/common.dart';
+import '../../installation/presentation/advanced_setup.dart';
 import '../../node/presentation/node_controller.dart';
 import '../../node/presentation/status_labels.dart';
 import '../domain/node_settings.dart';
@@ -42,6 +43,22 @@ class SettingsPage extends ConsumerWidget {
           title: 'Settings',
           subtitle: 'How Floresta is started and where it keeps data.',
         ),
+        if (settings.useExistingNode) ...[
+          Notice(
+            tone: Tone.info,
+            title: 'Using a node that runs elsewhere',
+            message:
+                'This app connects to the node at '
+                '127.0.0.1:${settings.effectiveRpcPort} and does not start '
+                'one, so the data folder and launch options below do not '
+                'apply to it.',
+            action: OutlinedButton(
+              onPressed: () => showAdvancedSetup(context),
+              child: const Text('Change…'),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         if (nodeActive) ...[
           const Notice(
             tone: Tone.warning,

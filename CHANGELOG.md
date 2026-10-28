@@ -12,7 +12,9 @@ Floresta GUI installs, configures, runs and monitors a [Floresta](https://github
   - each download's SHA-256 and size;
   - the binary's `--version`.
 
-  You can also point it at a `florestad` you built yourself.
+  You can also, from Advanced setup:
+  - point it at a `florestad` you built yourself (one in a Nix profile is found automatically);
+  - connect it to a node you already run, in Docker, as a Nix service or in a terminal. The app checks that Floresta answers on the expected network first, and warns when a Docker container exposes the RPC beyond this computer.
 - **Setup wizard:** network, data folder, Fast Start (assume-utreexo with background backfill) and services. Mainnet by default; test networks under Advanced.
 - **Runs the node as a child process:**
   - RPC bound to `127.0.0.1` only;

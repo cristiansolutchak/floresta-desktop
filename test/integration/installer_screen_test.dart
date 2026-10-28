@@ -150,7 +150,7 @@ void main() {
 
       await waitFor(find.text('Get started'));
       await tester.tap(find.text('Get started'));
-      await waitFor(find.text('Next: install Floresta'));
+      await waitFor(find.text('Floresta is not installed'));
       expect(find.text('DEVELOPMENT SOURCE'), findsOneWidget);
       expect(find.text('Continue'), findsNothing);
 
@@ -159,8 +159,10 @@ void main() {
       await tester.runAsync(() async {
         await tester.tap(find.text('Install Floresta'));
       });
-      await waitFor(find.text('Floresta installed'), seconds: 120);
-      await waitFor(find.text('Found florestad v${info['version']}'));
+      await waitFor(find.text('Floresta is installed'), seconds: 120);
+      await waitFor(
+        find.textContaining('Floresta v${info['version']} is ready to use'),
+      );
       expect(find.text('Continue'), findsOneWidget);
       expect(
         File(

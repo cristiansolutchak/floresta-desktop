@@ -139,9 +139,9 @@ void main() {
       _step('installing from the release source');
       final installStart = DateTime.now();
       await tap('Install Floresta');
-      await waitFor(find.text('Floresta installed'), 180);
+      await waitFor(find.text('Floresta is installed'), 180);
       _step('installed in ${DateTime.now().difference(installStart)}');
-      await waitFor(find.textContaining('Found florestad v0.9.1'));
+      await waitFor(find.textContaining('Floresta v0.9.1 is ready to use'));
       await _screenshot('02-installed', tester);
       final installed = await container.read(
         installationDetectionProvider.future,

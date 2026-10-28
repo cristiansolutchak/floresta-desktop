@@ -7,7 +7,8 @@ enum ExecutableSource {
   configured('Selected in settings'),
   managed('Installed by this app'),
   path('Found on PATH'),
-  wellKnown('Found in a standard install location');
+  wellKnown('Found in a standard install location'),
+  nix('Found in a Nix profile');
 
   const ExecutableSource(this.label);
   final String label;

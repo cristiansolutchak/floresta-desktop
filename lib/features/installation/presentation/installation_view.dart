@@ -2,6 +2,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/errors/failure.dart';
@@ -10,235 +11,363 @@ import '../../../core/providers.dart';
 import '../../../shared/widgets/common.dart';
 import '../../node/presentation/status_labels.dart' show formatBytes;
 import '../../settings/presentation/settings_controller.dart';
+import '../data/artifact_downloader.dart' show isLoopbackUrl;
 import '../domain/floresta_version.dart';
 import '../domain/installation.dart';
 import '../domain/installer.dart';
-import '../domain/next_action.dart';
-import '../data/artifact_downloader.dart' show isLoopbackUrl;
+import '../domain/setup_state.dart';
+import 'advanced_setup.dart';
 import 'install_controller.dart';
 import 'installation_providers.dart';
+import 'setup_state_provider.dart';
 
-/// Detection result, next action and install guidance. Shared by the
+/// Is Floresta on this computer, and what is the next step? One card driven
+/// by [setupStateProvider] (so no two parts of the screen can disagree),
+/// then the advanced and alternative ways in second place. Shared by the
 /// onboarding step and the Installation page.
 class InstallationView extends ConsumerWidget {
   const InstallationView({super.key, this.primaryAction});
 
-  /// Shown when Floresta is usable (e.g. "Continue" during onboarding).
+  /// Shown when Floresta is usable during onboarding ("Continue").
   final Widget? primaryAction;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final platform = ref.watch(hostPlatformProvider);
-    final detection = ref.watch(installationDetectionProvider);
-    final next = ref.watch(nextActionProvider);
-    final configured = ref.watch(
-      settingsControllerProvider.select((s) => s.executablePath),
-    );
-    final automatic = ref.watch(installerProvider) != null;
-
+    final state = ref.watch(setupStateProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _PlatformPanel(platform),
-        const SizedBox(height: 16),
-        Panel(
-          title: 'Floresta executable',
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (configured != null)
-                TextButton(
-                  onPressed: () => _setExecutable(context, ref, null),
-                  child: const Text('Use automatic detection'),
-                ),
-              const SizedBox(width: 4),
-              OutlinedButton(
-                onPressed: () => _chooseExecutable(context, ref, platform),
-                child: const Text('Choose file…'),
-              ),
-              const SizedBox(width: 4),
-              IconButton(
-                tooltip: 'Check again',
-                onPressed: detection.isLoading
-                    ? null
-                    : () => ref.invalidate(installationDetectionProvider),
-                icon: const Icon(Icons.refresh, size: 18),
-              ),
-            ],
-          ),
-          child: switch (detection) {
-            AsyncData(:final value) => _DetectionResult(value),
-            AsyncError(:final error) => Notice(
-              tone: Tone.danger,
-              title: 'Detection failed unexpectedly',
-              message: '$error',
+        _SetupCard(state, primaryAction: primaryAction),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            TextButton.icon(
+              onPressed: () => showAdvancedSetup(context),
+              icon: const Icon(Icons.tune, size: 18),
+              label: const Text('Advanced setup'),
             ),
-            _ => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Row(
-                children: [
-                  SizedBox.square(
-                    dimension: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  SizedBox(width: 12),
-                  Text('Looking for florestad…'),
-                ],
-              ),
+            TextButton.icon(
+              onPressed: () => showOtherWays(context),
+              icon: const Icon(Icons.help_outline, size: 18),
+              label: const Text('Other ways to connect'),
             ),
-          },
+          ],
         ),
-        const SizedBox(height: 16),
-        if (next.value case final action?)
-          _NextActionPanel(
-            action,
-            primaryAction: primaryAction,
-            automaticInstall: automatic,
-          ),
-        const SizedBox(height: 16),
-        if (automatic) ...[
-          const _InstallerPanel(),
-          const SizedBox(height: 16),
-          Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: EdgeInsets.zero,
-              title: Text(
-                'Other ways: build from source',
-                style: context.text.bodyMedium,
-              ),
-              children: [_BuildFromSourcePanel(platform)],
-            ),
-          ),
-        ] else
-          _BuildFromSourcePanel(platform),
       ],
     );
   }
-
-  Future<void> _chooseExecutable(
-    BuildContext context,
-    WidgetRef ref,
-    HostPlatform platform,
-  ) async {
-    final file = await openFile(confirmButtonText: 'Use this executable');
-    if (file == null || !context.mounted) return;
-    await _setExecutable(context, ref, file.path);
-  }
-
-  Future<void> _setExecutable(
-    BuildContext context,
-    WidgetRef ref,
-    String? path,
-  ) async {
-    final controller = ref.read(settingsControllerProvider.notifier);
-    final current = ref.read(settingsControllerProvider);
-    final result = await controller.update(
-      current.copyWith(executablePath: Option.fromNullable(path)),
-    );
-    if (!context.mounted) return;
-    result.fold((f) => showFailure(context, f), (_) {});
-  }
 }
 
-class _PlatformPanel extends StatelessWidget {
-  const _PlatformPanel(this.platform);
-  final HostPlatform platform;
+/// Points the app at [path] (null: back to automatic detection).
+Future<void> setExecutable(
+  BuildContext context,
+  WidgetRef ref,
+  String? path,
+) async {
+  final controller = ref.read(settingsControllerProvider.notifier);
+  final current = ref.read(settingsControllerProvider);
+  final result = await controller.update(
+    current.copyWith(executablePath: Option.fromNullable(path)),
+  );
+  if (!context.mounted) return;
+  result.fold((f) => showFailure(context, f), (_) {});
+}
+
+Future<void> chooseExecutable(BuildContext context, WidgetRef ref) async {
+  final file = await openFile(confirmButtonText: 'Use this florestad');
+  if (file == null || !context.mounted) return;
+  await setExecutable(context, ref, file.path);
+}
+
+class _SetupCard extends ConsumerWidget {
+  const _SetupCard(this.state, {this.primaryAction});
+  final SetupState state;
+  final Widget? primaryAction;
 
   @override
-  Widget build(BuildContext context) {
-    final (label, tone, detail) = switch (platform.upstreamSupport) {
-      UpstreamSupport.ciTested => (
-        'Tested upstream',
-        Tone.success,
-        'Floresta\'s continuous integration builds and tests on this '
-            'platform.',
+  Widget build(BuildContext context, WidgetRef ref) {
+    final configured = ref.watch(
+      settingsControllerProvider.select((s) => s.executablePath),
+    );
+    final platform = ref.watch(hostPlatformProvider);
+    final installer = ref.watch(installerProvider);
+    final supported = installer?.supports(platform) ?? false;
+    final install = ref.read(installControllerProvider.notifier);
+    final source = ref.watch(releaseSourceProvider);
+    final devSource = source != null && isLoopbackUrl(source.manifestUrl);
+    final rpcPort = ref.watch(
+      settingsControllerProvider.select((s) => s.effectiveRpcPort),
+    );
+
+    Widget goOverview() => FilledButton(
+      onPressed: () => context.go('/node'),
+      child: const Text('Go to Overview'),
+    );
+
+    final (Tone tone, IconData icon, String message) = switch (state) {
+      SetupChecking() => (
+        Tone.neutral,
+        Icons.search,
+        'Checking this computer for florestad…',
       ),
-      UpstreamSupport.untested => (
-        'Not tested upstream',
+      NotInstalled(automaticInstall: true) => (
+        Tone.info,
+        Icons.download_outlined,
+        'The app downloads the official Floresta release, checks its '
+            'signature and installs it for your user only. No administrator '
+            'password is needed, and existing data is never touched.',
+      ),
+      NotInstalled() => (
         Tone.warning,
-        'Floresta may build from source here, but upstream does not test '
-            'this platform.',
+        Icons.download_outlined,
+        'This build cannot install Floresta by itself. Use a florestad you '
+            'already have, or see the other ways to get one.',
       ),
-      UpstreamSupport.unsupported => (
-        'Unsupported',
+      Installing() => (
+        Tone.info,
+        Icons.download_outlined,
+        'Downloading and verifying the official release.',
+      ),
+      InstallFailedState(:final failure) => (
+        failure.cancelled ? Tone.info : Tone.warning,
+        failure.cancelled ? Icons.pause_circle_outline : Icons.error_outline,
+        [failure.reason, ?failure.recovery].join(' '),
+      ),
+      Unusable(:final failure) => (
         Tone.danger,
-        'There is no known way to run Floresta on this platform.',
+        Icons.error_outline,
+        [failure.message, ?failure.recovery].join(' '),
+      ),
+      ConfigurationRequired(:final installation) => (
+        Tone.success,
+        Icons.check_circle_outline,
+        'Floresta ${installation.version} is ready to use. Next, choose a '
+            'network and where to keep its data.',
+      ),
+      ReadyToStart(:final installation) => (
+        Tone.success,
+        Icons.check_circle_outline,
+        'Floresta ${installation.version} is installed and your node is set '
+            'up. Start it from Overview.',
+      ),
+      Running(:final installation) => (
+        Tone.success,
+        Icons.check_circle_outline,
+        'Version ${installation.version}. Sync progress and controls are on '
+            'Overview.',
+      ),
+      ExistingNode(:final answering) => (
+        answering ? Tone.success : Tone.warning,
+        Icons.lan_outlined,
+        answering
+            ? 'This app uses the node answering at 127.0.0.1:$rpcPort and '
+                  'runs none of its own.'
+            : 'Nothing answers at 127.0.0.1:$rpcPort. Start the node where '
+                  'it runs (Docker, Nix, a terminal); the app connects on '
+                  'its own.',
       ),
     };
+
+    final List<Widget> actions = switch (state) {
+      SetupChecking() => const [],
+      NotInstalled(automaticInstall: true) => [
+        FilledButton(
+          onPressed: supported ? install.start : null,
+          child: const Text('Install Floresta'),
+        ),
+      ],
+      NotInstalled() => [
+        FilledButton(
+          onPressed: () => chooseExecutable(context, ref),
+          child: const Text('Choose florestad…'),
+        ),
+      ],
+      Installing() => [
+        OutlinedButton(onPressed: install.cancel, child: const Text('Cancel')),
+      ],
+      InstallFailedState(:final failure, :final automaticInstall) => [
+        if (automaticInstall)
+          FilledButton(
+            onPressed: supported ? install.start : null,
+            child: Text(failure.cancelled ? 'Resume download' : 'Try again'),
+          ),
+      ],
+      Unusable() => [
+        FilledButton(
+          onPressed: () => chooseExecutable(context, ref),
+          child: const Text('Choose another file…'),
+        ),
+        if (configured != null)
+          OutlinedButton(
+            onPressed: () => setExecutable(context, ref, null),
+            child: const Text('Use automatic detection'),
+          ),
+      ],
+      ConfigurationRequired() => [
+        primaryAction ??
+            FilledButton(
+              onPressed: () => context.go('/onboarding/setup'),
+              child: const Text('Set up your node'),
+            ),
+      ],
+      ReadyToStart() || Running() => [primaryAction ?? goOverview()],
+      ExistingNode() => [primaryAction ?? goOverview()],
+    };
+
+    final color = tone.color(context);
     return Panel(
-      title: 'This computer',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          KeyValueRow('Operating system', platform.os.label),
-          KeyValueRow('Architecture', platform.arch.label),
-          const SizedBox(height: 8),
-          StatusIndicator(label: label, caption: detail, tone: tone),
-        ],
-      ),
-    );
-  }
-}
-
-class _DetectionResult extends StatelessWidget {
-  const _DetectionResult(this.result);
-  final Either<Failure, FlorestaInstallation> result;
-
-  @override
-  Widget build(BuildContext context) {
-    return result.match(
-      (failure) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Notice(
-            tone: failure is ExecutableNotFoundFailure
-                ? Tone.warning
-                : Tone.danger,
-            title: failure.title,
-            message: [failure.message, ?failure.recovery].join('\n'),
-          ),
-          if (failure case ExecutableNotFoundFailure(:final searchedPaths))
-            Theme(
-              data: Theme.of(
-                context,
-              ).copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                title: Text(
-                  'Searched locations',
-                  style: context.text.bodySmall,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(
+                    ShellTitleScope.active(context) ? 0 : 6,
+                  ),
                 ),
-                children: [
-                  for (final p in searchedPaths)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: SelectableText(
-                        p,
-                        style: monoStyle(context, size: 11.5),
-                      ),
+                child: state is SetupChecking
+                    ? Padding(
+                        padding: const EdgeInsets.all(11),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: color,
+                        ),
+                      )
+                    : Icon(icon, size: 22, color: color),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Semantics(
+                            header: true,
+                            child: Text(
+                              state.label,
+                              style: context.text.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (devSource &&
+                            (state is NotInstalled ||
+                                state is Installing ||
+                                state is InstallFailedState)) ...[
+                          const SizedBox(width: 8),
+                          const _Badge('DEVELOPMENT SOURCE'),
+                        ],
+                      ],
                     ),
-                ],
+                    const SizedBox(height: 4),
+                    SelectableText(message, style: context.text.bodyMedium),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (state case NotInstalled(automaticInstall: true) when !supported)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Notice(
+                tone: Tone.warning,
+                title: 'Not available for ${platform.label}',
+                message:
+                    'There is no Floresta build for this computer yet. See the '
+                    'other ways to connect.',
               ),
             ),
+          if (state case ConfigurationRequired(
+            :final installation,
+          ) when !installation.version.isSupported)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Notice(
+                tone: Tone.warning,
+                title: 'Update recommended',
+                message:
+                    'Floresta ${installation.version} is older than '
+                    '${FlorestaVersion.minimumSupported}, the oldest version '
+                    'this app was written for. Some screens may not work.',
+              ),
+            ),
+          if (state case Installing(:final progress?)) ...[
+            const SizedBox(height: 20),
+            _StageSteps(progress),
+            const SizedBox(height: 12),
+            _ProgressLine(progress),
+          ],
+          if (state case InstallFailedState(:final failure)) ...[
+            const SizedBox(height: 20),
+            _StageSteps(failure),
+          ],
+          if (actions.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Wrap(spacing: 8, runSpacing: 8, children: actions),
+          ],
+          if (state.installation case final found?) ...[
+            const SizedBox(height: 12),
+            _Details(found, configured: configured != null),
+          ],
         ],
       ),
-      (install) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    );
+  }
+}
+
+/// Where the executable is and what it is: support detail, folded away.
+class _Details extends ConsumerWidget {
+  const _Details(this.installation, {required this.configured});
+  final FlorestaInstallation installation;
+  final bool configured;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(bottom: 4),
+        title: Text('Details', style: context.text.bodyMedium),
         children: [
-          StatusIndicator(
-            label: 'Found florestad ${install.version}',
-            caption: install.source.label,
-            tone: install.version.isSupported ? Tone.success : Tone.warning,
-          ),
-          const SizedBox(height: 10),
-          KeyValueRow('Path', install.executablePath, mono: true),
+          KeyValueRow('Found', installation.source.label),
+          KeyValueRow('Path', installation.executablePath, mono: true),
           KeyValueRow(
-            'Build',
-            install.version.isReleaseBuild
-                ? 'Release ${install.version}'
-                : 'Development build (${install.version})',
+            'Version',
+            installation.version.isReleaseBuild
+                ? 'Release ${installation.version}'
+                : 'Development build (${installation.version})',
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton(
+                onPressed: () => ref.invalidate(installationDetectionProvider),
+                child: const Text('Check again'),
+              ),
+              OutlinedButton(
+                onPressed: () => chooseExecutable(context, ref),
+                child: const Text('Use another florestad…'),
+              ),
+              if (configured)
+                TextButton(
+                  onPressed: () => setExecutable(context, ref, null),
+                  child: const Text('Use automatic detection'),
+                ),
+            ],
           ),
         ],
       ),
@@ -246,73 +375,33 @@ class _DetectionResult extends StatelessWidget {
   }
 }
 
-class _NextActionPanel extends StatelessWidget {
-  const _NextActionPanel(
-    this.action, {
-    this.primaryAction,
-    this.automaticInstall = false,
-  });
-  final NextAction action;
-  final Widget? primaryAction;
-  final bool automaticInstall;
+class _Badge extends StatelessWidget {
+  const _Badge(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    final (title, message, tone) = switch (action) {
-      InstallFloresta() => (
-        'Next: install Floresta',
-        automaticInstall
-            ? 'Install it automatically below. Building from source is '
-                  'still possible if you prefer.'
-            : 'Automatic installation is not configured in this build. '
-                  'Choose an existing florestad above, or build it from '
-                  'source with the steps below, then check again.',
-        Tone.info,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        border: Border.all(color: context.colors.warning),
+        borderRadius: BorderRadius.circular(4),
       ),
-      FixInstallation(:final failure) => (
-        'Next: fix the selected executable',
-        failure.recovery ?? 'Choose a working florestad executable.',
-        Tone.warning,
+      child: Text(
+        text,
+        style: context.text.labelSmall?.copyWith(color: context.colors.warning),
       ),
-      UpdateFloresta(:final installation) => (
-        'Update recommended',
-        'Floresta ${installation.version} is older than '
-            '${FlorestaVersion.minimumSupported}, the oldest version this app '
-            'was written for. Some screens may not work.',
-        Tone.warning,
-      ),
-      ConfigureNode() => (
-        'Next: set up your node',
-        'Floresta is installed. Choose a network and where to store data.',
-        Tone.success,
-      ),
-      OpenNodeManagement() => (
-        'Ready',
-        'Floresta is installed and configured.',
-        Tone.success,
-      ),
-    };
-    final usable =
-        action is ConfigureNode ||
-        action is OpenNodeManagement ||
-        action is UpdateFloresta;
-    return Notice(
-      tone: tone,
-      title: title,
-      message: message,
-      icon: usable ? Icons.check_circle_outline : Icons.arrow_forward,
-      action: usable ? primaryAction : null,
     );
   }
 }
 
-class _BuildFromSourcePanel extends StatelessWidget {
-  const _BuildFromSourcePanel(this.platform);
-  final HostPlatform platform;
+/// Upstream's own build steps (doc/build-macos.md, doc/build-unix.md).
+class BuildFromSource extends ConsumerWidget {
+  const BuildFromSource({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Commands from upstream doc/build-macos.md and doc/build-unix.md.
+  Widget build(BuildContext context, WidgetRef ref) {
+    final platform = ref.watch(hostPlatformProvider);
     final prerequisites = switch (platform.os) {
       HostOs.macos => const [
         'xcode-select --install',
@@ -324,131 +413,40 @@ class _BuildFromSourcePanel extends StatelessWidget {
       ],
       _ => const <String>[],
     };
-    return Panel(
-      title: 'Build from source',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Run these in a terminal. They follow the official Floresta build '
-            'guide. Rust 1.85 or newer is required (rustup.rs).',
-            style: context.text.bodySmall,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Run these in a terminal. They follow the official Floresta build '
+          'guide. Rust 1.85 or newer is required (rustup.rs).',
+          style: context.text.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        if (prerequisites.isEmpty)
+          const Notice(
+            tone: Tone.warning,
+            title: 'No upstream build guide for this OS',
+            message:
+                'Floresta\'s CI builds on Windows, but the project does not '
+                'document the Windows build prerequisites.',
           ),
-          const SizedBox(height: 12),
-          if (prerequisites.isEmpty)
-            const Notice(
-              tone: Tone.warning,
-              title: 'No upstream build guide for this OS',
-              message:
-                  'Floresta\'s CI builds on Windows, but the project '
-                  'does not document the Windows build prerequisites.',
-            ),
-          for (final c in prerequisites) ...[
-            CommandBlock(c),
-            const SizedBox(height: 6),
-          ],
-          const CommandBlock(
-            'git clone https://github.com/getfloresta/Floresta.git && '
-            'cd Floresta && git checkout v0.9.1',
-          ),
+        for (final c in prerequisites) ...[
+          CommandBlock(c),
           const SizedBox(height: 6),
-          const CommandBlock('cargo install --path ./bin/florestad --locked'),
-          const SizedBox(height: 10),
-          Text(
-            'cargo installs into ~/.cargo/bin, which this app searches '
-            'automatically.',
-            style: context.text.bodySmall,
-          ),
         ],
-      ),
-    );
-  }
-}
-
-/// Runs the configured [Installer]. Shown only when this build has a
-/// release source. INS-03: the four stages stay visible, the download shows
-/// its size, failures get a headline per stage, and a cancelled download
-/// resumes where it stopped.
-class _InstallerPanel extends ConsumerWidget {
-  const _InstallerPanel();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final installer = ref.watch(installerProvider);
-    if (installer == null) return const SizedBox.shrink();
-    final source = ref.watch(releaseSourceProvider);
-    final run = ref.watch(installControllerProvider);
-    final controller = ref.read(installControllerProvider.notifier);
-    final platform = ref.watch(hostPlatformProvider);
-    final badge = source != null && isLoopbackUrl(source.manifestUrl)
-        ? 'DEVELOPMENT SOURCE'
-        : null;
-    final supported = installer.supports(platform);
-    final progress = run.progress;
-    final done = progress is InstallCompleted;
-    final paused = progress is InstallFailed && progress.cancelled;
-
-    return Panel(
-      title: 'Automatic installation',
-      trailing: badge == null
-          ? null
-          : Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                border: Border.all(color: context.colors.warning),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                badge,
-                style: context.text.labelSmall?.copyWith(
-                  color: context.colors.warning,
-                ),
-              ),
-            ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Downloads Floresta, checks its signature and checksum, confirms '
-            'that it runs on this computer, and installs it for your user '
-            'only. No administrator password is needed, and your blockchain '
-            'data is never touched.',
-            style: context.text.bodySmall,
-          ),
-          if (!supported) ...[
-            const SizedBox(height: 12),
-            Notice(
-              tone: Tone.warning,
-              title: 'Not available for ${platform.label}',
-              message: 'Choose an existing florestad executable instead.',
-            ),
-          ],
-          if (progress != null) ...[
-            const SizedBox(height: 16),
-            _StageSteps(progress),
-            const SizedBox(height: 12),
-            _ProgressLine(progress),
-          ],
-          const SizedBox(height: 12),
-          if (!done)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: run.running
-                  ? OutlinedButton(
-                      onPressed: controller.cancel,
-                      child: const Text('Cancel'),
-                    )
-                  : FilledButton(
-                      onPressed: !supported ? null : controller.start,
-                      child: Text(switch (progress) {
-                        _ when paused => 'Resume download',
-                        InstallFailed() => 'Try again',
-                        _ => 'Install Floresta',
-                      }),
-                    ),
-            ),
-        ],
-      ),
+        const CommandBlock(
+          'git clone https://github.com/getfloresta/Floresta.git && '
+          'cd Floresta && git checkout v0.9.1',
+        ),
+        const SizedBox(height: 6),
+        const CommandBlock('cargo install --path ./bin/florestad --locked'),
+        const SizedBox(height: 10),
+        Text(
+          'cargo installs into ~/.cargo/bin, which this app searches '
+          'automatically.',
+          style: context.text.bodySmall,
+        ),
+      ],
     );
   }
 }
@@ -463,22 +461,26 @@ class _StageSteps extends StatelessWidget {
     final current = InstallStage.of(progress);
     final failed = progress is InstallFailed;
     final complete = progress is InstallCompleted;
-    final scheme = Theme.of(context).colorScheme;
+    final colors = context.colors;
     return Row(
       children: [
-        for (final s in InstallStage.values) ...[
+        for (final s in InstallStage.values)
           Expanded(
             child: Builder(
               builder: (context) {
                 final idx = s.index;
                 final cur = current?.index ?? InstallStage.values.length;
                 final (icon, color, state) = complete || idx < cur
-                    ? (Icons.check_circle, scheme.primary, 'done')
+                    ? (Icons.check_circle, colors.success, 'done')
                     : idx == cur && failed
-                    ? (Icons.error_outline, context.colors.warning, 'stopped')
+                    ? (Icons.error_outline, colors.warning, 'stopped')
                     : idx == cur
-                    ? (Icons.radio_button_checked, scheme.primary, 'current')
-                    : (Icons.radio_button_unchecked, context.colors.muted, '');
+                    ? (
+                        Icons.radio_button_checked,
+                        Theme.of(context).colorScheme.primary,
+                        'current',
+                      )
+                    : (Icons.radio_button_unchecked, colors.muted, '');
                 return Semantics(
                   label: '${s.label}${state.isEmpty ? '' : ', $state'}',
                   excludeSemantics: true,
@@ -500,7 +502,6 @@ class _StageSteps extends StatelessWidget {
               },
             ),
           ),
-        ],
       ],
     );
   }
@@ -532,16 +533,11 @@ class _ProgressLine extends StatelessWidget {
         'Verifying the checksum and that it runs on this computer…',
       ),
       InstallInstalling() => const Text('Installing…'),
-      InstallCompleted(:final executablePath) => StatusIndicator(
-        label: 'Floresta installed',
-        caption: executablePath,
-        tone: Tone.success,
-      ),
-      final InstallFailed f => Notice(
-        tone: f.cancelled ? Tone.info : Tone.warning,
-        title: f.title,
-        message: [f.reason, ?f.recovery].join(' '),
-      ),
+      InstallCompleted() => const Text('Floresta installed'),
+      InstallFailed() => const SizedBox.shrink(),
     };
   }
 }
+
+/// Failure details as one line, for snackbars and notices.
+String failureLine(Failure f) => [f.message, ?f.recovery].join(' ');

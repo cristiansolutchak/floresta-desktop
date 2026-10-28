@@ -29,7 +29,10 @@ Future<void> _pump(
 final _splash = find.bySemanticsLabel('Floresta is starting');
 
 void main() {
-  testWidgets('covers the app until detection answers, then fades out', (
+  // The fade starts on the frame after it is triggered.
+  const exit = Duration(milliseconds: 620);
+
+  testWidgets('a fast detection still shows the whole intro, then fades', (
     tester,
   ) async {
     final detection = Completer<_Detection>();
@@ -38,12 +41,33 @@ void main() {
     expect(_splash, findsOneWidget);
     expect(find.text('the app'), findsOneWidget); // built underneath
 
-    // No artificial wait: it leaves as soon as the answer arrives.
+    // Detection answers at once; the symbol is still forming, so it stays
+    // (before 2026-10-28 it left here, cutting the intro off).
     detection.complete(const Left(ExecutableNotFoundFailure([])));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    expect(_splash, findsOneWidget);
+
+    // Never longer than the intro plus the fade.
+    await tester.pump(StartupSplash.minVisible);
+    await tester.pump(exit);
+    await tester.pump();
     expect(_splash, findsNothing);
     expect(find.text('the app'), findsOneWidget);
+  });
+
+  testWidgets('a slow detection keeps the splash until it answers', (
+    tester,
+  ) async {
+    final detection = Completer<_Detection>();
+    await _pump(tester, () => detection.future);
+    await tester.pump(const Duration(seconds: 3));
+    expect(_splash, findsOneWidget);
+    detection.complete(const Left(ExecutableNotFoundFailure([])));
+    await tester.pump();
+    expect(_splash, findsOneWidget); // fading, not cut
+    await tester.pumpAndSettle();
+    expect(_splash, findsNothing);
   });
 
   testWidgets('a failed detection still lets the user in', (tester) async {
@@ -58,18 +82,21 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     expect(_splash, findsOneWidget);
     await tester.pump(StartupSplash.maxWait);
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(exit);
+    await tester.pump();
     expect(_splash, findsNothing);
   });
 
-  testWidgets('reduced motion: no animation, gone at once', (tester) async {
+  testWidgets('reduced motion: no animation, gone at once when ready', (
+    tester,
+  ) async {
     final detection = Completer<_Detection>();
     await _pump(tester, () => detection.future, reduceMotion: true);
     await tester.pump();
     expect(_splash, findsOneWidget);
     expect(tester.hasRunningAnimations, isFalse);
     detection.complete(const Left(ExecutableNotFoundFailure([])));
-    await tester.pump();
+    await tester.pump(StartupSplash.minVisible);
     await tester.pump();
     expect(_splash, findsNothing);
   });

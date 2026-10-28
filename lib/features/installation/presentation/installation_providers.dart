@@ -7,6 +7,7 @@ import '../../settings/presentation/settings_controller.dart';
 import '../../../core/platform/app_paths.dart';
 import '../data/artifact_downloader.dart';
 import '../data/executable_locator.dart';
+import '../data/existing_node_probe.dart';
 import '../data/installation_repository_impl.dart';
 import '../data/managed_install_store.dart';
 import '../data/managed_installer.dart';
@@ -64,6 +65,19 @@ final nextActionProvider = Provider<AsyncValue<NextAction>>((ref) {
       .watch(installationDetectionProvider)
       .whenData((d) => NextAction.resolve(d, onboardingComplete: onboarded));
 });
+
+/// Lists Floresta-looking Docker containers (Advanced setup).
+final dockerProbeProvider = Provider<DockerProbe>(
+  (ref) => DockerProbe(
+    platform: ref.watch(hostPlatformProvider),
+    environment: ref.watch(environmentProvider),
+  ),
+);
+
+/// Checks a node that runs elsewhere before the app is set to use it.
+final existingNodeProbeProvider = Provider<ExistingNodeProbe>(
+  (ref) => ExistingNodeProbe(httpClient: ref.watch(httpClientProvider)),
+);
 
 /// The release source compiled into this build, or null when none is
 /// configured (the default until hosting and signing are decided; see

@@ -65,15 +65,16 @@ Future<FakeInstallationRepository> _pump(
   WidgetTester tester, {
   required Installer? installer,
   ReleaseSource? source,
+  Either<Failure, FlorestaInstallation> detected = const Left(
+    ExecutableNotFoundFailure(['/usr/bin/florestad']),
+  ),
 }) async {
   tester.view.physicalSize = const Size(1280, 1400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  final repo = FakeInstallationRepository(
-    const Left(ExecutableNotFoundFailure(['/usr/bin/florestad'])),
-  );
+  final repo = FakeInstallationRepository(detected);
   await tester.pumpWidget(
     ProviderScope(
       retry: (_, _) => null,
@@ -106,10 +107,38 @@ void main() {
     tester,
   ) async {
     await _pump(tester, installer: null);
-    expect(find.text('Automatic installation'), findsNothing);
+    expect(find.text('Floresta is not installed'), findsOneWidget);
     expect(find.text('Install Floresta'), findsNothing);
-    expect(find.textContaining('not configured in this build'), findsOneWidget);
+    expect(find.textContaining('cannot install Floresta by itself'), findsOne);
+    expect(find.text('Choose florestad…'), findsOneWidget);
+    // The alternatives are one click away, not on the main screen.
+    expect(find.text('Build from source'), findsNothing);
+    await tester.tap(find.text('Other ways to connect'));
+    await tester.pumpAndSettle();
     expect(find.text('Build from source'), findsOneWidget);
+  });
+
+  // The bug of 2026-10-28: after a restart (no install run in this
+  // session) the detection said "Ready" while the install panel still
+  // offered "Install Floresta". Both now read one state.
+  testWidgets('an installed Floresta is never offered for install again', (
+    tester,
+  ) async {
+    final installer = _ScriptedInstaller();
+    await _pump(
+      tester,
+      installer: installer,
+      source: _devSource,
+      detected: const Right(_installed),
+    );
+    expect(find.text('Floresta is installed'), findsOneWidget);
+    expect(find.text('Install Floresta'), findsNothing);
+    expect(find.text('Continue'), findsOneWidget);
+    expect(find.text('DEVELOPMENT SOURCE'), findsNothing);
+    await tester.tap(find.text('Details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Installed by this app'), findsOneWidget);
+    expect(installer.installs, 0);
   });
 
   testWidgets('installs, then onboarding can continue', (tester) async {
@@ -117,7 +146,8 @@ void main() {
     final repo = await _pump(tester, installer: installer, source: _devSource);
     expect(find.text('SIMULATION'), findsNothing);
     expect(find.text('DEVELOPMENT SOURCE'), findsOneWidget);
-    expect(find.textContaining('Install it automatically'), findsOneWidget);
+    expect(find.text('Floresta is not installed'), findsOneWidget);
+    expect(find.textContaining('checks its signature'), findsOneWidget);
     expect(find.text('Continue'), findsNothing);
 
     await tester.tap(find.text('Install Floresta'));
@@ -127,11 +157,15 @@ void main() {
     expect(find.text('Downloading 50%'), findsOneWidget);
     expect(find.text('Cancel'), findsOneWidget);
 
+    expect(find.text('Installing Floresta'), findsOneWidget);
+    expect(find.text('Install Floresta'), findsNothing);
+
     repo.result = const Right(_installed);
     await installer.finish(const InstallCompleted('/data/x/florestad'));
     await tester.pumpAndSettle();
-    expect(find.text('Floresta installed'), findsOneWidget);
-    expect(find.text('Found florestad v0.9.1'), findsOneWidget);
+    expect(find.text('Floresta is installed'), findsOneWidget);
+    expect(find.textContaining('Floresta v0.9.1 is ready to use'), findsOne);
+    expect(find.text('Install Floresta'), findsNothing);
     expect(find.text('Continue'), findsOneWidget);
     expect(installer.installs, 1);
   });
@@ -163,7 +197,7 @@ void main() {
 
   testWidgets('cancel reaches the installer while it runs', (tester) async {
     final installer = _ScriptedInstaller();
-    await _pump(tester, installer: installer, source: _devSource);
+    final repo = await _pump(tester, installer: installer, source: _devSource);
     await tester.tap(find.text('Install Floresta'));
     await tester.pump();
     installer.emit(const InstallDownloading(0.1));
@@ -189,9 +223,10 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Downloading 60% · 6.0 MB of 10.0 MB'), findsOneWidget);
+    repo.result = const Right(_installed);
     await installer.finish(const InstallCompleted('/data/x/florestad'));
     await tester.pumpAndSettle();
-    expect(find.text('Floresta installed'), findsOneWidget);
+    expect(find.text('Floresta is installed'), findsOneWidget);
   });
 
   // INS-03: every stage a real install can stop at has its own headline.

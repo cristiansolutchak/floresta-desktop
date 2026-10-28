@@ -443,20 +443,29 @@ class _HeaderBar extends ConsumerWidget {
     final endpoint = 'tcp://127.0.0.1:${network.electrumPort}';
     final chain = status.chain;
 
+    // The title, status and figures form one group that takes the free
+    // space and shrinks with ellipses; the actions follow at their natural
+    // size, so they always end at the right edge. (Before, the figures were
+    // Flexible siblings of an Expanded title: Flutter split the free space
+    // between them and the unused share ended up after the last action.)
     Widget meta(String asset, String text) => Flexible(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DashSvg(asset, size: 16, color: t.textSecondary),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              style: DashText.small(context),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DashSvg(asset, size: 16, color: t.textSecondary),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: DashText.small(context),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
@@ -469,46 +478,53 @@ class _HeaderBar extends ConsumerWidget {
       ),
       child: LayoutBuilder(
         builder: (context, c) {
-          final roomy = c.maxWidth >= 860;
+          // Below these widths the figures would only show as ellipses.
+          final showHeight = c.maxWidth >= 820;
+          final showBehind = c.maxWidth >= 940;
           return Row(
             children: [
               Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(
-                    title,
-                    overflow: TextOverflow.ellipsis,
-                    style: DashText.title(context),
-                  ),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: DashText.title(context),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    DashTag(
+                      short.label,
+                      tone: tone,
+                      asset: tone == DashTone.warning
+                          ? DashIcons.headerSyncing
+                          : null,
+                      icon: switch (tone) {
+                        DashTone.success => Icons.check,
+                        DashTone.danger => Icons.error_outline,
+                        _ => null,
+                      },
+                    ),
+                    if (showHeight && chain != null)
+                      meta(
+                        DashIcons.height,
+                        'Height: ${formatInt(chain.headerHeight)}',
+                      ),
+                    if (progress case final p?
+                        when showBehind && chain != null && p.behind > 0)
+                      meta(
+                        DashIcons.behindBy,
+                        'Behind by: ${p.tipIsEstimate ? '~' : ''}'
+                        '${formatCompact(p.behind)}',
+                      ),
+                  ],
                 ),
               ),
-              DashTag(
-                short.label,
-                tone: tone,
-                asset: tone == DashTone.warning
-                    ? DashIcons.headerSyncing
-                    : null,
-                icon: switch (tone) {
-                  DashTone.success => Icons.check,
-                  DashTone.danger => Icons.error_outline,
-                  _ => null,
-                },
-              ),
-              if (roomy && chain != null) ...[
-                const SizedBox(width: 12),
-                meta(
-                  DashIcons.height,
-                  'Height: ${formatInt(chain.headerHeight)}',
-                ),
-                if (progress case final p? when p.behind > 0) ...[
-                  const SizedBox(width: 12),
-                  meta(
-                    DashIcons.behindBy,
-                    'Behind by: ${p.tipIsEstimate ? '~' : ''}'
-                    '${formatCompact(p.behind)}',
-                  ),
-                ],
-              ],
               Container(
                 width: 1,
                 height: 32,

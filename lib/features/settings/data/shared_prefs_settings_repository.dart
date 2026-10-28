@@ -27,6 +27,7 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
   static const _kBirthday = 'settings.walletBirthdayYear';
   static const _kAssumeUtreexo = 'settings.assumeUtreexo';
   static const _kBackfill = 'settings.backfill';
+  static const _kExistingNode = 'settings.useExistingNode';
 
   @override
   NodeSettings load() {
@@ -45,6 +46,7 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
       walletBirthdayYear: _prefs.getInt(_kBirthday),
       assumeUtreexo: _prefs.getBool(_kAssumeUtreexo) ?? defaults.assumeUtreexo,
       backfill: _prefs.getBool(_kBackfill) ?? defaults.backfill,
+      useExistingNode: _prefs.getBool(_kExistingNode) ?? false,
     );
     // Values edited outside the app could be invalid. Keep the onboarding flag
     // and network but drop the paths/port so the node is never launched
@@ -74,6 +76,7 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
       await _prefs.setBool(_kNoCfilters, settings.disableCompactFilters);
       await _prefs.setBool(_kAssumeUtreexo, settings.assumeUtreexo);
       await _prefs.setBool(_kBackfill, settings.backfill);
+      await _prefs.setBool(_kExistingNode, settings.useExistingNode);
       final year = settings.walletBirthdayYear;
       year == null
           ? await _prefs.remove(_kBirthday)

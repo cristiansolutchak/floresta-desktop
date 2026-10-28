@@ -9,6 +9,7 @@ import '../../../core/build_flavor.dart';
 import '../../../core/providers.dart';
 import '../../../shared/widgets/common.dart';
 import '../../installation/presentation/installation_view.dart';
+import '../../installation/presentation/setup_state_provider.dart';
 import '../../node/domain/preflight.dart';
 import '../../node/presentation/node_controller.dart';
 import '../../node/presentation/status_labels.dart';
@@ -23,18 +24,28 @@ class WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final accent = Theme.of(context).colorScheme.primary;
     Widget point(IconData icon, String title, String body) => Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Icon(icon, size: 20, color: accent),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: context.text.titleMedium),
+                Text(title, style: context.text.titleSmall),
                 const SizedBox(height: 2),
                 Text(body, style: context.text.bodySmall),
               ],
@@ -47,34 +58,43 @@ class WelcomePage extends StatelessWidget {
     return WizardFrame(
       title: 'Welcome to Floresta',
       subtitle:
-          'Run your own fully validating Bitcoin node, without the '
-          'terminal.',
-      primary: FilledButton(
-        autofocus: true,
-        onPressed: () => context.go('/onboarding/install'),
-        child: const Text('Get started'),
-      ),
+          'Run your own Bitcoin node in a few clicks. This app installs '
+          'Floresta, sets it up and keeps it running, with no terminal.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           point(
             Icons.verified_outlined,
             'Verify, don\'t trust',
-            'Floresta checks every rule of Bitcoin itself, using a compact '
-                'representation of the chain state (Utreexo) so it needs far '
-                'less disk space than a traditional node.',
-          ),
-          point(
-            Icons.visibility_outlined,
-            'Watch your wallets privately',
-            'Track wallets by their public descriptors. Your keys stay in '
-                'your wallet; this app never asks for them.',
-          ),
-          point(
-            Icons.cable_outlined,
-            'Connect the wallets you already use',
-            'Sparrow, Electrum and other wallets can use your node instead of '
+            'Your node checks every Bitcoin rule itself instead of trusting '
                 'someone else\'s server.',
+          ),
+          point(
+            Icons.storage_outlined,
+            'Light on your disk',
+            'Utreexo keeps a compact proof of the chain, not hundreds of '
+                'gigabytes of blocks.',
+          ),
+          point(
+            Icons.account_balance_wallet_outlined,
+            'Private for your wallets',
+            'Watch your wallets and connect Sparrow or Electrum to your own '
+                'node. Your keys never leave your wallet.',
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 48,
+            child: FilledButton(
+              autofocus: true,
+              onPressed: () => context.go('/onboarding/install'),
+              child: const Text('Get started'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Nothing is downloaded until you choose to install.',
+            textAlign: TextAlign.center,
+            style: context.text.bodySmall?.copyWith(color: colors.muted),
           ),
         ],
       ),
@@ -88,10 +108,10 @@ class InstallStepPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return WizardFrame(
-      title: 'Find Floresta',
+      title: 'Get Floresta',
       subtitle:
-          'This app runs the official florestad program. Let\'s check '
-          'whether it is installed.',
+          'Floresta is the program that runs your node. The app checks '
+          'whether this computer already has it.',
       onBack: () => context.go('/welcome'),
       child: InstallationView(
         primaryAction: FilledButton(
@@ -193,12 +213,14 @@ class _SetupStepPageState extends ConsumerState<SetupStepPage> {
         _ServicesStep(draft: _draft, onChanged: _edit),
       ),
       _ => (
-        'Ready to start',
-        'Check your choices. You can change all of them later in Settings.',
+        'Review your setup',
+        'Check your choices before Floresta starts. You can change all of '
+            'them later in Settings.',
         _ReviewStep(
           draft: _draft,
           startNow: _startNow,
           onStartNow: (v) => setState(() => _startNow = v),
+          onEdit: (step) => setState(() => _step = step),
         ),
       ),
     };
@@ -477,6 +499,31 @@ class _FastStartStep extends StatelessWidget {
   }
 }
 
+/// A heading inside a wizard step.
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Semantics(
+      header: true,
+      child: Text(
+        text.toUpperCase(),
+        style: context.text.labelMedium?.copyWith(
+          color: context.colors.muted,
+          letterSpacing: 0.6,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+  );
+}
+
+/// What the node offers, from what florestad v0.9.1 can actually do
+/// (`bin/florestad/src/cli.rs` at the pinned tag; docs/research). Only what
+/// the app can apply is a control; the rest is said in words.
 class _ServicesStep extends StatelessWidget {
   const _ServicesStep({required this.draft, required this.onChanged});
 
@@ -490,23 +537,24 @@ class _ServicesStep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const _SectionTitle('For your wallets'),
         OptionCard(
           icon: Icons.cable_outlined,
           title: 'Electrum server',
           trailingNote: '127.0.0.1:${draft.network.electrumPort}',
           subtitle:
               'Lets Sparrow, Electrum and other wallets on this computer use '
-              'your node. Floresta always runs it, only on this computer.',
+              'your node instead of someone else\'s server.',
           selected: true,
           control: OptionControl.toggle,
         ),
         OptionCard(
           icon: Icons.filter_alt_outlined,
-          title: 'Watch-only wallet index',
+          title: 'Wallet history',
           trailingNote: '(compact block filters)',
           subtitle:
-              'Needed to find past transactions of the wallets you watch. '
-              'Uses extra disk space.',
+              'Finds past transactions of the wallets you watch. Uses extra '
+              'disk space.',
           selected: filters,
           control: OptionControl.toggle,
           onChanged: (v) =>
@@ -548,10 +596,53 @@ class _ServicesStep extends StatelessWidget {
                 'Without filters, adding wallets and rescans are not '
                 'possible.',
           ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
+        const _SectionTitle('Node control'),
+        OptionCard(
+          icon: Icons.settings_remote_outlined,
+          title: 'Node API (RPC)',
+          trailingNote: '127.0.0.1:${draft.effectiveRpcPort}',
+          subtitle:
+              'How this app reads the node\'s state and starts or stops '
+              'it. It has no password, so it only listens on this computer.',
+          selected: true,
+          control: OptionControl.toggle,
+        ),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: Text(
+              'Not offered in this version',
+              style: context.text.bodyMedium,
+            ),
+            children: const [
+              _NotOffered(
+                'Electrum over TLS',
+                'Wallets on this computer do not need it. Planned.',
+              ),
+              _NotOffered(
+                'Tor or a SOCKS5 proxy',
+                'Floresta can send its connections through a proxy, but this '
+                    'app also finds Utreexo peers by contacting them '
+                    'directly, which would still reveal your IP address. '
+                    'Planned once those checks can use the proxy too.',
+              ),
+              _NotOffered(
+                'Remote access to the node',
+                'The node API has no password, so it is never offered beyond '
+                    'this computer.',
+              ),
+              _NotOffered(
+                'ZeroMQ notifications and Prometheus metrics',
+                'Not built into the Floresta this app installs.',
+              ),
+            ],
+          ),
+        ),
         Text(
-          'Remote access to the node is not offered: its API has no password, '
-          'so it only listens on this computer.',
+          'You can change these later in Settings. Changes apply the next '
+          'time the node starts.',
           style: context.text.bodySmall,
         ),
       ],
@@ -559,51 +650,132 @@ class _ServicesStep extends StatelessWidget {
   }
 }
 
+class _NotOffered extends StatelessWidget {
+  const _NotOffered(this.title, this.reason);
+  final String title;
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.remove_circle_outline,
+          size: 16,
+          color: context.colors.muted,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: context.text.bodyMedium),
+              Text(reason, style: context.text.bodySmall),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Every choice, grouped by the step it came from, each group with an Edit
+/// button back to that step. The draft lives in [SetupStepPage], so going
+/// back and forth loses nothing.
 class _ReviewStep extends ConsumerWidget {
   const _ReviewStep({
     required this.draft,
     required this.startNow,
     required this.onStartNow,
+    required this.onEdit,
   });
 
   final NodeSettings draft;
   final bool startNow;
   final ValueChanged<bool> onStartNow;
 
+  /// Opens the step with this index.
+  final ValueChanged<int> onEdit;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final platform = ref.watch(hostPlatformProvider);
     final env = ref.watch(environmentProvider);
-    final mode = draft.snapshotHeight == 0
-        ? 'Pruned, full validation'
-        : 'Pruned, Assume Utreexo'
-              '${draft.backfill ? ' with backfill' : ', no backfill'}';
-    final rows = <(String, String)>[
-      ('Network', draft.network.label),
-      ('Mode', mode),
-      ('Electrum', '127.0.0.1:${draft.network.electrumPort}'),
-      (
-        'Watch-only wallet index',
-        draft.disableCompactFilters
-            ? 'Off'
-            : switch (draft.filtersStartHeight) {
-                final h? => 'On, from block ${formatInt(h)}',
-                null => 'On, whole chain',
-              },
-      ),
-      (
-        'Storage',
-        draft.effectiveDataDir(
-          homeDir: env['HOME'] ?? env['USERPROFILE'],
-          separator: platform.pathSeparator,
-        ),
-      ),
-    ];
+    final installation = ref.watch(setupStateProvider).installation;
+    final network = draft.network;
+    final fastStart = draft.snapshotHeight == 0
+        ? 'Validates every block from the first one'
+        : 'Starts from block ${formatInt(draft.snapshotHeight)} '
+              '(Assume Utreexo), '
+              '${draft.backfill ? 'then re-checks the history before it' : 'history before it stays assumed'}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final (k, v) in rows) KeyValueRow(k, v),
-        const SizedBox(height: 12),
+        _ReviewGroup(
+          title: 'Network',
+          onEdit: () => onEdit(0),
+          rows: [
+            (
+              'Follows',
+              '${network.label} · '
+                  '${network.isMainnet ? 'real bitcoin' : 'test coins, no value'}',
+              false,
+            ),
+          ],
+        ),
+        _ReviewGroup(
+          title: 'Storage',
+          onEdit: () => onEdit(1),
+          rows: [
+            (
+              'Data folder',
+              draft.effectiveDataDir(
+                homeDir: env['HOME'] ?? env['USERPROFILE'],
+                separator: platform.pathSeparator,
+              ),
+              true,
+            ),
+            ('Old blocks', 'Not kept (pruned)', false),
+          ],
+        ),
+        _ReviewGroup(
+          title: 'Fast start',
+          onEdit: () => onEdit(2),
+          rows: [('Sync', fastStart, false)],
+        ),
+        _ReviewGroup(
+          title: 'Services',
+          onEdit: () => onEdit(3),
+          rows: [
+            ('Electrum server', '127.0.0.1:${network.electrumPort}', false),
+            (
+              'Wallet history',
+              draft.disableCompactFilters
+                  ? 'Off'
+                  : switch (draft.filtersStartHeight) {
+                      final h? => 'On, from block ${formatInt(h)}',
+                      null => 'On, whole chain',
+                    },
+              false,
+            ),
+            (
+              'Node API',
+              '127.0.0.1:${draft.effectiveRpcPort}, this computer only',
+              false,
+            ),
+          ],
+        ),
+        if (installation case final i?)
+          _ReviewGroup(
+            title: 'Floresta',
+            rows: [
+              ('Version', '${i.version}', false),
+              ('Found', i.source.label, false),
+            ],
+          ),
+        const SizedBox(height: 4),
         CheckboxListTile(
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
@@ -612,6 +784,86 @@ class _ReviewStep extends ConsumerWidget {
           onChanged: (v) => onStartNow(v ?? false),
         ),
       ],
+    );
+  }
+}
+
+class _ReviewGroup extends StatelessWidget {
+  const _ReviewGroup({required this.title, required this.rows, this.onEdit});
+
+  final String title;
+
+  /// Label, value, monospace.
+  final List<(String, String, bool)> rows;
+
+  /// Null: not editable here.
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+      decoration: BoxDecoration(
+        border: Border.all(color: context.colors.border),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(title, style: context.text.titleSmall),
+                ),
+              ),
+              if (onEdit case final edit?)
+                Semantics(
+                  label: 'Edit ${title.toLowerCase()}',
+                  button: true,
+                  excludeSemantics: true,
+                  child: TextButton(onPressed: edit, child: const Text('Edit')),
+                )
+              else
+                const SizedBox(height: 40),
+            ],
+          ),
+          for (final (label, value, mono) in rows)
+            LayoutBuilder(
+              builder: (context, c) {
+                // Label above value when narrow, beside it otherwise.
+                final narrow = c.maxWidth < 420;
+                final valueText = SelectableText(
+                  value,
+                  style: mono ? monoStyle(context) : context.text.bodyMedium,
+                );
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8, bottom: 6),
+                  child: narrow
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(label, style: context.text.bodySmall),
+                            valueText,
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 140,
+                              child: Text(label, style: context.text.bodySmall),
+                            ),
+                            Expanded(child: valueText),
+                          ],
+                        ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 }

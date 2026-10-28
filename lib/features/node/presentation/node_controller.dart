@@ -246,6 +246,15 @@ class NodeController extends Notifier<NodeStatus> {
 
   Future<Either<Failure, Unit>> start() async {
     await refresh();
+    if (ref.read(settingsControllerProvider).useExistingNode) {
+      return const Left(
+        ProcessStateFailure(
+          'This app is set to use a node that runs elsewhere, so it does not '
+          'start one. Start it where it runs (Docker, Nix, a terminal); the '
+          'app connects on its own.',
+        ),
+      );
+    }
     if (state.api == ApiReachability.reachable) {
       return const Left(
         ProcessStateFailure(

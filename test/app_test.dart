@@ -9,7 +9,10 @@ import 'package:floresta_gui/core/platform/host_platform.dart';
 import 'package:floresta_gui/core/providers.dart';
 import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
 import 'package:floresta_gui/features/installation/domain/installation.dart';
+import 'package:floresta_gui/features/installation/data/existing_node_probe.dart';
+import 'package:floresta_gui/features/installation/domain/existing_node.dart';
 import 'package:floresta_gui/features/installation/presentation/installation_providers.dart';
+import 'package:floresta_gui/features/node/domain/node_readiness.dart';
 import 'package:floresta_gui/features/node/data/rpc_models.dart';
 import 'package:floresta_gui/features/node/data/utreexo_peer_finder.dart';
 import 'package:floresta_gui/features/node/domain/utreexo_peer.dart';
@@ -35,6 +38,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'features/node/node_rpc_test.dart'
@@ -48,6 +53,31 @@ const _found = FlorestaInstallation(
   source: ExecutableSource.wellKnown,
   version: FlorestaVersion(0, 9, 1),
 );
+
+/// Scripted Docker listing: no process is run.
+class _FakeDocker extends DockerProbe {
+  _FakeDocker(this.result)
+    : super(
+        platform: const HostPlatform(HostOs.macos, CpuArch.arm64),
+        environment: const {},
+      );
+  final DockerScan result;
+  @override
+  Future<DockerScan> scan() async => result;
+}
+
+/// Scripted connection check: no socket is opened.
+class _FakeExistingNode extends ExistingNodeProbe {
+  _FakeExistingNode(this.result)
+    : super(httpClient: MockClient((_) async => http.Response('', 500)));
+  final ExistingNodeCheck result;
+  final checked = <(BitcoinNetwork, int)>[];
+  @override
+  Future<ExistingNodeCheck> check(BitcoinNetwork network, int rpcPort) async {
+    checked.add((network, rpcPort));
+    return result;
+  }
+}
 
 class _Harness {
   final install = FakeInstallationRepository(const Right(_found));
@@ -132,9 +162,16 @@ void main() {
 
     await tester.tap(find.text('Get started'));
     await tester.pumpAndSettle();
-    expect(find.text('Find Floresta'), findsOneWidget);
-    expect(find.text('Next: set up your node'), findsOneWidget);
-    expect(find.text('Found florestad v0.9.1'), findsOneWidget);
+    expect(find.text('Get Floresta'), findsOneWidget);
+    // One state for the whole screen: installed, so nothing offers to
+    // install it again (2026-10-28).
+    expect(find.text('Floresta is installed'), findsOneWidget);
+    expect(find.textContaining('Floresta v0.9.1 is ready to use'), findsOne);
+    expect(find.text('Install Floresta'), findsNothing);
+    expect(find.text('Continue'), findsOneWidget);
+    // Platform details are no longer on this screen (Diagnostics has them).
+    expect(find.text('Operating system'), findsNothing);
+    expect(find.text('This computer'), findsNothing);
   });
 
   Future<void> toWizard(WidgetTester tester) async {
@@ -145,6 +182,8 @@ void main() {
   }
 
   Future<void> tapNext(WidgetTester tester, [String label = 'Next']) async {
+    await tester.ensureVisible(find.text(label));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(label));
     await tester.pumpAndSettle();
   }
@@ -156,22 +195,30 @@ void main() {
     await h.pump(tester, onboarded: false);
     await toWizard(tester);
     expect(find.text('Choose a network'), findsOneWidget);
+    expect(find.bySemanticsLabel('Step 1 of 4: Network'), findsOneWidget);
     await tapNext(tester);
     expect(find.text('Storage'), findsWidgets);
+    expect(find.bySemanticsLabel('Step 2 of 4: Storage'), findsOneWidget);
     expect(find.text('/Users/a/.floresta'), findsOneWidget);
     expect(find.textContaining('free on this disk'), findsOneWidget);
     await tapNext(tester);
     expect(find.textContaining('Assume Utreexo'), findsOneWidget);
     await tapNext(tester);
     expect(find.textContaining('Electrum server'), findsOneWidget);
-    expect(find.text('Always on'), findsOneWidget);
+    expect(find.textContaining('Node API (RPC)'), findsOneWidget);
+    expect(find.text('Always on'), findsNWidgets(2));
     expect(find.text('Remote RPC'), findsNothing);
+    expect(find.text('Not offered in this version'), findsOneWidget);
     await tapNext(tester, 'Review configuration');
-    expect(find.text('Ready to start'), findsOneWidget);
-    expect(find.text('Pruned, Assume Utreexo with backfill'), findsOneWidget);
+    expect(find.text('Review your setup'), findsOneWidget);
+    expect(
+      find.textContaining('(Assume Utreexo), then re-checks the history'),
+      findsOneWidget,
+    );
+    expect(find.text('Mainnet · real bitcoin'), findsOneWidget);
+    expect(find.text('Edit'), findsNWidgets(4));
 
-    await tester.tap(find.text('Start Floresta now'));
-    await tester.pumpAndSettle();
+    await tapNext(tester, 'Start Floresta now');
     await tapNext(tester, 'Finish');
     expect(find.text('Start node'), findsOneWidget);
     expect(h.manager.starts, isEmpty);
@@ -208,7 +255,10 @@ void main() {
     expect(find.text('History stays assumed'), findsOneWidget);
     await tapNext(tester);
     await tapNext(tester, 'Review configuration');
-    expect(find.text('Pruned, Assume Utreexo, no backfill'), findsOneWidget);
+    expect(
+      find.textContaining('(Assume Utreexo), history before it stays'),
+      findsOneWidget,
+    );
     await tapNext(tester, 'Finish');
     final (exe, settings) = h.manager.starts.single;
     expect(exe, _found.executablePath);
@@ -257,9 +307,116 @@ void main() {
 
     await tester.tap(find.text('Open Installation'));
     await tester.pumpAndSettle();
-    expect(find.text('Next: install Floresta'), findsOneWidget);
+    expect(find.text('Floresta is not installed'), findsOneWidget);
+    // No release source in this build: nothing offers an automatic install.
+    expect(find.text('Install Floresta'), findsNothing);
+    expect(find.text('Choose florestad…'), findsOneWidget);
+    await tester.tap(find.text('Other ways to connect'));
+    await tester.pumpAndSettle();
     expect(find.text('Build from source'), findsOneWidget);
-    expect(find.text('Automatic installation'), findsNothing);
+    expect(find.text('Connect to a node that is already running'), findsOne);
+  });
+
+  testWidgets('Review: Edit returns to that step with the choices kept', (
+    tester,
+  ) async {
+    await _Harness().pump(tester, onboarded: false);
+    await toWizard(tester);
+    await tapNext(tester);
+    await tapNext(tester);
+    await tester.tap(find.textContaining('Backfill in background'));
+    await tester.pumpAndSettle();
+    await tapNext(tester);
+    await tapNext(tester, 'Review configuration');
+    await tester.tap(find.bySemanticsLabel('Edit fast start'));
+    await tester.pumpAndSettle();
+    expect(find.text('Fast start'), findsWidgets);
+    expect(find.text('History stays assumed'), findsOneWidget);
+    await tapNext(tester);
+    await tapNext(tester, 'Review configuration');
+    expect(find.textContaining('history before it stays assumed'), findsOne);
+  });
+
+  testWidgets('Advanced setup: connect to a running node, run none here', (
+    tester,
+  ) async {
+    final existing = _FakeExistingNode((
+      rpc: Right(
+        RpcModels.blockchainInfo(blockchainInfoJson(chain: 'bitcoin')),
+      ),
+      electrum: ElectrumCheck.ok,
+    ));
+    final h = _Harness()
+      ..install.result = const Left(ExecutableNotFoundFailure(['/x']))
+      ..extra.addAll([
+        existingNodeProbeProvider.overrideWithValue(existing),
+        dockerProbeProvider.overrideWithValue(
+          _FakeDocker(
+            DockerContainers([
+              DockerContainer(
+                name: 'Floresta',
+                image: 'dlsz/floresta:latest',
+                command: 'florestad',
+                state: 'running',
+                status: 'Up 2 hours',
+                ports: parseDockerPorts('0.0.0.0:8332->8332/tcp'),
+              ),
+            ]),
+          ),
+        ),
+      ]);
+    await h.pump(tester, onboarded: false);
+    await tester.tap(find.text('Get started'));
+    await tester.pumpAndSettle();
+    expect(find.text('Floresta is not installed'), findsOneWidget);
+
+    await tester.tap(find.text('Advanced setup'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Connect to a node that is already running'));
+    await tester.pumpAndSettle();
+    final use = find.widgetWithText(FilledButton, 'Use this node');
+    // Nothing can be saved before the node answered.
+    expect(tester.widget<FilledButton>(use).onPressed, isNull);
+    await tester.tap(find.text('Check connection'));
+    await tester.pumpAndSettle();
+    expect(existing.checked.single, (BitcoinNetwork.bitcoin, 8332));
+    expect(find.text('Floresta answers on Mainnet'), findsOneWidget);
+    expect(find.text('Electrum server answers'), findsOneWidget);
+    // The unauthenticated RPC published to the whole network is called out.
+    expect(
+      find.text('Container Floresta publishes port 8332 on every interface'),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(use);
+    await tester.tap(use);
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('settings.useExistingNode'), isTrue);
+    expect(prefs.getBool('settings.onboardingComplete'), isTrue);
+    // On Overview: nothing to start here, and no "not installed" warning.
+    expect(find.text('Floresta is not ready to run'), findsNothing);
+    expect(find.text('Start node'), findsNothing);
+    expect(find.text('Check again'), findsOneWidget);
+    expect(find.textContaining('Start your node where it runs'), findsOne);
+    await tester.tap(find.text('Check again'));
+    await tester.pumpAndSettle();
+    expect(h.manager.starts, isEmpty);
+  });
+
+  testWidgets('Sync shows the same status banner as Overview', (tester) async {
+    final h = _Harness()
+      ..rpc.info = Right(RpcModels.blockchainInfo(signetAfterSnapshot));
+    await h.pump(tester, network: 'signet');
+    expect(find.text('Status: SYNCING'), findsOneWidget);
+    expect(find.text('Go to Sync'), findsOneWidget);
+    await tester.tap(find.text('Go to Sync'));
+    await tester.pumpAndSettle();
+    expect(find.text('Status: SYNCING'), findsOneWidget);
+    expect(find.textContaining('leave it running in the background'), findsOne);
+    // Actions that fit this page instead of a link to itself.
+    expect(find.text('Go to Sync'), findsNothing);
+    expect(find.text('View Peers'), findsOneWidget);
   });
 
   testWidgets('INS-12: resetting settings brings the wizard back', (

@@ -143,7 +143,10 @@ class _Logo extends StatelessWidget {
   }
 }
 
-/// Step indicator: done steps show a check, the current one a dot.
+/// Step indicator. Done steps (and the line after them) are green with a
+/// check, the current step has the accent and a dot, steps not reached yet
+/// are grey. [current] is the step being edited, so it reflects real
+/// progress: a step only turns green once the user moved past it.
 class WizardStepper extends StatelessWidget {
   const WizardStepper({super.key, required this.steps, required this.current});
 
@@ -152,57 +155,132 @@ class WizardStepper extends StatelessWidget {
   /// Index of the current step; [steps.length] means all done.
   final int current;
 
+  static const _box = 24.0;
+
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
-    final border = context.colors.border;
+    final done = context.colors.success;
+    final grey = context.colors.border;
+    final muted = context.colors.muted;
+    Widget line(Color color) =>
+        Expanded(child: Container(height: 2, color: color));
     return Semantics(
       label:
           'Step ${current + 1 > steps.length ? steps.length : current + 1} '
-          'of ${steps.length}',
+          'of ${steps.length}: '
+          '${current < steps.length ? steps[current] : 'review'}',
+      excludeSemantics: true,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var i = 0; i < steps.length; i++) ...[
+          for (var i = 0; i < steps.length; i++)
             Expanded(
               child: Column(
                 children: [
-                  Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: i <= current ? accent : border,
-                        width: 1.5,
-                      ),
-                      borderRadius: BorderRadius.circular(3),
+                  SizedBox(
+                    height: _box,
+                    child: Row(
+                      children: [
+                        // The halves of the line to the neighbouring steps:
+                        // green once the step before is done.
+                        line(
+                          i == 0
+                              ? Colors.transparent
+                              : i - 1 < current
+                              ? done
+                              : grey,
+                        ),
+                        _StepBox(
+                          size: _box,
+                          state: i < current
+                              ? _StepState.done
+                              : i == current
+                              ? _StepState.current
+                              : _StepState.future,
+                          accent: accent,
+                          done: done,
+                          grey: grey,
+                        ),
+                        line(
+                          i == steps.length - 1
+                              ? Colors.transparent
+                              : i < current
+                              ? done
+                              : grey,
+                        ),
+                      ],
                     ),
-                    child: i < current
-                        ? Icon(Icons.check, size: 15, color: accent)
-                        : Center(
-                            child: Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: i == current ? accent : border,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     steps[i],
+                    textAlign: TextAlign.center,
                     style: context.text.bodySmall?.copyWith(
-                      color: i == current ? accent : null,
+                      color: i == current
+                          ? accent
+                          : i < current
+                          ? done
+                          : muted,
                       fontWeight: i == current ? FontWeight.w600 : null,
                     ),
                   ),
                 ],
               ),
             ),
-          ],
         ],
       ),
+    );
+  }
+}
+
+enum _StepState { done, current, future }
+
+class _StepBox extends StatelessWidget {
+  const _StepBox({
+    required this.size,
+    required this.state,
+    required this.accent,
+    required this.done,
+    required this.grey,
+  });
+
+  final double size;
+  final _StepState state;
+  final Color accent;
+  final Color done;
+  final Color grey;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (state) {
+      _StepState.done => done,
+      _StepState.current => accent,
+      _StepState.future => grey,
+    };
+    return Container(
+      width: size,
+      height: size,
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        color: state == _StepState.done ? done : null,
+        border: Border.all(color: color, width: 1.5),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: switch (state) {
+        _StepState.done => Icon(
+          Icons.check,
+          size: 16,
+          color: Theme.of(context).colorScheme.surface,
+        ),
+        _ => Center(
+          child: Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+        ),
+      },
     );
   }
 }

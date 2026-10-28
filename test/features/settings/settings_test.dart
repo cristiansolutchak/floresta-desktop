@@ -119,6 +119,20 @@ void main() {
       expect(r.load(), s);
     });
 
+    test('remembers a node that runs elsewhere', () async {
+      final r = await repo();
+      const s = NodeSettings(
+        onboardingComplete: true,
+        network: BitcoinNetwork.signet,
+        rpcPort: 48000,
+        useExistingNode: true,
+      );
+      expect(await r.save(s), const Right(unit));
+      expect(r.load().useExistingNode, isTrue);
+      expect(r.load().effectiveRpcPort, 48000);
+      expect(const NodeSettings().useExistingNode, isFalse);
+    });
+
     test('does not save invalid settings', () async {
       final r = await repo();
       final result = await r.save(const NodeSettings(rpcPort: 1));

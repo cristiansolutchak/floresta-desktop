@@ -12,7 +12,8 @@ class InstallationPage extends StatelessWidget {
       children: [
         PageHeader(
           title: 'Installation',
-          subtitle: 'Where florestad lives on this computer and how to get it.',
+          subtitle:
+              'Whether Floresta is on this computer, and how to set it up.',
         ),
         InstallationView(),
       ],

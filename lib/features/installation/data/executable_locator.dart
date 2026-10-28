@@ -63,9 +63,17 @@ class ExecutableLocator {
     } else if (platform.os == HostOs.linux) {
       add('/usr/local/bin', ExecutableSource.wellKnown);
       add('/usr/bin', ExecutableSource.wellKnown);
-      if (home != null) {
-        add('$home$sep.nix-profile${sep}bin', ExecutableSource.wellKnown);
+    }
+    // Nix (upstream doc/nix.md packages florestad through floresta-nix):
+    // `nix profile install` and home-manager use the user profile,
+    // NixOS and nix-darwin system packages the system profile.
+    if (platform.os.isUnix) {
+      if (home != null) add('$home/.nix-profile/bin', ExecutableSource.nix);
+      if (environment['USER'] case final user? when user.isNotEmpty) {
+        add('/etc/profiles/per-user/$user/bin', ExecutableSource.nix);
       }
+      add('/nix/var/nix/profiles/default/bin', ExecutableSource.nix);
+      add('/run/current-system/sw/bin', ExecutableSource.nix);
     }
     return result;
   }

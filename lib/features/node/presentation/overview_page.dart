@@ -3,11 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/dash_tokens.dart';
-import '../../../core/errors/failure.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/dash.dart';
-import '../../installation/domain/next_action.dart';
-import '../../installation/presentation/installation_providers.dart';
+import '../../installation/domain/setup_state.dart';
+import '../../installation/presentation/setup_state_provider.dart';
 import '../../settings/presentation/settings_controller.dart';
 import '../domain/node_process_state.dart';
 import '../domain/node_readiness.dart';
@@ -16,6 +15,7 @@ import '../domain/peer.dart';
 import '../domain/preflight.dart';
 import '../domain/sync_progress.dart';
 import 'node_controller.dart';
+import 'node_status_banner.dart';
 import 'status_labels.dart';
 
 /// Figma "Overview" (frame 1:14488): status banner, then Syncing, Backfill,
@@ -31,21 +31,18 @@ class OverviewPage extends ConsumerWidget {
     final network = ref.watch(
       settingsControllerProvider.select((s) => s.network),
     );
-    final next = ref.watch(nextActionProvider);
-    final installed =
-        next.value is OpenNodeManagement ||
-        next.value is ConfigureNode ||
-        next.value is UpdateFloresta;
+    final setup = ref.watch(setupStateProvider);
 
     return DashPage(
       children: [
-        if (!installed && next.hasValue && !status.isExternallyManaged) ...[
+        if (!setup.usable &&
+            setup is! SetupChecking &&
+            setup is! Installing &&
+            !status.isExternallyManaged) ...[
           Notice(
             tone: Tone.warning,
             title: 'Floresta is not ready to run',
-            message:
-                'The florestad executable was not found or could not be '
-                'used.',
+            message: '${setup.label}. Installation shows what to do next.',
             action: OutlinedButton(
               onPressed: () => context.go('/installation'),
               child: const Text('Open Installation'),
@@ -93,192 +90,12 @@ class OverviewPage extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
         ],
-        _StatusBanner(status, readiness, installed: installed),
+        const NodeStatusBanner(),
         const SizedBox(height: 24),
         const DashColumns(children: [_SyncCard(), BackfillCard()]),
         const SizedBox(height: 24),
         const DashColumns(children: [_PeersCard(), _ServicesCard()]),
       ],
-    );
-  }
-}
-
-class _StatusBanner extends ConsumerWidget {
-  const _StatusBanner(this.status, this.readiness, {required this.installed});
-  final NodeStatus status;
-  final NodeReadiness readiness;
-  final bool installed;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.dash;
-    final short = StatusLabels.short(readiness, status);
-    final tone = DashToneColors.of(short.tone);
-    final colors = tone == DashTone.neutral
-        ? (fg: t.textPrimary, bg: t.surface, border: t.border)
-        : tone.colors(context);
-    final process = StatusLabels.process(status);
-    final controller = ref.read(nodeControllerProvider.notifier);
-
-    Future<void> run(Future<dynamic> Function() action) async {
-      final result = await action();
-      if (!context.mounted) return;
-      result.fold((Failure f) => showFailure(context, f), (_) {});
-    }
-
-    final message = switch (short.label) {
-      'Syncing' =>
-        'Floresta is catching up to the network tip. You can leave it '
-            'running in the background.',
-      'Stopped' =>
-        'Floresta is not running. Start it to sync and serve your '
-            'watch-only wallets.',
-      _ =>
-        StatusLabels.readiness(readiness, status).caption ??
-            process.caption ??
-            '',
-    };
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.bg,
-        border: Border.all(color: colors.border),
-      ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 16,
-        runSpacing: 16,
-        children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (tone == DashTone.warning)
-                  DashIconBlock.asset(
-                    DashIcons.statusSyncing,
-                    size: 32,
-                    iconSize: 16,
-                    color: colors.fg,
-                    borderColor: colors.border,
-                  )
-                else
-                  DashIconBlock(
-                    switch (tone) {
-                      DashTone.success => Icons.check_circle_outline,
-                      DashTone.danger => Icons.error_outline,
-                      _ => Icons.power_settings_new,
-                    },
-                    size: 32,
-                    iconSize: 18,
-                    color: tone == DashTone.neutral ? t.textPrimary : colors.fg,
-                    borderColor: colors.border,
-                  ),
-                const SizedBox(width: 16),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Semantics(
-                        header: true,
-                        child: Text(
-                          'Status: ${short.label.toUpperCase()}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            height: 1.4,
-                            fontWeight: FontWeight.w500,
-                            color: colors.fg,
-                          ),
-                        ),
-                      ),
-                      if (message.isNotEmpty)
-                        Text(message, style: DashText.body(context)),
-                      const SizedBox(height: 4),
-                      // Who runs the process: ours, adopted, or external.
-                      Wrap(
-                        spacing: 4,
-                        children: [
-                          Text(
-                            process.label,
-                            style: DashText.small(
-                              context,
-                              color: t.textPrimary,
-                            ),
-                          ),
-                          if (process.caption case final c?) ...[
-                            Text('·', style: DashText.small(context)),
-                            Text(c, style: DashText.small(context)),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (status.canStart)
-                DashButton(
-                  'Start node',
-                  style: DashButtonStyle.primary,
-                  icon: Icons.play_arrow_rounded,
-                  onPressed: installed ? () => run(controller.start) : null,
-                )
-              else
-                DashButton(
-                  'Go to Sync',
-                  style: DashButtonStyle.primary,
-                  onPressed: () => context.go('/sync'),
-                ),
-              DashButton(
-                'Logs',
-                style: DashButtonStyle.secondary,
-                onPressed: () => context.go('/logs'),
-              ),
-              if (status.canStop && !status.isExternallyManaged)
-                DashButton(
-                  'Restart',
-                  onPressed: () async {
-                    final ok = await confirm(
-                      context,
-                      title: 'Restart the node?',
-                      message:
-                          'Floresta will shut down cleanly and start again. '
-                          'Connected wallets will briefly disconnect.',
-                      confirmLabel: 'Restart',
-                    );
-                    if (ok) await run(controller.restart);
-                  },
-                ),
-              if (status.canStop)
-                DashButton(
-                  'Stop',
-                  onPressed: () async {
-                    final ok = await confirm(
-                      context,
-                      title: 'Stop the node?',
-                      message: status.isExternallyManaged
-                          ? 'This node was started outside this app. It will '
-                                'be asked to shut down over RPC and this app '
-                                'will not be able to start it the same way.'
-                          : 'Floresta will shut down cleanly. Sync progress '
-                                'is kept and resumes on the next start.',
-                      confirmLabel: 'Stop',
-                    );
-                    if (ok) await run(controller.stop);
-                  },
-                ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

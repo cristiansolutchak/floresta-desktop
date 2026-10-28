@@ -72,6 +72,9 @@ void main() {
         '/Users/a/.cargo/bin/florestad',
         '/opt/homebrew/bin/florestad',
         '/usr/local/bin/florestad',
+        '/Users/a/.nix-profile/bin/florestad',
+        '/nix/var/nix/profiles/default/bin/florestad',
+        '/run/current-system/sw/bin/florestad',
       ]);
     });
 
