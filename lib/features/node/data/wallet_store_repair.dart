@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:fpdart/fpdart.dart';
 
 import '../../../core/errors/failure.dart';
+import '../../settings/domain/app_reset.dart';
 import '../../settings/domain/node_settings.dart';
 
 /// What [WalletStoreRepair.moveAside] moved, for the confirmation message.
@@ -25,10 +26,7 @@ class WalletStoreRepair {
   final String? homeDir;
 
   static bool isStoreEntry(String name) =>
-      name == 'conf' ||
-      name == 'db' ||
-      name == 'blobs' ||
-      RegExp(r'^snap\.[0-9A-Fa-f]+$').hasMatch(name);
+      name == 'conf' || name == 'db' || name == 'blobs' || isSledSnapshot(name);
 
   String dataDir(NodeSettings settings) => settings.effectiveDataDir(
     homeDir: homeDir,

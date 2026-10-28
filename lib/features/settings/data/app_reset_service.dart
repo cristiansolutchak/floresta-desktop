@@ -77,7 +77,8 @@ class AppResetService {
     return Right(chainDataToDelete(names));
   }
 
-  /// Deletes only the [florestadDataEntries] in [dataDir]; the folder and
+  /// Deletes only the [florestadDataEntries] and Sled snapshots in
+  /// [dataDir] ([chainDataToDelete]); the folder and
   /// anything else in it (other networks' folders, user files) stay.
   Future<Either<Failure, List<String>>> deleteChainData(String dataDir) async {
     final plan = chainDataIn(dataDir);

@@ -29,6 +29,32 @@ void main() {
         'db',
       ]);
     });
+
+    test('deletes the wallet database\'s Sled snapshots with it', () {
+      // A snapshot left behind next to a fresh, empty db makes florestad
+      // refuse to open its wallet store (mainnet, 2026-10-28).
+      expect(
+        chainDataToDelete({
+          'chaindata',
+          'db',
+          'conf',
+          'snap.00000000000001D6',
+          'snap.0000000000000A10',
+          'snapshot-notes.txt',
+          'snap.',
+          'snap.xyz',
+        }),
+        [
+          'chaindata',
+          'db',
+          'conf',
+          'snap.00000000000001D6',
+          'snap.0000000000000A10',
+        ],
+      );
+      expect(isSledSnapshot('snap.00000000000001d6'), isTrue);
+      expect(isSledSnapshot('snap.00000000000001D6.bak'), isFalse);
+    });
   });
 
   group('AppResetService (real files)', () {
@@ -85,6 +111,7 @@ void main() {
         }
         File('${base.path}/debug.log').writeAsStringSync('log');
         File('${base.path}/peers.json').writeAsStringSync('[]');
+        File('${base.path}/snap.00000000000001D6').writeAsStringSync('sled');
         Directory('${base.path}/signet/chaindata').createSync(recursive: true);
         File('${base.path}/my-notes.txt').writeAsStringSync('mine');
         // A link inside must be removed as a link, never followed.
@@ -103,6 +130,7 @@ void main() {
           'conf',
           'peers.json',
           'debug.log',
+          'snap.00000000000001D6',
         ]);
         final deleted = await service.deleteChainData(base.path);
         expect(deleted.getOrElse((f) => fail('$f')), plan);
