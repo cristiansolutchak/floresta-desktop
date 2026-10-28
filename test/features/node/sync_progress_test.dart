@@ -47,14 +47,46 @@ void main() {
       expect(p.tipIsEstimate, isTrue);
     });
 
-    test('headers: fraction of the tip, no peer tip means the headers', () {
+    test('headers with no peer tip: no fraction, no behind, tip unknown', () {
+      // Just after a restart no peer is connected; the node's own headers
+      // must not become the target (it showed "100 %", 2026-10-28).
+      final fresh = RpcModels.blockchainInfo({
+        ...signetAfterSnapshot,
+        'validated': 0,
+        'height': 16000,
+      });
+      final p = SyncProgress.of(
+        fresh,
+        const NodeReadiness(ReadinessStage.downloadingHeaders),
+        null,
+      );
+      expect(p.step, SyncStep.headers);
+      expect(p.tipKnown, isFalse);
+      expect(p.fraction, isNull);
+      expect(p.behind, 0);
+      expect(p.leadingStat.value, 16000);
+    });
+
+    test('headers with a peer tip: fraction of that tip', () {
       final p = SyncProgress.of(
         chain,
-        const NodeReadiness(ReadinessStage.downloadingHeaders),
+        const NodeReadiness(ReadinessStage.downloadingHeaders, peerTip: 655686),
         breakdown,
       );
       expect(p.step, SyncStep.headers);
-      expect(p.fraction, 1);
+      expect(p.tipKnown, isTrue);
+      expect(p.fraction, 0.5);
+      expect(p.targetHeight, 655686);
+    });
+
+    test('after the headers, no peer tip means the headers are the target', () {
+      final p = SyncProgress.of(
+        chain,
+        const NodeReadiness(ReadinessStage.validatingBlocks),
+        breakdown,
+      );
+      expect(p.step, SyncStep.blocks);
+      expect(p.tipKnown, isTrue);
       expect(p.targetHeight, 327843);
       expect(p.tipIsEstimate, isFalse);
     });

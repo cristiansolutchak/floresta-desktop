@@ -284,13 +284,21 @@ class _StatusBanner extends ConsumerWidget {
 }
 
 /// "~ 14,444 blocks" when the tip is an estimate from peers.
-String behindText(SyncProgress p) => p.behind == 0
+String behindText(SyncProgress p) => !p.tipKnown
+    ? 'Unknown'
+    : p.behind == 0
     ? 'Up to date'
     : '${p.tipIsEstimate ? '~ ' : ''}${formatInt(p.behind)} blocks';
+
+/// The network tip, or why it is not known yet.
+String targetText(SyncProgress p) =>
+    p.tipKnown ? formatInt(p.targetHeight) : 'Waiting for peers';
 
 /// What the percentage measures, per phase (SYNC-02, SYNC-06).
 String fractionMeaning(SyncProgress p, {required bool snapshotApplied}) =>
     switch (p.step) {
+      SyncStep.headers when !p.tipKnown =>
+        'Waiting for peers to report the network tip',
       SyncStep.headers =>
         'Block headers downloaded, against the tip reported by peers',
       SyncStep.blocks =>
@@ -353,10 +361,7 @@ class _SyncCard extends ConsumerWidget {
             p?.leadingStat.label ?? 'Current Height',
             p == null ? '—' : formatInt(p.leadingStat.value),
           ),
-          DashStatRow(
-            'Target Height',
-            p == null ? '—' : formatInt(p.targetHeight),
-          ),
+          DashStatRow('Target Height', p == null ? '—' : targetText(p)),
           DashStatRow(
             'Behind',
             p == null ? '—' : behindText(p),

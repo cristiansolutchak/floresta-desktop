@@ -910,7 +910,7 @@ void main() {
     expect(find.text('Daemon output'), findsOneWidget);
   });
 
-  testWidgets('during the headers step both cards show headers downloaded', (
+  testWidgets('headers step without peers: header count, no tip, no 100 %', (
     tester,
   ) async {
     final h = _Harness()
@@ -932,14 +932,23 @@ void main() {
     expect(row, findsOneWidget);
     expect(find.descendant(of: row, matching: find.text('24,000')), findsOne);
     expect(find.text('Current Height'), findsNothing);
+    // No peers yet, so no network tip: no "100 %" from the node's own
+    // headers and no "Behind by" in the header bar (2026-10-28).
+    expect(find.text('100.0%'), findsNothing);
+    expect(find.textContaining('Behind by'), findsNothing);
+    expect(find.text('Waiting for peers'), findsOneWidget);
+    expect(find.text('Unknown'), findsOneWidget);
 
     await tester.ensureVisible(find.text('View Sync Details'));
     await tester.tap(find.text('View Sync Details'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Step 1/3'), findsOneWidget);
     expect(find.text('Headers Downloaded'), findsOneWidget);
-    expect(find.text('24,000'), findsWidgets);
+    expect(find.text('24,000'), findsWidgets); // card and details
     expect(find.text('Current Height'), findsNothing);
+    expect(find.text('100.0%'), findsNothing);
+    expect(find.text('Waiting for peers'), findsOneWidget);
+    expect(find.textContaining('waiting for peers to report'), findsOneWidget);
   });
 
   testWidgets('UX-05..09: every Figma sidebar screen opens', (tester) async {

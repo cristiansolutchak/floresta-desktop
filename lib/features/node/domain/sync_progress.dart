@@ -22,7 +22,8 @@ enum SyncStep {
 
 /// Everything the dashboard needs to describe sync, from real node data
 /// only. Percentages are labelled by phase; nothing here is invented:
-/// - headers: headers / network tip (an estimate from peers);
+/// - headers: headers / network tip (an estimate from peers); with no peer
+///   tip yet, nothing ([tipKnown] is false);
 /// - blocks: blocks this node verified itself after the assume-utreexo
 ///   snapshot / blocks between the snapshot and the network tip (SYNC-02;
 ///   florestad's `progress` is not used, and neither is its own header
@@ -37,6 +38,7 @@ class SyncProgress extends Equatable {
     required this.targetHeight,
     required this.behind,
     required this.tipIsEstimate,
+    required this.tipKnown,
   });
 
   final SyncStep step;
@@ -59,6 +61,13 @@ class SyncProgress extends Equatable {
   /// [targetHeight] comes from peers' heights at connection time.
   final bool tipIsEstimate;
 
+  /// False while headers download and no peer has reported a height (just
+  /// after a start, before peers connect). The node's own header count is
+  /// then all [targetHeight] could be, so [fraction] is null and [behind] is
+  /// 0: showing "100 %" there was wrong (2026-10-28). Later steps use the
+  /// downloaded headers as the target, which is right once they are done.
+  final bool tipKnown;
+
   /// The first figure on the sync cards. While headers download, no block
   /// is validated yet, so [currentHeight] stays 0 next to a growing
   /// percentage; the header count is what moves. Later steps show the
@@ -74,6 +83,7 @@ class SyncProgress extends Equatable {
     VerificationBreakdown? breakdown,
   ) {
     final tip = max(readiness.peerTip ?? 0, chain.headerHeight);
+    var tipKnown = true;
     final current = chain.validatedHeight;
     final SyncStep step;
     double? fraction;
@@ -85,7 +95,8 @@ class SyncProgress extends Equatable {
         readiness.stage == ReadinessStage.findingPeers ||
         readiness.stage == ReadinessStage.behindNetwork) {
       step = SyncStep.headers;
-      fraction = tip == 0 ? null : chain.headerHeight / tip;
+      tipKnown = readiness.peerTip != null;
+      fraction = !tipKnown || tip == 0 ? null : chain.headerHeight / tip;
     } else {
       step = SyncStep.blocks;
       if (breakdown != null) {
@@ -99,8 +110,9 @@ class SyncProgress extends Equatable {
       currentHeight: current,
       headerHeight: chain.headerHeight,
       targetHeight: tip,
-      behind: max(0, tip - current),
+      behind: tipKnown ? max(0, tip - current) : 0,
       tipIsEstimate: (readiness.peerTip ?? 0) > chain.headerHeight,
+      tipKnown: tipKnown,
     );
   }
 
@@ -113,5 +125,6 @@ class SyncProgress extends Equatable {
     targetHeight,
     behind,
     tipIsEstimate,
+    tipKnown,
   ];
 }

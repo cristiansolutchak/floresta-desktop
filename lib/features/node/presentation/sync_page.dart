@@ -162,7 +162,7 @@ class _StepCard extends ConsumerWidget {
                   stat(
                     'Target Height',
                     Text(
-                      p == null ? '—' : formatInt(p.targetHeight),
+                      p == null ? '—' : targetText(p),
                       style: DashText.value(context),
                     ),
                   ),
@@ -229,6 +229,9 @@ class _TimelineCard extends ConsumerWidget {
           'Starts once the node has peers',
         SyncStep.headers when st == _StepState.done =>
           '${formatInt(chain?.headerHeight ?? 0)} headers downloaded',
+        SyncStep.headers when p?.tipKnown == false =>
+          '${formatInt(chain?.headerHeight ?? 0)} headers so far, waiting '
+              'for peers to report the network tip',
         SyncStep.headers =>
           '${formatInt(chain?.headerHeight ?? 0)} of about '
               '${formatInt(p?.targetHeight ?? 0)} headers',
