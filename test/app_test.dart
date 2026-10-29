@@ -98,13 +98,22 @@ class _Harness {
     bool onboarded = true,
     String? network,
     Size size = const Size(1280, 860),
+    bool? compactSidebar,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    // Status motion runs for as long as the node works (a syncing node
+    // never "settles"), so these tests use the system's reduced-motion
+    // setting, under which every status widget is static. Motion itself is
+    // tested in test/shared/status_motion_test.dart.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     SharedPreferences.setMockInitialValues({
       'settings.onboardingComplete': onboarded,
       'settings.network': ?network,
+      'ui.sidebarCompact': ?compactSidebar,
     });
     final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
@@ -458,6 +467,90 @@ void main() {
       bar().right - tester.getRect(find.byTooltip('Settings')).right,
       lessThanOrEqualTo(4),
     );
+  });
+
+  testWidgets('compact sidebar: icons only, labels in tooltips, remembered', (
+    tester,
+  ) async {
+    final h = _Harness();
+    await h.pump(tester);
+    double sidebarWidth() => tester
+        .getSize(
+          find
+              .ancestor(
+                of: find.byTooltip('Collapse sidebar'),
+                matching: find.byType(AnimatedContainer),
+              )
+              .first,
+        )
+        .width;
+    expect(sidebarWidth(), 264);
+    expect(find.text('Self-Sovereign Validation'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Collapse sidebar'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Expand sidebar'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('ui.sidebarCompact'), isTrue);
+    double compactWidth() => tester
+        .getSize(
+          find
+              .ancestor(
+                of: find.byTooltip('Expand sidebar'),
+                matching: find.byType(AnimatedContainer),
+              )
+              .first,
+        )
+        .width;
+    expect(compactWidth(), 80);
+    // Every destination is an icon with its name as a tooltip, still
+    // selectable, and the decoration is gone.
+    for (final label in ['Overview', 'Sync', 'Peers', 'Wallet', 'Help']) {
+      expect(find.byTooltip(label), findsOneWidget, reason: label);
+    }
+    expect(find.text('Self-Sovereign Validation'), findsNothing);
+    await tester.tap(find.byTooltip('Peers'));
+    await tester.pumpAndSettle();
+    expect(find.text('Peers'), findsWidgets); // the header title
+
+    // Kept across restarts.
+    await h.pump(tester, compactSidebar: true);
+    expect(find.byTooltip('Expand sidebar'), findsOneWidget);
+    // Ctrl+\ (Cmd on macOS) toggles it back; tests run as non-macOS.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.backslash);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Collapse sidebar'), findsOneWidget);
+  });
+
+  testWidgets('setup screens sit in the middle of the window', (tester) async {
+    await _Harness().pump(tester, onboarded: false);
+    Rect card() => tester.getRect(
+      find
+          .ancestor(
+            of: find.text('Welcome to Floresta'),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    // 1280 x 860: centred on both axes (it used to hug the top).
+    expect(card().center.dx, moreOrLessEquals(640, epsilon: 1));
+    expect(card().center.dy, moreOrLessEquals(430, epsilon: 80));
+    final welcomeWidth = card().width;
+    expect(welcomeWidth, WizardFrame.cardWidth);
+    await tester.tap(find.text('Get started'));
+    await tester.pumpAndSettle();
+    final install = tester.getRect(
+      find
+          .ancestor(
+            of: find.text('Get Floresta'),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    expect(install.center.dx, moreOrLessEquals(640, epsilon: 1));
+    expect(install.width, welcomeWidth);
   });
 
   testWidgets('INS-12: resetting settings brings the wizard back', (

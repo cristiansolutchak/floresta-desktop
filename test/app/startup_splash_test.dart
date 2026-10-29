@@ -96,7 +96,8 @@ void main() {
     expect(_splash, findsOneWidget);
     expect(tester.hasRunningAnimations, isFalse);
     detection.complete(const Left(ExecutableNotFoundFailure([])));
-    await tester.pump(StartupSplash.minVisible);
+    // No intro plays, so there is no minimum to wait for.
+    await tester.pump();
     await tester.pump();
     expect(_splash, findsNothing);
   });

@@ -72,6 +72,10 @@ Future<FakeInstallationRepository> _pump(
   tester.view.physicalSize = const Size(1280, 1400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
+  // The install spinner runs while installing; see app_test.dart.
+  tester.platformDispatcher.accessibilityFeaturesTestValue =
+      const FakeAccessibilityFeatures(disableAnimations: true);
+  addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
   final repo = FakeInstallationRepository(detected);

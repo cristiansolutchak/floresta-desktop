@@ -112,6 +112,12 @@ abstract final class StatusLabels {
     };
   }
 
+  /// The node is doing work right now (syncing, starting, stopping), so its
+  /// status icon moves. Stalled, behind, stopped, synced and errors are
+  /// still: nothing is progressing, or it is done.
+  static bool isActive(StatusLabel short) =>
+      const {'Syncing', 'Starting', 'Stopping'}.contains(short.label);
+
   static StatusLabel api(NodeStatus s) => switch (s.api) {
     ApiReachability.unknown => (
       label: 'Checking',

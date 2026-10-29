@@ -9,6 +9,7 @@ import '../../../core/errors/failure.dart';
 import '../../../core/platform/host_platform.dart';
 import '../../../core/providers.dart';
 import '../../../shared/widgets/common.dart';
+import '../../../shared/widgets/status_motion.dart';
 import '../../node/presentation/status_labels.dart' show formatBytes;
 import '../../settings/presentation/settings_controller.dart';
 import '../data/artifact_downloader.dart' show isLoopbackUrl;
@@ -233,15 +234,24 @@ class _SetupCard extends ConsumerWidget {
                     ShellTitleScope.active(context) ? 0 : 6,
                   ),
                 ),
-                child: state is SetupChecking
-                    ? Padding(
-                        padding: const EdgeInsets.all(11),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: color,
-                        ),
-                      )
-                    : Icon(icon, size: 22, color: color),
+                // A spinner only while work really runs (detection, an
+                // install); each state change cross-fades in place.
+                child: StatusSwap(
+                  stateKey: state.runtimeType,
+                  child: state is SetupChecking || state is Installing
+                      ? Padding(
+                          padding: const EdgeInsets.all(11),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: color,
+                            // Reduced motion: a still arc says "in progress".
+                            value: MediaQuery.disableAnimationsOf(context)
+                                ? 0.3
+                                : null,
+                          ),
+                        )
+                      : Center(child: Icon(icon, size: 22, color: color)),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -251,12 +261,15 @@ class _SetupCard extends ConsumerWidget {
                     Row(
                       children: [
                         Flexible(
-                          child: Semantics(
-                            header: true,
-                            child: Text(
-                              state.label,
-                              style: context.text.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
+                          child: StatusSwap(
+                            stateKey: state.label,
+                            child: Semantics(
+                              header: true,
+                              child: Text(
+                                state.label,
+                                style: context.text.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
@@ -526,7 +539,10 @@ class _ProgressLine extends StatelessWidget {
               '${received != null && total != null ? ' · ${formatBytes(received)} of ${formatBytes(total)}' : ''}',
             ),
             const SizedBox(height: 6),
-            LinearProgressIndicator(value: fraction),
+            AnimatedFraction(
+              value: fraction,
+              builder: (context, v) => LinearProgressIndicator(value: v),
+            ),
           ],
         ),
       InstallVerifying() => const Text(

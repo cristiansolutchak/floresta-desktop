@@ -224,19 +224,25 @@ class _SetupStepPageState extends ConsumerState<SetupStepPage> {
         ),
       ),
     };
-    return WizardFrame(
-      key: ValueKey(_step),
-      title: title,
-      subtitle: subtitle,
-      stepper: WizardStepper(steps: SetupStepPage.steps, current: _step),
-      onBack: _back,
-      primary: _step == _review
-          ? FilledButton(
-              onPressed: _saving ? null : _finish,
-              child: const Text('Finish'),
-            )
-          : next,
-      child: body,
+    // Steps cross-fade inside the same frame; the draft is kept either way.
+    return AnimatedSwitcher(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 180),
+      child: WizardFrame(
+        key: ValueKey(_step),
+        title: title,
+        subtitle: subtitle,
+        stepper: WizardStepper(steps: SetupStepPage.steps, current: _step),
+        onBack: _back,
+        primary: _step == _review
+            ? FilledButton(
+                onPressed: _saving ? null : _finish,
+                child: const Text('Finish'),
+              )
+            : next,
+        child: body,
+      ),
     );
   }
 }

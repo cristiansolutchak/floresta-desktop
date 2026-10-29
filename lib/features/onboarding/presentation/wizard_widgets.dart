@@ -47,69 +47,90 @@ class _WizardFrameState extends State<WizardFrame> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Scaffold(
-      body: Scrollbar(
-        controller: _scroll,
-        child: SingleChildScrollView(
+      body: SafeArea(
+        child: Scrollbar(
           controller: _scroll,
-          padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: WizardFrame.cardWidth,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const _Logo(),
-                  const SizedBox(height: 24),
-                  if (widget.stepper case final s?) ...[
-                    s,
-                    const SizedBox(height: 16),
-                  ],
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      border: Border.all(color: colors.border),
-                      borderRadius: BorderRadius.circular(4),
+          child: LayoutBuilder(
+            // Centred on both axes in the space the window gives the flow:
+            // the column is at most [WizardFrame.cardWidth] wide and, when it
+            // is shorter than the window, sits in the middle instead of
+            // hugging the top (which made short steps look off-centre). Taller
+            // steps scroll. One frame for every step, so they all line up.
+            builder: (context, viewport) => SingleChildScrollView(
+              controller: _scroll,
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: (viewport.maxHeight - 80).clamp(
+                    0,
+                    double.infinity,
+                  ),
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: WizardFrame.cardWidth,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(28),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Semantics(
-                            header: true,
-                            child: Text(
-                              widget.title,
-                              style: context.text.headlineSmall,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            widget.subtitle,
-                            style: context.text.bodyMedium?.copyWith(
-                              color: colors.muted,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          widget.child,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const _Logo(),
+                        const SizedBox(height: 24),
+                        if (widget.stepper case final s?) ...[
+                          s,
+                          const SizedBox(height: 16),
                         ],
-                      ),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            border: Border.all(color: colors.border),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(28),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Semantics(
+                                  header: true,
+                                  child: Text(
+                                    widget.title,
+                                    style: context.text.headlineSmall,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  widget.subtitle,
+                                  style: context.text.bodyMedium?.copyWith(
+                                    color: colors.muted,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                widget.child,
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (widget.onBack != null ||
+                            widget.primary != null) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              if (widget.onBack case final back?)
+                                FilledButton.tonal(
+                                  onPressed: back,
+                                  child: const Text('Back'),
+                                ),
+                              const Spacer(),
+                              ?widget.primary,
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      if (widget.onBack case final back?)
-                        FilledButton.tonal(
-                          onPressed: back,
-                          child: const Text('Back'),
-                        ),
-                      const Spacer(),
-                      ?widget.primary,
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -125,8 +146,8 @@ class _Logo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // The brand logo, as in the sidebar.
-    return Align(
-      alignment: Alignment.centerLeft,
+    // Centred over the card, on the flow's axis.
+    return Center(
       child: Semantics(
         label: 'Floresta',
         excludeSemantics: true,

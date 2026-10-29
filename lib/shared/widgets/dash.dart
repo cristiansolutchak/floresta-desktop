@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../app/theme/dash_tokens.dart';
 import 'common.dart';
+import 'status_motion.dart';
 
 /// Building blocks of the Figma dashboard (Overview and Sync frames). Sizes
 /// are the frame's, in logical pixels: 24 card padding, 48 icon blocks,
@@ -69,6 +70,7 @@ abstract final class DashIcons {
   static const rpcConsole = 'assets/icons/sidebar/rpc-console.svg';
   static const electrum = 'assets/icons/sidebar/electrum.svg';
   static const logsNav = 'assets/icons/sidebar/logs.svg';
+  static const installation = 'assets/icons/sidebar/installation.svg';
   static const help = 'assets/icons/sidebar/help.svg';
   static const shieldTick = 'assets/icons/sidebar/shield-tick.svg';
   static const headerSyncing = 'assets/icons/overview/header/syncing.svg';
@@ -157,7 +159,8 @@ class DashIconBlock extends StatelessWidget {
     this.iconSize,
     this.color,
     this.borderColor,
-  }) : asset = null;
+  }) : asset = null,
+       glyph = null;
 
   /// A Figma icon; drawn at two thirds of the block like the frame (32/48).
   const DashIconBlock.asset(
@@ -167,10 +170,23 @@ class DashIconBlock extends StatelessWidget {
     this.iconSize,
     this.color,
     this.borderColor,
-  }) : icon = null;
+  }) : icon = null,
+       glyph = null;
+
+  /// Any glyph, e.g. an animated status icon ([statusGlyph]).
+  const DashIconBlock.child(
+    Widget this.glyph, {
+    super.key,
+    this.size = 48,
+    this.borderColor,
+  }) : icon = null,
+       asset = null,
+       iconSize = null,
+       color = null;
 
   final IconData? icon;
   final String? asset;
+  final Widget? glyph;
   final double size;
   final double? iconSize;
   final Color? color;
@@ -187,13 +203,15 @@ class DashIconBlock extends StatelessWidget {
         border: Border.all(color: borderColor ?? t.border),
       ),
       alignment: Alignment.center,
-      child: dashGlyph(
-        context,
-        icon: icon,
-        asset: asset,
-        size: iconSize ?? (asset != null ? size * 2 / 3 : size * 0.6),
-        color: color ?? t.textPrimary,
-      ),
+      child:
+          glyph ??
+          dashGlyph(
+            context,
+            icon: icon,
+            asset: asset,
+            size: iconSize ?? (asset != null ? size * 2 / 3 : size * 0.6),
+            color: color ?? t.textPrimary,
+          ),
     );
   }
 }
@@ -309,6 +327,7 @@ class DashTag extends StatelessWidget {
     this.tone = DashTone.neutral,
     this.icon,
     this.asset,
+    this.leading,
     this.large = false,
   });
 
@@ -316,6 +335,9 @@ class DashTag extends StatelessWidget {
   final DashTone tone;
   final IconData? icon;
   final String? asset;
+
+  /// A ready-made glyph instead of [icon]/[asset] (an animated status icon).
+  final Widget? leading;
 
   /// 28 high card tags; the default is the 20 high header/service tag.
   final bool large;
@@ -333,7 +355,10 @@ class DashTag extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null || asset != null) ...[
+          if (leading case final l?) ...[
+            l,
+            const SizedBox(width: 4),
+          ] else if (icon != null || asset != null) ...[
             dashGlyph(context, icon: icon, asset: asset, size: 12, color: c.fg),
             const SizedBox(width: 4),
           ],
@@ -379,11 +404,21 @@ class DashBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         child: SizedBox(
           height: 12,
-          child: LinearProgressIndicator(
-            value: fraction.clamp(0.0, 1.0),
-            minHeight: 12,
-            color: color,
-            backgroundColor: context.dash.track,
+          // Moves smoothly between the readings the node reports.
+          child: AnimatedFraction(
+            value: fraction,
+            builder: (context, v) => TweenAnimationBuilder<Color?>(
+              tween: ColorTween(end: color),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : statusSwapDuration,
+              builder: (context, c, _) => LinearProgressIndicator(
+                value: v,
+                minHeight: 12,
+                color: c,
+                backgroundColor: context.dash.track,
+              ),
+            ),
           ),
         ),
       ),
@@ -596,14 +631,7 @@ class DashServiceRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: off ? t.border : tone.strong(context),
-                shape: BoxShape.circle,
-              ),
-            ),
+            StatusDot(tone: off ? DashTone.disabled : tone),
             const SizedBox(width: 8),
             Expanded(
               child: Text(

@@ -121,6 +121,13 @@ void main() {
           ? Brightness.dark
           : Brightness.light;
       addTearDown(binding.platformDispatcher.clearPlatformBrightnessTestValue);
+      // Status motion runs while the node works and never "settles"; the
+      // screenshots are of layout, so motion is off (reduced motion).
+      binding.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        binding.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
       final temp = Directory.systemTemp.createTempSync('floresta_tour_');
       addTearDown(() => temp.deleteSync(recursive: true));
       SharedPreferences.setMockInitialValues({});
@@ -248,6 +255,11 @@ void main() {
       await _shot('$theme-15-overview-syncing', tester);
       await tap('Go to Sync');
       await _shot('$theme-16-sync', tester);
+      await tester.tap(find.byTooltip('Collapse sidebar'));
+      await tester.pumpAndSettle();
+      await _shot('$theme-16b-sync-compact-sidebar', tester);
+      await tester.tap(find.byTooltip('Expand sidebar'));
+      await tester.pumpAndSettle();
       await tap('Installation');
       await _shot('$theme-17-installation-page', tester);
       expect(tester.takeException(), isNull);

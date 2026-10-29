@@ -30,7 +30,17 @@ class MainFlutterWindow: NSWindow {
     }
     self.setFrame(windowFrame, display: true)
     self.contentMinSize = minimum
+    // Kept for the Window menu, Mission Control and accessibility; not drawn.
     self.title = "Floresta"
+    // No visible title bar: the native close, minimise and zoom buttons sit
+    // directly on the app, with no title, separator or second shade. The
+    // content runs under the transparent bar, and the app keeps its top
+    // 28 px (sidebar, setup frame) free of controls, so the buttons never
+    // cover anything and the strip stays draggable like a title bar.
+    self.titleVisibility = .hidden
+    self.titlebarAppearsTransparent = true
+    self.titlebarSeparatorStyle = .none
+    self.styleMask.insert(.fullSizeContentView)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 

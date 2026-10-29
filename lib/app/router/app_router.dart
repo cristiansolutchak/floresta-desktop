@@ -16,10 +16,21 @@ import '../../features/settings/presentation/settings_page.dart';
 import '../../features/wallet/presentation/wallet_page.dart';
 import '../shell/app_shell.dart';
 
-/// No transition animations: this is a desktop app, and sections switch
-/// instantly like native sidebar apps.
-Page<void> _page(GoRouterState state, Widget child) =>
-    NoTransitionPage(key: state.pageKey, child: child);
+/// A short fade between screens: quick enough to feel instant, like a
+/// native sidebar app, without the hard cut. None with reduced motion.
+Page<void> _page(GoRouterState state, Widget child) => CustomTransitionPage(
+  key: state.pageKey,
+  child: child,
+  transitionDuration: const Duration(milliseconds: 150),
+  reverseTransitionDuration: const Duration(milliseconds: 150),
+  transitionsBuilder: (context, animation, _, child) =>
+      MediaQuery.disableAnimationsOf(context)
+      ? child
+      : FadeTransition(
+          opacity: CurveTween(curve: Curves.easeOut).animate(animation),
+          child: child,
+        ),
+);
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(

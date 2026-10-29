@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/dash_tokens.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/dash.dart';
+import '../../../shared/widgets/status_motion.dart';
 import '../domain/node_status.dart';
 import '../domain/peer.dart';
 import '../domain/sync_progress.dart';
@@ -190,6 +191,12 @@ class _TimelineCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = ref.watch(syncProgressProvider);
     final chain = ref.watch(nodeControllerProvider.select((s) => s.chain));
+    final working = StatusLabels.isActive(
+      StatusLabels.short(
+        ref.watch(nodeReadinessProvider),
+        ref.watch(nodeControllerProvider),
+      ),
+    );
     final b = ref.watch(verificationBreakdownProvider);
     _StepState state(SyncStep s) => p == null
         ? _StepState.pending
@@ -243,6 +250,7 @@ class _TimelineCard extends ConsumerWidget {
               text: text(s),
               state: state(s),
               last: s == SyncStep.values.last,
+              working: working,
             ),
         ],
       ),
@@ -256,11 +264,15 @@ class _TimelineStep extends StatelessWidget {
     required this.text,
     required this.state,
     required this.last,
+    required this.working,
   });
   final String title;
   final String text;
   final _StepState state;
   final bool last;
+
+  /// The node is progressing now: the current step's icon turns.
+  final bool working;
 
   @override
   Widget build(BuildContext context) {
@@ -271,7 +283,10 @@ class _TimelineStep extends StatelessWidget {
         size: 24,
         color: t.successDot,
       ),
-      _StepState.current => Icon(Icons.timelapse, size: 24, color: t.warning),
+      _StepState.current => SpinningGlyph(
+        spinning: working,
+        child: Icon(Icons.timelapse, size: 24, color: t.warning),
+      ),
       _StepState.pending => Container(
         width: 24,
         height: 24,
@@ -288,6 +303,7 @@ class _TimelineStep extends StatelessWidget {
         ),
       ),
     };
+    final shown = StatusSwap(stateKey: state, child: icon);
     final label = switch (state) {
       _StepState.done => 'done',
       _StepState.current => 'in progress',
@@ -302,7 +318,7 @@ class _TimelineStep extends StatelessWidget {
           children: [
             Column(
               children: [
-                icon,
+                shown,
                 if (!last)
                   Expanded(
                     child: Container(

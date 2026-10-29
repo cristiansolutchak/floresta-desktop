@@ -70,6 +70,7 @@ void main() {
         'settings.onboardingComplete': true,
         'settings.network': 'signet',
         'wallet.rescanOwedFrom': 10,
+        'ui.sidebarCompact': true,
         'other.app.key': 'kept',
       });
       prefs = await SharedPreferences.getInstance();

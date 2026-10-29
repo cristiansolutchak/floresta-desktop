@@ -6,6 +6,7 @@ import '../../../app/theme/dash_tokens.dart';
 import '../../../core/errors/failure.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/dash.dart';
+import '../../../shared/widgets/status_motion.dart';
 import '../../installation/presentation/setup_state_provider.dart';
 import '../../settings/presentation/settings_controller.dart';
 import '../domain/node_readiness.dart';
@@ -133,45 +134,58 @@ class NodeStatusBanner extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (tone == DashTone.warning)
-                  DashIconBlock.asset(
-                    DashIcons.statusSyncing,
-                    size: 32,
-                    iconSize: 16,
-                    color: colors.fg,
-                    borderColor: colors.border,
-                  )
-                else
-                  DashIconBlock(
-                    switch (tone) {
-                      DashTone.success => Icons.check_circle_outline,
-                      DashTone.danger => Icons.error_outline,
-                      _ => Icons.power_settings_new,
-                    },
-                    size: 32,
-                    iconSize: 18,
-                    color: tone == DashTone.neutral ? t.textPrimary : colors.fg,
-                    borderColor: colors.border,
+                DashIconBlock.child(
+                  StatusSwap(
+                    stateKey: short.label,
+                    child: statusGlyph(
+                      context,
+                      tone: tone,
+                      active: StatusLabels.isActive(short),
+                      size: tone == DashTone.warning ? 16 : 18,
+                      color: tone == DashTone.neutral
+                          ? t.textPrimary
+                          : colors.fg,
+                      spinningAsset: DashIcons.statusSyncing,
+                    ),
                   ),
+                  size: 32,
+                  borderColor: colors.border,
+                ),
                 const SizedBox(width: 16),
                 Flexible(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Semantics(
-                        header: true,
-                        child: Text(
-                          'Status: ${short.label.toUpperCase()}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            height: 1.4,
-                            fontWeight: FontWeight.w500,
-                            color: colors.fg,
+                      StatusSwap(
+                        stateKey: short.label,
+                        child: Semantics(
+                          header: true,
+                          child: Text(
+                            'Status: ${short.label.toUpperCase()}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              height: 1.4,
+                              fontWeight: FontWeight.w500,
+                              color: colors.fg,
+                            ),
                           ),
                         ),
                       ),
                       if (message.isNotEmpty)
-                        Text(message, style: DashText.body(context)),
+                        AnimatedSwitcher(
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : statusSwapDuration,
+                          layoutBuilder: (current, previous) => Stack(
+                            alignment: Alignment.topLeft,
+                            children: [...previous, ?current],
+                          ),
+                          child: Text(
+                            message,
+                            key: ValueKey(message),
+                            style: DashText.body(context),
+                          ),
+                        ),
                       const SizedBox(height: 4),
                       // Who runs the process: ours, adopted, or external.
                       Wrap(

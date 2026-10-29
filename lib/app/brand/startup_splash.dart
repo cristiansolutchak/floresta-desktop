@@ -65,8 +65,7 @@ class _StartupSplashState extends ConsumerState<StartupSplash>
   void initState() {
     super.initState();
     _cap = Timer(StartupSplash.maxWait, () => _leave(force: true));
-    // A timer, not the animation's status, so the minimum also holds with
-    // reduced motion (where the intro is skipped).
+    // The intro's length; dropped with reduced motion (no intro plays).
     _min = Timer(StartupSplash.minVisible, () {
       _minDone = true;
       if (_ready) _leave();
@@ -83,7 +82,10 @@ class _StartupSplashState extends ConsumerState<StartupSplash>
     super.didChangeDependencies();
     if (!_intro.isAnimating && _intro.value == 0) {
       if (MediaQuery.disableAnimationsOf(context)) {
+        // No intro to wait for: leave as soon as startup answers.
         _intro.value = 1;
+        _min?.cancel();
+        _minDone = true;
       } else {
         _intro.forward();
       }

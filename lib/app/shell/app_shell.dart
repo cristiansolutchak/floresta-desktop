@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,19 +17,22 @@ import '../../features/node/presentation/utreexo_peer_controller.dart';
 import '../../features/wallet/presentation/wallet_rescan_controller.dart';
 import '../../shared/widgets/common.dart';
 import '../../shared/widgets/dash.dart';
+import '../../shared/widgets/status_motion.dart';
+import '../brand/brand_symbol.dart';
 import '../theme/dash_tokens.dart';
+import 'sidebar_preference.dart';
+import 'window_chrome.dart';
 
 class _Destination {
-  const _Destination(this.path, this.label, this.key, {this.asset, this.icon});
+  const _Destination(this.path, this.label, this.key, {required this.asset});
   final String path;
   final String label;
 
   /// Cmd/Ctrl+digit shortcut; Help has none (only 1…9 exist).
   final LogicalKeyboardKey? key;
 
-  /// Figma sidebar icon; Installation has none and uses [icon].
-  final String? asset;
-  final IconData? icon;
+  /// Sidebar icon (Figma, and `installation.svg` for Installation).
+  final String asset;
 }
 
 /// The Figma sidebar order (Overview, Sync, Peers, Wallet, RPC Console,
@@ -80,7 +85,7 @@ const _destinations = [
     '/installation',
     'Installation',
     LogicalKeyboardKey.digit8,
-    icon: Icons.download_for_offline_outlined,
+    asset: DashIcons.installation,
   ),
   _Destination(
     '/settings',
@@ -112,6 +117,13 @@ class AppShell extends ConsumerWidget {
     );
     return CallbackShortcuts(
       bindings: {
+        // Cmd/Ctrl+\ collapses or expands the sidebar.
+        SingleActivator(
+          LogicalKeyboardKey.backslash,
+          meta: isMac,
+          control: !isMac,
+        ): () =>
+            ref.read(sidebarCompactProvider.notifier).toggle(),
         for (final d in _destinations)
           if (d.key case final key?)
             SingleActivator(key, meta: isMac, control: !isMac): () =>
@@ -170,74 +182,131 @@ ThemeData _dashButtons(ThemeData base, DashTokens t) {
   );
 }
 
+/// Expanded: icons and labels. Compact: icons only, labels in tooltips. One
+/// sidebar with two widths, animated between them; each part picks its
+/// layout from the width it actually has, so nothing overflows mid-way.
 class _Sidebar extends ConsumerWidget {
   const _Sidebar({required this.location});
   final String location;
+
+  static const compactWidth = 80.0;
+
+  /// Narrower than this, the parts switch to their icon-only layout.
+  static const _labelsFrom = 180.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.dash;
     final size = MediaQuery.sizeOf(context);
-    final width = size.width >= 1360 ? 328.0 : 264.0;
-    final compact = size.height < 820;
-    final pad = width > 300 ? 32.0 : 20.0;
-    return Container(
+    final compactPref = ref.watch(sidebarCompactProvider);
+    final width = compactPref
+        ? math.max(compactWidth, WindowChrome.controlsWidth(context))
+        : (size.width >= 1360 ? 328.0 : 264.0);
+    final short = size.height < 820;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return AnimatedContainer(
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 220),
+      curve: Curves.easeInOutCubic,
       width: width,
       decoration: BoxDecoration(
         color: t.surface,
         border: Border(right: BorderSide(color: t.border)),
       ),
-      child: FocusTraversalGroup(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(pad, compact ? 20 : 32, pad, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Semantics(
-                        label: 'Floresta',
-                        excludeSemantics: true,
-                        child: SvgPicture.asset(
-                          DashIcons.logo,
-                          height: 40,
-                          colorFilter: ColorFilter.mode(
-                            t.textPrimary,
-                            BlendMode.srcIn,
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final iconsOnly = box.maxWidth < _labelsFrom;
+          final pad = iconsOnly ? 12.0 : (box.maxWidth > 300 ? 32.0 : 20.0);
+          // Below the macOS window buttons (WindowChrome).
+          final top = math.max(
+            short ? 20.0 : 32.0,
+            WindowChrome.topInset(context) + (iconsOnly ? 16 : 4),
+          );
+          return FocusTraversalGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(pad, top, pad, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _SidebarLogo(iconsOnly: iconsOnly),
+                        SizedBox(height: short ? 16 : 32),
+                        for (final d in _destinations)
+                          _NavItem(
+                            compact: short,
+                            iconsOnly: iconsOnly,
+                            destination: d,
+                            selected: location.startsWith(d.path),
                           ),
-                        ),
-                      ),
+                        // Decorative: dropped on short windows so every
+                        // destination fits without scrolling, and when
+                        // compact.
+                        if (!short && !iconsOnly) ...[
+                          const SizedBox(height: 48),
+                          const _ValidationCard(),
+                        ],
+                      ],
                     ),
-                    SizedBox(height: compact ? 16 : 32),
-                    for (final d in _destinations)
-                      _NavItem(
-                        compact: compact,
-                        destination: d,
-                        selected: location.startsWith(d.path),
-                      ),
-                    // Decorative: dropped on short windows so every
-                    // destination fits without scrolling.
-                    if (!compact) ...[
-                      const SizedBox(height: 48),
-                      const _ValidationCard(),
-                    ],
-                  ],
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: t.border)),
+                  ),
+                  padding: EdgeInsets.fromLTRB(pad, 16, pad, 20),
+                  child: _SidebarFooter(iconsOnly: iconsOnly),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SidebarLogo extends StatelessWidget {
+  const _SidebarLogo({required this.iconsOnly});
+  final bool iconsOnly;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = context.dash.textPrimary;
+    return Semantics(
+      label: 'Floresta',
+      excludeSemantics: true,
+      child: AnimatedSwitcher(
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        child: iconsOnly
+            // The symbol alone, from the same geometry as the app icon.
+            ? Center(
+                key: const ValueKey('symbol'),
+                child: SizedBox(
+                  width: 30,
+                  height: 30 * BrandSymbol.height / BrandSymbol.width,
+                  child: CustomPaint(
+                    painter: BrandSymbolPainter(
+                      color: color,
+                      progress: List.filled(BrandSymbol.blocks.length, 1),
+                    ),
+                  ),
+                ),
+              )
+            : Align(
+                key: const ValueKey('logo'),
+                alignment: Alignment.centerLeft,
+                child: SvgPicture.asset(
+                  DashIcons.logo,
+                  height: 40,
+                  colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
                 ),
               ),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: t.border)),
-              ),
-              padding: EdgeInsets.fromLTRB(pad, 20, pad, 24),
-              child: const _SidebarFooter(),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -248,6 +317,7 @@ class _NavItem extends StatelessWidget {
     required this.destination,
     required this.selected,
     this.compact = false,
+    this.iconsOnly = false,
   });
   final _Destination destination;
   final bool selected;
@@ -255,49 +325,67 @@ class _NavItem extends StatelessWidget {
   /// 40 px items on short windows (10 destinations must fit at 640 px).
   final bool compact;
 
+  /// The compact sidebar: the icon centred, the label in a tooltip.
+  final bool iconsOnly;
+
   @override
   Widget build(BuildContext context) {
     final t = context.dash;
     final color = selected ? t.brand : t.textSecondary;
-    return Semantics(
+    final glyph = dashGlyph(
+      context,
+      asset: destination.asset,
+      size: compact ? 20 : 24,
+      color: color,
+    );
+    final item = Semantics(
       selected: selected,
       button: true,
+      label: iconsOnly ? destination.label : null,
       child: Material(
         color: selected ? t.sidebarActive : Colors.transparent,
         child: InkWell(
           onTap: () => context.go(destination.path),
           child: SizedBox(
             height: compact ? 40 : 56,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  dashGlyph(
-                    context,
-                    icon: destination.icon,
-                    asset: destination.asset,
-                    size: compact ? 20 : 24,
-                    color: color,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      destination.label,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: selected ? t.brand : t.textPrimary,
-                      ),
+            child: iconsOnly
+                ? Center(child: glyph)
+                : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        glyph,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            destination.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.fade,
+                            softWrap: false,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: selected ? t.brand : t.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
           ),
         ),
       ),
     );
+    return iconsOnly
+        ? Tooltip(
+            message: destination.label,
+            preferBelow: false,
+            verticalOffset: 0,
+            margin: const EdgeInsets.only(left: 64),
+            excludeFromSemantics: true,
+            child: item,
+          )
+        : item;
   }
 }
 
@@ -341,9 +429,11 @@ class _ValidationCard extends StatelessWidget {
 }
 
 /// "Online · v0.9.1", plus the network the app drives (owner decision 3:
-/// always visible) and the development build marker.
+/// always visible), the development build marker and the compact toggle.
+/// Compact: the status dot and the network as one tooltip.
 class _SidebarFooter extends ConsumerWidget {
-  const _SidebarFooter();
+  const _SidebarFooter({required this.iconsOnly});
+  final bool iconsOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -352,6 +442,7 @@ class _SidebarFooter extends ConsumerWidget {
     final network = ref.watch(
       settingsControllerProvider.select((s) => s.network),
     );
+    final compact = ref.watch(sidebarCompactProvider);
     final version = switch (ref.watch(nextActionProvider).value) {
       OpenNodeManagement(:final installation) ||
       ConfigureNode(:final installation) ||
@@ -362,19 +453,64 @@ class _SidebarFooter extends ConsumerWidget {
     final process = StatusLabels.process(status);
     final label = online ? 'Online' : process.label;
     final tone = online ? DashTone.success : DashToneColors.of(process.tone);
+    final dot = StatusDot(tone: tone, active: process.tone == Tone.warning);
+    final toggle = IconButton(
+      tooltip: compact ? 'Expand sidebar' : 'Collapse sidebar',
+      onPressed: ref.read(sidebarCompactProvider.notifier).toggle,
+      icon: Icon(
+        compact
+            ? Icons.keyboard_double_arrow_right
+            : Icons.keyboard_double_arrow_left,
+        size: 20,
+        color: t.textSecondary,
+      ),
+    );
+    if (iconsOnly) {
+      final summary = [
+        label,
+        ?version,
+        network.label,
+        if (!network.isMainnet) 'test network',
+      ].join(' · ');
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Tooltip(
+            message: summary,
+            child: Semantics(
+              label: summary,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  children: [
+                    dot,
+                    const SizedBox(height: 8),
+                    Text(
+                      network.isMainnet ? 'Main' : network.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.fade,
+                      softWrap: false,
+                      style: DashText.small(
+                        context,
+                        color: network.isMainnet ? t.info : t.warningText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          toggle,
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: tone.strong(context),
-                shape: BoxShape.circle,
-              ),
-            ),
+            dot,
             const SizedBox(width: 8),
             Flexible(
               child: Text(
@@ -391,9 +527,11 @@ class _SidebarFooter extends ConsumerWidget {
               const SizedBox(width: 8),
               DashTag(version, tone: DashTone.neutral),
             ],
+            const Spacer(),
+            toggle,
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Semantics(
           label: 'Active network: ${network.label}',
           excludeSemantics: true,
@@ -511,17 +649,21 @@ class _HeaderBar extends ConsumerWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DashTag(
-                      short.label,
-                      tone: tone,
-                      asset: tone == DashTone.warning
-                          ? DashIcons.headerSyncing
-                          : null,
-                      icon: switch (tone) {
-                        DashTone.success => Icons.check,
-                        DashTone.danger => Icons.error_outline,
-                        _ => null,
-                      },
+                    StatusSwap(
+                      stateKey: short.label,
+                      child: DashTag(
+                        short.label,
+                        tone: tone,
+                        leading: tone == DashTone.neutral
+                            ? null
+                            : statusGlyph(
+                                context,
+                                tone: tone,
+                                active: StatusLabels.isActive(short),
+                                size: 12,
+                                color: tone.colors(context).fg,
+                              ),
+                      ),
                     ),
                     if (showHeight && chain != null)
                       meta(
