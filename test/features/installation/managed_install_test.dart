@@ -685,8 +685,10 @@ void main() {
       final states = await offline.install(_platform).toList();
       final failed = states.last as InstallFailed;
       expect(failed.stage, InstallStage.resolve);
-      expect(failed.reason, contains('Could not reach the release server'));
-      expect(failed.recovery, contains('internet connection'));
+      // The test server is loopback, so the message names the missing local
+      // server; a remote one says "Could not reach the release server".
+      expect(failed.reason, contains('Nothing answers at 127.0.0.1'));
+      expect(failed.recovery, contains('dev_release.sh'));
       expect((await store.read()).toNullable(), isNull);
       server = LocalArtifactServer(); // for tearDown
       await server.start();

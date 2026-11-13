@@ -58,6 +58,31 @@ Future<Either<Failure, List<int>>> fetchSignedManifest(
         recovery: 'Nothing was installed.',
       ),
     );
+  } on SocketException catch (e) {
+    if (!isLoopbackUrl(manifestUrl)) {
+      return Left(
+        InstallationFailure(
+          stage: 'resolve',
+          message: 'Could not reach the release server ($e).',
+          recovery: 'Check your internet connection and try again.',
+        ),
+      );
+    }
+    // A loopback source is a local development release server, not the
+    // internet: say which one is missing.
+    return Left(
+      InstallationFailure(
+        stage: 'resolve',
+        message:
+            'Nothing answers at ${manifestUrl.host}:${manifestUrl.port}, the '
+            'local release server this development build was made for '
+            '(${e.osError?.message ?? e.message}).',
+        recovery:
+            'Start it with tool/release/dev_release.sh, or run the app '
+            'with config/release/production.json to use the published '
+            'release.',
+      ),
+    );
   } on Object catch (e) {
     return Left(
       InstallationFailure(
