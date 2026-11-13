@@ -1,5 +1,6 @@
 import 'package:floresta_gui/core/build_flavor.dart';
 import 'package:floresta_gui/core/errors/failure.dart';
+import 'package:floresta_gui/features/node/domain/swift_sync.dart';
 import 'package:floresta_gui/features/settings/data/shared_prefs_settings_repository.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:floresta_gui/features/settings/domain/node_settings.dart';
@@ -117,6 +118,50 @@ void main() {
       );
       expect(await r.save(s), const Right(unit));
       expect(r.load(), s);
+    });
+
+    test('a new install defaults to Swift Sync (ADR-0011)', () async {
+      final s = (await repo()).load();
+      expect(s.syncMethod, SyncMethod.swiftSync);
+      expect(s.assumeUtreexo, isFalse);
+      expect(s.hintsOrigin, defaultHintsOrigin);
+    });
+
+    test('a node set up before Swift Sync keeps Fast Start', () async {
+      // Stored before ADR-0011: onboarding done, no sync keys at all.
+      final s = (await repo({'settings.onboardingComplete': true})).load();
+      expect(s.syncMethod, SyncMethod.fastStart);
+    });
+
+    test('a node set up with full validation keeps it', () async {
+      final s = (await repo({
+        'settings.onboardingComplete': true,
+        'settings.assumeUtreexo': false,
+      })).load();
+      expect(s.syncMethod, SyncMethod.full);
+    });
+
+    test('round-trips the sync method and hints origin', () async {
+      final r = await repo();
+      final s = const NodeSettings(
+        onboardingComplete: true,
+        network: BitcoinNetwork.signet,
+        hintsOrigin: 'https://mirror.example/hints',
+      ).withSyncMethod(SyncMethod.full);
+      expect(await r.save(s), const Right(unit));
+      expect(r.load(), s);
+      expect(r.load().syncMethod, SyncMethod.full);
+    });
+
+    test('an invalid stored origin keeps the sync method', () async {
+      final s = (await repo({
+        'settings.onboardingComplete': true,
+        'settings.swiftSync': true,
+        'settings.assumeUtreexo': false,
+        'settings.hintsOrigin': 'ftp://example.com/hints',
+      })).load();
+      expect(s.syncMethod, SyncMethod.swiftSync);
+      expect(s.hintsOrigin, defaultHintsOrigin);
     });
 
     test('remembers a node that runs elsewhere', () async {

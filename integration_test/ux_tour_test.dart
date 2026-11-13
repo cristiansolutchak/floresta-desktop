@@ -23,6 +23,7 @@ import 'package:floresta_gui/features/installation/data/release_source.dart';
 import 'package:floresta_gui/features/installation/domain/existing_node.dart';
 import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
 import 'package:floresta_gui/features/installation/domain/installation.dart';
+import 'package:floresta_gui/features/installation/domain/app_update.dart';
 import 'package:floresta_gui/features/installation/domain/installer.dart';
 import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
 import 'package:floresta_gui/features/installation/presentation/installation_providers.dart';
@@ -58,6 +59,11 @@ const _installed = FlorestaInstallation(
 );
 
 class _ScriptedInstaller implements Installer {
+  @override
+  Future<Either<Failure, FlorestadUpdateOffer?>> checkForUpdate(
+    HostPlatform platform,
+  ) async => const Right(null);
+
   StreamController<InstallProgress>? out;
   @override
   bool supports(HostPlatform platform) => true;

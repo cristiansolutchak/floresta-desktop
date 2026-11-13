@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import '../../settings/domain/bitcoin_network.dart';
 import 'node_status.dart';
 import 'peer.dart';
+import 'swift_sync.dart';
 
 /// Result of asking florestad's Electrum server who it is.
 enum ElectrumCheck {
@@ -31,6 +32,11 @@ enum ReadinessStage {
   starting,
   findingPeers,
   downloadingHeaders,
+
+  /// Swift Sync is running: blocks are processed without Utreexo proofs, and
+  /// the RPC still reports 0 validated blocks (progress comes from the
+  /// node's output, [NodeStatus.swiftSync]).
+  swiftSyncing,
   validatingBlocks,
 
   /// The node says it is done, but its headers are well behind what its
@@ -145,6 +151,9 @@ NodeReadiness assessReadiness(
         : ReadinessStage.ready;
   } else if (chain.validatedHeight > 0) {
     stage = ReadinessStage.validatingBlocks;
+  } else if (s.swiftSync.phase
+      case SwiftSyncPhase.running || SwiftSyncPhase.finished) {
+    stage = ReadinessStage.swiftSyncing;
   } else if (readyPeers == 0 && chain.headerHeight == 0) {
     stage = ReadinessStage.findingPeers;
   } else {

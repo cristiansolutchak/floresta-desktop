@@ -101,6 +101,10 @@ enum BitcoinNetwork {
 
   bool get isMainnet => this == bitcoin;
 
+  /// Networks the hints server publishes Swift Sync hints for (the same two
+  /// floresta-desktop downloads, `src/node.rs` `prepare_hints`).
+  bool get supportsSwiftSync => this == bitcoin || this == signet;
+
   String get description => switch (this) {
     bitcoin => 'The real Bitcoin network. Coins have real value.',
     signet =>

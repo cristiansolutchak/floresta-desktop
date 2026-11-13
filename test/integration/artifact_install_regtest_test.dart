@@ -86,6 +86,7 @@ void main() {
         'version': info['version'],
         'upstreamTag': info['upstreamTag'],
         'upstreamCommit': info['upstreamCommit'],
+        'upstreamRef': ?info['upstreamRef'],
         'artifacts': [
           {
             'os': info['os'],
@@ -123,6 +124,11 @@ void main() {
       if (done is! InstallCompleted) fail('install failed: $done');
       final exe = done.executablePath;
       expect(exe, startsWith(paths.versions.path));
+      // The record keeps where the build came from, for the version label.
+      final record = (await ManagedInstallStore(
+        paths,
+      ).read()).getOrElse((_) => null);
+      expect(record?.upstreamRef, info['upstreamRef']);
 
       // 3. Run the installed binary on an isolated regtest node.
       final dataDir = await Directory.systemTemp.createTemp('floresta_it_');

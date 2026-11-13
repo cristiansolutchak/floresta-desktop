@@ -148,6 +148,19 @@ final class PreflightFailure extends Failure {
   final String? recovery;
 }
 
+/// Swift Sync hints could not be prepared before a start (download,
+/// checks, or parking the file). The node was not started.
+final class SwiftSyncHintsFailure extends Failure {
+  const SwiftSyncHintsFailure(this.message, {this.recovery});
+
+  @override
+  String get title => 'Swift Sync hints problem';
+  @override
+  final String message;
+  @override
+  final String? recovery;
+}
+
 final class ProcessStateFailure extends Failure {
   const ProcessStateFailure(this.message);
 

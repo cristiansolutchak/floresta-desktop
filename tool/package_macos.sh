@@ -45,6 +45,19 @@ else
   codesign --force --deep --sign - --entitlements "$entitlements" "$work/Floresta.app"
 fi
 codesign --verify --deep --strict "$work/Floresta.app"
+if [[ -n "${FLORESTA_NOTARY_PROFILE:-}" ]]; then
+  [[ -n "$identity" ]] || die "notarization needs a Developer ID signature"
+  log "notarizing the app (profile $FLORESTA_NOTARY_PROFILE)"
+  ditto -c -k --keepParent "$work/Floresta.app" "$work/notarize.zip"
+  xcrun notarytool submit "$work/notarize.zip" \
+    --keychain-profile "$FLORESTA_NOTARY_PROFILE" --wait
+  xcrun stapler staple "$work/Floresta.app"
+fi
+# The in-app updater's package (ADR-0012): the app alone, zipped with ditto
+# so permissions, symlinks and the signature survive.
+zip="$out/$name.zip"
+rm -f "$zip"
+ditto -c -k --keepParent "$work/Floresta.app" "$zip"
 
 stage="$work/dmg"
 mkdir -p "$stage"
@@ -69,4 +82,5 @@ else
 fi
 
 shasum -a 256 "$dmg" | tee "$dmg.sha256"
-log "wrote $dmg"
+shasum -a 256 "$zip" | tee "$zip.sha256"
+log "wrote $dmg and $zip"

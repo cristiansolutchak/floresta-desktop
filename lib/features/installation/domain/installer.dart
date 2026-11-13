@@ -1,4 +1,8 @@
 import 'package:equatable/equatable.dart';
+import 'package:fpdart/fpdart.dart';
+
+import '../../../core/errors/failure.dart';
+import 'app_update.dart';
 
 import '../../../core/platform/host_platform.dart';
 
@@ -111,4 +115,11 @@ abstract interface class Installer {
   /// Asks a running install to stop. The stream then ends in
   /// [InstallFailed]; a partial download is kept for resuming.
   void cancel();
+
+  /// A florestad build newer than the one this app installed, without
+  /// installing it (nothing is recorded, not even the manifest's serial).
+  /// Null when it is current, or when florestad is not app-managed.
+  Future<Either<Failure, FlorestadUpdateOffer?>> checkForUpdate(
+    HostPlatform platform,
+  );
 }

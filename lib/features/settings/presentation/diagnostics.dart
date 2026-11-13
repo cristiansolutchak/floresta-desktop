@@ -31,7 +31,7 @@ final diagnosticsRowsProvider = Provider<List<(String, String)>>((ref) {
           ? 'Checking…'
           : detection.match(
               (f) => f.title,
-              (i) => '${i.version} at ${i.executablePath}',
+              (i) => '${i.versionLabel} at ${i.executablePath}',
             ),
     ),
     ('Network', settings.network.label),

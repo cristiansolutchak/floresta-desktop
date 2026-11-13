@@ -45,6 +45,10 @@ String bannerMessage({
     'Stopped' =>
       'Floresta is not running. Start it to sync and serve your watch-only '
           'wallets.',
+    'Preparing' =>
+      'Downloading the Swift Sync hints file '
+          '(${formatBytes(status.hintsDownload ?? 0)} so far). Floresta '
+          'starts as soon as it is in place.',
     'Starting' => 'Floresta is starting. This takes a few seconds.',
     'Stopping' => 'Floresta is shutting down cleanly.',
     'Error' =>

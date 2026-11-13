@@ -2,8 +2,25 @@ import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 
 import '../../../core/errors/failure.dart';
+import '../../node/domain/swift_sync.dart';
 import 'bitcoin_network.dart';
 import 'wallet_birthday.dart';
+
+/// How a new node gets to the tip. Each is a set of launch options; which
+/// ones a network offers depends on what upstream ships for it.
+enum SyncMethod {
+  /// Download a hints file, then validate blocks from the first one without
+  /// Utreexo proofs up to the hints' height (`--no-assume-utreexo` plus
+  /// `<network>.hints`). Needs a florestad with Swift Sync and a new data
+  /// folder. See `swift_sync.dart`.
+  swiftSync,
+
+  /// Start from the Utreexo state built into Floresta (assume-utreexo).
+  fastStart,
+
+  /// Validate every block from the first one, with Utreexo proofs.
+  full,
+}
 
 /// User-chosen configuration for launching and reaching florestad.
 ///
@@ -19,9 +36,11 @@ class NodeSettings extends Equatable {
     this.logToFile = true,
     this.disableCompactFilters = false,
     this.walletBirthdayYear,
-    this.assumeUtreexo = true,
+    this.assumeUtreexo = false,
     this.backfill = true,
     this.useExistingNode = false,
+    this.swiftSync = true,
+    this.hintsOrigin = defaultHintsOrigin,
   });
 
   final bool onboardingComplete;
@@ -47,10 +66,11 @@ class NodeSettings extends Equatable {
   /// filters, and so history searches, begin. Null: recent history only.
   final int? walletBirthdayYear;
 
-  /// Start from the Utreexo state built into Floresta (on by default upstream
-  /// and here: docs/audit/assume-utreexo-v0.9.1.md). Off validates from
-  /// genesis (`--no-assume-utreexo`), which needs Utreexo-serving peers for
-  /// the whole history.
+  /// Start from the Utreexo state built into Floresta (on by default
+  /// upstream; docs/audit/assume-utreexo-v0.9.1.md). Off validates from
+  /// genesis (`--no-assume-utreexo`). Since ADR-0011 the app's default for
+  /// a new node is [swiftSync] instead. Read [syncMethod], not this field:
+  /// Swift Sync wins when both are set.
   final bool assumeUtreexo;
 
   /// Re-check the history skipped by [assumeUtreexo] in the background
@@ -63,8 +83,32 @@ class NodeSettings extends Equatable {
   /// launch options above do not apply.
   final bool useExistingNode;
 
+  /// Download Swift Sync hints before a node's first start (ADR-0011). Only
+  /// on networks that have hints ([BitcoinNetwork.supportsSwiftSync]).
+  final bool swiftSync;
+
+  /// Where hints are downloaded from: `<hintsOrigin>/<network>`.
+  final String hintsOrigin;
+
+  SyncMethod get syncMethod {
+    if (swiftSync && network.supportsSwiftSync) return SyncMethod.swiftSync;
+    if (assumeUtreexo && network.assumeUtreexoHeight > 0) {
+      return SyncMethod.fastStart;
+    }
+    return SyncMethod.full;
+  }
+
+  /// Settings for [method], leaving everything else as it is.
+  NodeSettings withSyncMethod(SyncMethod method) => copyWith(
+    swiftSync: method == SyncMethod.swiftSync,
+    assumeUtreexo: method == SyncMethod.fastStart,
+  );
+
+  /// Pass assume-utreexo to florestad (otherwise `--no-assume-utreexo`).
+  bool get usesAssumeUtreexo => syncMethod == SyncMethod.fastStart;
+
   /// Height accepted on trust at startup, or 0 when nothing is assumed.
-  int get snapshotHeight => assumeUtreexo ? network.assumeUtreexoHeight : 0;
+  int get snapshotHeight => usesAssumeUtreexo ? network.assumeUtreexoHeight : 0;
 
   /// `--filters-start-height`, or null when filters are off or start at
   /// block 1 (see [WalletBirthday.filtersStartHeight]).
@@ -126,6 +170,14 @@ class NodeSettings extends Equatable {
         ValidationFailure('The wallet start year is out of range.'),
       );
     }
+    if (hintsOriginProblem(hintsOrigin) case final problem?) {
+      return Left(
+        ValidationFailure(
+          'The Swift Sync hints address is not valid. $problem',
+          recovery: 'Use the default, $defaultHintsOrigin.',
+        ),
+      );
+    }
     final exe = executablePath;
     if (exe != null && !_isAbsolute(exe)) {
       return const Left(
@@ -150,6 +202,8 @@ class NodeSettings extends Equatable {
     bool? assumeUtreexo,
     bool? backfill,
     bool? useExistingNode,
+    bool? swiftSync,
+    String? hintsOrigin,
   }) {
     return NodeSettings(
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
@@ -168,6 +222,8 @@ class NodeSettings extends Equatable {
       assumeUtreexo: assumeUtreexo ?? this.assumeUtreexo,
       backfill: backfill ?? this.backfill,
       useExistingNode: useExistingNode ?? this.useExistingNode,
+      swiftSync: swiftSync ?? this.swiftSync,
+      hintsOrigin: hintsOrigin ?? this.hintsOrigin,
     );
   }
 
@@ -184,5 +240,7 @@ class NodeSettings extends Equatable {
     assumeUtreexo,
     backfill,
     useExistingNode,
+    swiftSync,
+    hintsOrigin,
   ];
 }

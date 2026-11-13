@@ -68,6 +68,7 @@ class ReleaseManifest extends Equatable {
     required this.upstreamCommit,
     required this.artifacts,
     this.revokedKeys = const {},
+    this.upstreamRef,
   });
 
   /// Inside the signed bytes, so a signature made for anything else can
@@ -89,6 +90,12 @@ class ReleaseManifest extends Equatable {
 
   /// Upstream Floresta commit the artifacts were built from.
   final String upstreamCommit;
+
+  /// What [upstreamCommit] is: the release tag (`v0.9.1`) or
+  /// `master@<commit>` for a pinned master build (UPS-01), whose
+  /// `--version` still says the last version on master (0.9.0). Optional:
+  /// manifests signed before 2026-11-13 do not carry it.
+  final String? upstreamRef;
   final List<ReleaseArtifact> artifacts;
 
   /// Signing key ids this manifest revokes.
@@ -115,6 +122,10 @@ class ReleaseManifest extends Equatable {
         return const Left(
           InstallationFailure.manifest('bad version, tag or commit'),
         );
+      }
+      final ref = m['upstreamRef'] as String?;
+      if (ref != null && ref != 'v${m['version']}' && ref != 'master@$commit') {
+        return const Left(InstallationFailure.manifest('bad upstream ref'));
       }
       final serial = m['serial'] as int;
       final issued = DateTime.parse(m['issued'] as String).toUtc();
@@ -155,6 +166,7 @@ class ReleaseManifest extends Equatable {
           expires: expires,
           version: version,
           upstreamCommit: commit,
+          upstreamRef: ref,
           artifacts: artifacts,
           revokedKeys: {
             for (final k in (m['revokedKeys'] as List?) ?? const [])

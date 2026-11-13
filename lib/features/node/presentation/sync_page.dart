@@ -44,8 +44,11 @@ class SyncPage extends ConsumerWidget {
   }
 }
 
-String _stepSubtitle(SyncStep s) => switch (s) {
+String _stepSubtitle(SyncProgress p) => switch (p.step) {
   SyncStep.headers => 'Floresta is downloading block headers from its peers.',
+  SyncStep.blocks when p.swiftSync != null =>
+    'Swift Sync: Floresta is processing blocks from ordinary peers in '
+        'parallel, without Utreexo proofs, up to the hints file\'s height.',
   SyncStep.blocks => 'Floresta is currently validating block history.',
   SyncStep.live => 'Floresta is following new blocks as they arrive.',
 };
@@ -94,7 +97,7 @@ class _StepCard extends ConsumerWidget {
                       '${p.step.title}',
             subtitle: p == null
                 ? 'Sync details appear once the node API is reachable.'
-                : _stepSubtitle(p.step),
+                : _stepSubtitle(p),
             trailing: Tooltip(
               message: meaning,
               child: Column(
@@ -223,6 +226,10 @@ class _TimelineCard extends ConsumerWidget {
           'Starts after the headers',
         SyncStep.blocks when st == _StepState.done =>
           'Verified up to block ${formatInt(chain?.validatedHeight ?? 0)}',
+        SyncStep.blocks when p?.swiftSync != null =>
+          'Swift Sync: ${formatInt(p!.swiftSync!.processed)} of '
+              '${formatInt(p.swiftSync!.stopHeight ?? 0)} blocks processed, '
+              'then Utreexo proofs for the rest',
         SyncStep.blocks =>
           '${formatInt(b?.verifiedByNode ?? 0)} blocks verified by this '
               'node, ${behindText(p!)} to go',

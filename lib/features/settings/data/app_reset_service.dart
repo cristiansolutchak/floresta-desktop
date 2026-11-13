@@ -16,7 +16,7 @@ class AppResetService {
   final AppPaths paths;
 
   /// Prefixes of every preference this app writes.
-  static const _ownedPrefixes = ['settings.', 'wallet.', 'ui.'];
+  static const _ownedPrefixes = ['settings.', 'wallet.', 'ui.', 'updates.'];
 
   /// Clears this app's preferences. The next launch starts the wizard.
   Future<Either<Failure, Unit>> resetSettings() async {

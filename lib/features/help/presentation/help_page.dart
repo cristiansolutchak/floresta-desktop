@@ -33,7 +33,7 @@ class HelpPage extends ConsumerWidget {
     final version = switch (ref.watch(nextActionProvider).value) {
       OpenNodeManagement(:final installation) ||
       ConfigureNode(:final installation) ||
-      UpdateFloresta(:final installation) => installation.version.toString(),
+      UpdateFloresta(:final installation) => installation.versionLabel,
       _ => 'Not installed',
     };
 

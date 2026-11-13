@@ -6,6 +6,7 @@ import 'node_process_state.dart';
 import 'node_readiness.dart';
 import 'preflight.dart';
 import 'peer.dart';
+import 'swift_sync.dart';
 
 enum ApiReachability { unknown, reachable, unreachable }
 
@@ -31,7 +32,19 @@ class NodeStatus extends Equatable {
     this.lastProgressAt,
     this.electrum = ElectrumCheck.unknown,
     this.disk,
+    this.swiftSync = const SwiftSyncProgress(),
+    this.hintsDownload,
   });
+
+  /// Swift Sync as our node's output tells it (no RPC reports it).
+  final SwiftSyncProgress swiftSync;
+
+  /// Bytes of Swift Sync hints received while a start downloads them; null
+  /// when no download is running.
+  final int? hintsDownload;
+
+  /// A start is preparing (downloading hints) and the process is not up yet.
+  bool get preparing => hintsDownload != null;
 
   /// Data-folder disk use while our node runs (CFG-08).
   final DiskUsage? disk;
@@ -47,7 +60,8 @@ class NodeStatus extends Equatable {
   /// Non-blocking findings from the last start (e.g. low disk space).
   final List<PreflightIssue> preflightWarnings;
 
-  /// Last time the header or validated height moved (or the node came up).
+  /// Last time the header or validated height, or the Swift Sync block
+  /// count, moved (or the node came up).
   final DateTime? lastProgressAt;
 
   /// Latest Electrum identity check.
@@ -56,7 +70,8 @@ class NodeStatus extends Equatable {
   bool get isExternallyManaged =>
       !process.isActive && api == ApiReachability.reachable;
 
-  bool get canStart => !process.isActive && api != ApiReachability.reachable;
+  bool get canStart =>
+      !process.isActive && api != ApiReachability.reachable && !preparing;
 
   bool get canStop =>
       process is ProcessRunning ||
@@ -78,6 +93,9 @@ class NodeStatus extends Equatable {
     DateTime? lastProgressAt,
     ElectrumCheck? electrum,
     DiskUsage? disk,
+    SwiftSyncProgress? swiftSync,
+    int? hintsDownload,
+    bool clearHintsDownload = false,
   }) {
     return NodeStatus(
       process: process ?? this.process,
@@ -93,6 +111,10 @@ class NodeStatus extends Equatable {
       lastProgressAt: clearChain ? null : lastProgressAt ?? this.lastProgressAt,
       electrum: clearChain ? ElectrumCheck.unknown : electrum ?? this.electrum,
       disk: disk ?? this.disk,
+      swiftSync: swiftSync ?? this.swiftSync,
+      hintsDownload: clearHintsDownload
+          ? null
+          : hintsDownload ?? this.hintsDownload,
     );
   }
 
@@ -109,5 +131,7 @@ class NodeStatus extends Equatable {
     lastProgressAt,
     electrum,
     disk,
+    swiftSync,
+    hintsDownload,
   ];
 }

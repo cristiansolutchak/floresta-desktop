@@ -194,7 +194,7 @@ class _ExecutableChoice extends ConsumerWidget {
               message: failureLine(f),
             ),
             (i) => StatusIndicator(
-              label: 'Using florestad ${i.version}',
+              label: 'Using florestad ${i.versionLabel}',
               caption: '${i.source.label}: ${i.executablePath}',
               tone: Tone.success,
             ),

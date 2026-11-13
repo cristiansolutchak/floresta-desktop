@@ -8,11 +8,13 @@ import '../../../shared/widgets/dash.dart';
 import '../../installation/domain/setup_state.dart';
 import '../../installation/presentation/setup_state_provider.dart';
 import '../../settings/presentation/settings_controller.dart';
+import '../../settings/domain/node_settings.dart';
 import '../domain/node_process_state.dart';
 import '../domain/node_readiness.dart';
 import '../domain/node_status.dart';
 import '../domain/peer.dart';
 import '../domain/preflight.dart';
+import '../domain/swift_sync.dart';
 import '../domain/sync_progress.dart';
 import 'node_controller.dart';
 import 'node_status_banner.dart';
@@ -72,6 +74,13 @@ class OverviewPage extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
         ],
+        if (swiftSyncNotice(status.swiftSync) case (
+          final title,
+          final message,
+        )) ...[
+          Notice(tone: Tone.warning, title: title, message: message),
+          const SizedBox(height: 16),
+        ],
         for (final w in status.preflightWarnings) ...[
           Notice(
             tone: Tone.warning,
@@ -100,6 +109,25 @@ class OverviewPage extends ConsumerWidget {
   }
 }
 
+/// What to tell the user when the node did not use Swift Sync after all,
+/// in the node's own words; null otherwise.
+(String, String)? swiftSyncNotice(
+  SwiftSyncProgress swift,
+) => switch (swift.phase) {
+  SwiftSyncPhase.skipped => (
+    'Swift Sync was skipped',
+    'Floresta did not use the hints file: ${swift.reason ?? 'no reason '
+            'given'}. It syncs with Utreexo proofs instead, which is slower.',
+  ),
+  SwiftSyncPhase.aborted => (
+    'Swift Sync stopped',
+    'Floresta gave up on Swift Sync: ${swift.reason ?? 'no reason '
+                'given'}. It now validates every block from the first one with '
+        'Utreexo proofs. Nothing is lost, but it takes longer.',
+  ),
+  _ => null,
+};
+
 /// "~ 14,444 blocks" when the tip is an estimate from peers.
 String behindText(SyncProgress p) => !p.tipKnown
     ? 'Unknown'
@@ -118,6 +146,8 @@ String fractionMeaning(SyncProgress p, {required bool snapshotApplied}) =>
         'Waiting for peers to report the network tip',
       SyncStep.headers =>
         'Block headers downloaded, against the tip reported by peers',
+      SyncStep.blocks when p.swiftSync != null =>
+        'Blocks processed by Swift Sync, against the network tip',
       SyncStep.blocks =>
         snapshotApplied
             ? 'Blocks after the Utreexo snapshot verified by this node'
@@ -213,11 +243,14 @@ class BackfillCard extends ConsumerWidget {
     final status = ref.watch(nodeControllerProvider);
     final b = ref.watch(verificationBreakdownProvider);
     final snapshot = settings.snapshotHeight;
-    final (state, text) = !settings.assumeUtreexo || snapshot == 0
+    final (state, text) = !settings.usesAssumeUtreexo || snapshot == 0
         ? (
             'Not needed',
-            'This node validates every block itself from the start, so '
-                'there is no assumed history to re-check.',
+            settings.syncMethod == SyncMethod.swiftSync
+                ? 'Swift Sync processes every block from the first one, so '
+                      'there is no assumed Utreexo state to re-check.'
+                : 'This node validates every block itself from the start, '
+                      'so there is no assumed history to re-check.',
           )
         : !settings.backfill
         ? (
@@ -240,7 +273,7 @@ class BackfillCard extends ConsumerWidget {
                 'the background to improve security over time. Floresta '
                 '0.9.1 does not report how far it has got.',
           );
-    final tag = !settings.assumeUtreexo || snapshot == 0
+    final tag = !settings.usesAssumeUtreexo || snapshot == 0
         ? const DashTag('Mode: not needed', large: true)
         : settings.backfill
         ? const DashTag(

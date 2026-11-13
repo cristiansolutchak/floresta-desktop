@@ -144,19 +144,19 @@ class _SetupCard extends ConsumerWidget {
       ConfigurationRequired(:final installation) => (
         Tone.success,
         Icons.check_circle_outline,
-        'Floresta ${installation.version} is ready to use. Next, choose a '
+        'Floresta ${installation.versionLabel} is ready to use. Next, choose a '
             'network and where to keep its data.',
       ),
       ReadyToStart(:final installation) => (
         Tone.success,
         Icons.check_circle_outline,
-        'Floresta ${installation.version} is installed and your node is set '
+        'Floresta ${installation.versionLabel} is installed and your node is set '
             'up. Start it from Overview.',
       ),
       Running(:final installation) => (
         Tone.success,
         Icons.check_circle_outline,
-        'Version ${installation.version}. Sync progress and controls are on '
+        'Version ${installation.versionLabel}. Sync progress and controls are on '
             'Overview.',
       ),
       ExistingNode(:final answering) => (
@@ -310,7 +310,7 @@ class _SetupCard extends ConsumerWidget {
                 tone: Tone.warning,
                 title: 'Update recommended',
                 message:
-                    'Floresta ${installation.version} is older than '
+                    'Floresta ${installation.versionLabel} is older than '
                     '${FlorestaVersion.minimumSupported}, the oldest version '
                     'this app was written for. Some screens may not work.',
               ),
@@ -358,9 +358,9 @@ class _Details extends ConsumerWidget {
           KeyValueRow('Path', installation.executablePath, mono: true),
           KeyValueRow(
             'Version',
-            installation.version.isReleaseBuild
-                ? 'Release ${installation.version}'
-                : 'Development build (${installation.version})',
+            installation.isReleaseBuild
+                ? 'Release ${installation.versionLabel}'
+                : 'Development build (${installation.versionLabel})',
           ),
           const SizedBox(height: 8),
           Wrap(

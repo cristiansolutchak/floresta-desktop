@@ -7,10 +7,13 @@ import '../../../core/errors/failure.dart';
 import '../../../core/platform/app_paths.dart';
 import '../../../core/platform/host_platform.dart';
 import '../domain/installation.dart';
+import '../domain/floresta_version.dart';
+import '../domain/app_update.dart';
 import '../domain/installer.dart';
 import '../domain/release_manifest.dart';
 import 'artifact_downloader.dart';
 import 'managed_install_store.dart';
+import 'manifest_fetch.dart';
 import 'release_source.dart';
 import 'release_trust_store.dart';
 import 'signed_manifest.dart';
@@ -145,72 +148,16 @@ class ManagedInstaller implements Installer {
   ) async {
     emit(const InstallResolving());
     await recoverInterrupted();
-
-    final manifestBytes = await _fetchManifest();
-    if (manifestBytes case Left(:final value)) return Left(value);
-    final trusted = await trust.read();
-    if (trusted case Left(:final value)) return Left(value);
-    final seen = trusted.getOrElse((_) => ReleaseTrustStore.initial);
-    final manifest = verifier.verify(
-      manifestBytes.getOrElse((_) => const []),
-      manifestUrl,
-      revokedKeys: seen.revokedKeys,
+    final resolved = await _resolve(platform);
+    if (resolved case Left(:final value)) return Left(value);
+    final (:release, :artifact, :seen) = resolved.getOrElse(
+      (_) => throw StateError('unreachable'),
     );
-    if (manifest case Left(:final value)) return Left(value);
-    final release = manifest.getOrElse((_) => throw StateError('unreachable'));
-    final fresh = release.checkFreshness(
-      now: _now().toUtc(),
-      highestAcceptedSerial: seen.highestSerial,
-    );
-    if (fresh case Left(:final value)) return Left(value);
     await trust.accept(
       current: seen,
       serial: release.serial,
       revokedKeys: release.revokedKeys,
     );
-    if (!release.version.isSupported) {
-      return Left(
-        InstallationFailure(
-          stage: 'resolve',
-          message:
-              'The published Floresta ${release.version} is older than '
-              'this app supports.',
-        ),
-      );
-    }
-    final artifactE = release.artifactFor(platform);
-    if (artifactE case Left(:final value)) return Left(value);
-    final artifact = artifactE.getOrElse(
-      (_) => throw StateError('unreachable'),
-    );
-    // INS-09: a relative URL resolves against the manifest; either way the
-    // artifact must come from the manifest's host or an allowlisted one.
-    if (!isAllowedRedirect(manifestUrl, artifact.url, source.redirectHosts)) {
-      return Left(
-        InstallationFailure(
-          stage: 'resolve',
-          message:
-              'The release information points to a download location this '
-              'app does not trust (${artifact.url.host}).',
-          recovery: 'Nothing was installed. Try again later.',
-        ),
-      );
-    }
-    final host = await _hostOsVersion();
-    if (satisfiesMinOs(artifact.minOs, host) == false) {
-      return Left(
-        InstallationFailure(
-          stage: 'resolve',
-          message:
-              'Floresta ${release.version} needs '
-              '${platform.os.label} ${artifact.minOs} or newer; this '
-              'computer has $host.',
-          recovery:
-              'Nothing was installed. Update your system, or choose an '
-              'existing florestad executable built for it.',
-        ),
-      );
-    }
     final version = '${release.version}'.replaceFirst('v', '');
 
     // Already installed and intact: nothing to do.
@@ -278,13 +225,17 @@ class ManagedInstaller implements Installer {
     }
 
     emit(const InstallInstalling());
-    final target = paths.versionDir(version);
+    // One folder per build, not per version: master builds share a version
+    // (0.9.0) across commits, and an update must never replace the folder
+    // of the binary that may still be running, nor the rollback copy.
+    final folder = '$version-${artifact.sha256.substring(0, 12)}';
+    final target = paths.versionDir(folder);
     if (await target.exists()) await target.delete(recursive: true);
     await target.parent.create(recursive: true);
     await stagedDir.rename(target.path); // same volume: atomic
     final installedPath =
         '${target.path}${Platform.pathSeparator}${platform.florestadFileName}';
-    final keepPrevious = current != null && current.version != version
+    final keepPrevious = current != null && current.sha256 != artifact.sha256
         ? current
         : current?.previous;
     await store.write(
@@ -292,75 +243,121 @@ class ManagedInstaller implements Installer {
         version: version,
         path: installedPath,
         sha256: artifact.sha256,
+        upstreamRef: release.upstreamRef,
         previous: keepPrevious == null
             ? null
             : ManagedInstall(
                 version: keepPrevious.version,
                 path: keepPrevious.path,
                 sha256: keepPrevious.sha256,
+                upstreamRef: keepPrevious.upstreamRef,
               ),
       ),
     );
-    await _pruneVersions(keep: {version, ?keepPrevious?.version});
+    await _pruneVersions(
+      keep: {folder, if (keepPrevious != null) _folderOf(keepPrevious.path)},
+    );
     return Right(installedPath);
   }
 
-  Future<Either<Failure, List<int>>> _fetchManifest() async {
-    if (!isAllowedDownloadUrl(manifestUrl)) {
+  /// Fetches and checks the signed manifest and picks this platform's
+  /// build: signature, freshness, supported version, trusted download host
+  /// and minimum OS. Records nothing.
+  Future<
+    Either<
+      Failure,
+      ({ReleaseManifest release, ReleaseArtifact artifact, ReleaseTrust seen})
+    >
+  >
+  _resolve(HostPlatform platform) async {
+    final manifestBytes = await _fetchManifest();
+    if (manifestBytes case Left(:final value)) return Left(value);
+    final trusted = await trust.read();
+    if (trusted case Left(:final value)) return Left(value);
+    final seen = trusted.getOrElse((_) => ReleaseTrustStore.initial);
+    final manifest = verifier.verify(
+      manifestBytes.getOrElse((_) => const []),
+      manifestUrl,
+      revokedKeys: seen.revokedKeys,
+    );
+    if (manifest case Left(:final value)) return Left(value);
+    final release = manifest.getOrElse((_) => throw StateError('unreachable'));
+    final fresh = release.checkFreshness(
+      now: _now().toUtc(),
+      highestAcceptedSerial: seen.highestSerial,
+    );
+    if (fresh case Left(:final value)) return Left(value);
+    if (!release.version.isSupported) {
       return Left(
         InstallationFailure(
           stage: 'resolve',
-          message: 'Refusing insecure release URL $manifestUrl.',
+          message:
+              'The published Floresta ${release.version} is older than '
+              'this app supports.',
         ),
       );
     }
-    final client = _clientFactory()
-      ..connectionTimeout = const Duration(seconds: 15);
-    try {
-      final response = await openFollowingRedirects(
-        client,
-        manifestUrl,
-        timeout: const Duration(seconds: 20),
-        allowedHosts: source.redirectHosts,
-      );
-      if (response.statusCode != HttpStatus.ok) {
-        await response.drain<void>();
-        return Left(
-          InstallationFailure(
-            stage: 'resolve',
-            message: 'The release server answered HTTP ${response.statusCode}.',
-            recovery: 'Try again later.',
-          ),
-        );
-      }
-      final bytes = <int>[];
-      await for (final chunk in response.timeout(const Duration(seconds: 20))) {
-        bytes.addAll(chunk);
-        if (bytes.length > SignedManifestVerifier.maxEnvelopeBytes) {
-          return const Left(InstallationFailure.manifest('too large'));
-        }
-      }
-      return Right(bytes);
-    } on RedirectRefused catch (e) {
+    final artifactE = release.artifactFor(platform);
+    if (artifactE case Left(:final value)) return Left(value);
+    final artifact = artifactE.getOrElse(
+      (_) => throw StateError('unreachable'),
+    );
+    // INS-09: a relative URL resolves against the manifest; either way the
+    // artifact must come from the manifest's host or an allowlisted one.
+    if (!isAllowedRedirect(manifestUrl, artifact.url, source.redirectHosts)) {
       return Left(
         InstallationFailure(
           stage: 'resolve',
-          message: 'The release server sent an unsafe redirect ($e).',
-          recovery: 'Nothing was installed.',
+          message:
+              'The release information points to a download location this '
+              'app does not trust (${artifact.url.host}).',
+          recovery: 'Nothing was installed. Try again later.',
         ),
       );
-    } on Object catch (e) {
-      return Left(
-        InstallationFailure(
-          stage: 'resolve',
-          message: 'Could not reach the release server ($e).',
-          recovery: 'Check your internet connection and try again.',
-        ),
-      );
-    } finally {
-      client.close(force: true);
     }
+    final host = await _hostOsVersion();
+    if (satisfiesMinOs(artifact.minOs, host) == false) {
+      return Left(
+        InstallationFailure(
+          stage: 'resolve',
+          message:
+              'Floresta ${release.version} needs '
+              '${platform.os.label} ${artifact.minOs} or newer; this '
+              'computer has $host.',
+          recovery:
+              'Nothing was installed. Update your system, or choose an '
+              'existing florestad executable built for it.',
+        ),
+      );
+    }
+    return Right((release: release, artifact: artifact, seen: seen));
   }
+
+  @override
+  Future<Either<Failure, FlorestadUpdateOffer?>> checkForUpdate(
+    HostPlatform platform,
+  ) async {
+    final current = (await store.read()).getOrElse((_) => null);
+    if (current == null) return const Right(null);
+    final resolved = await _resolve(platform);
+    return resolved.map((r) {
+      if (r.artifact.sha256 == current.sha256) return null;
+      final running = FlorestaVersion.tryParse('v${current.version}');
+      return FlorestadUpdateOffer(
+        label: florestaVersionLabel(r.release.version, r.release.upstreamRef),
+        currentLabel: running == null
+            ? current.version
+            : florestaVersionLabel(running, current.upstreamRef),
+        sha256: r.artifact.sha256,
+      );
+    });
+  }
+
+  Future<Either<Failure, List<int>>> _fetchManifest() => fetchSignedManifest(
+    _clientFactory,
+    manifestUrl,
+    redirectHosts: source.redirectHosts,
+  );
 
   /// Cleans leftovers of an interrupted install. Resumable `.part`
   /// downloads are kept; staged directories and temp records are removed.
@@ -374,6 +371,11 @@ class ManagedInstaller implements Installer {
     final tmp = File('${paths.currentPointer.path}.tmp');
     if (await tmp.exists()) await tmp.delete();
   }
+
+  /// The `versions/<folder>` an installed binary lives in. Installs made
+  /// before 2026-11-13 use the bare version as the folder name.
+  String _folderOf(String binaryPath) =>
+      File(binaryPath).parent.uri.pathSegments.where((s) => s.isNotEmpty).last;
 
   Future<void> _pruneVersions({required Set<String> keep}) async {
     if (!await paths.versions.exists()) return;

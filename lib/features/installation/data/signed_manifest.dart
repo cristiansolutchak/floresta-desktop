@@ -5,6 +5,7 @@ import 'package:blockchain_utils/blockchain_utils.dart'
 import 'package:fpdart/fpdart.dart';
 
 import '../../../core/errors/failure.dart';
+import '../domain/app_update.dart';
 import '../domain/release_manifest.dart';
 
 /// An Ed25519 public key trusted to sign release manifests.
@@ -35,7 +36,32 @@ class SignedManifestVerifier {
     List<int> envelopeBytes,
     Uri location, {
     Set<String> revokedKeys = const {},
-  }) {
+  }) => _verify(
+    envelopeBytes,
+    revokedKeys,
+    (json) => ReleaseManifest.parse(json, location),
+    (m) => m.revokedKeys,
+  );
+
+  /// The app's own update manifest ([AppReleaseManifest]), checked the same
+  /// way: trusted, unrevoked key; valid signature; its own `type`.
+  Either<Failure, AppReleaseManifest> verifyApp(
+    List<int> envelopeBytes,
+    Uri location, {
+    Set<String> revokedKeys = const {},
+  }) => _verify(
+    envelopeBytes,
+    revokedKeys,
+    (json) => AppReleaseManifest.parse(json, location),
+    (m) => m.revokedKeys,
+  );
+
+  Either<Failure, T> _verify<T>(
+    List<int> envelopeBytes,
+    Set<String> revokedKeys,
+    Either<Failure, T> Function(Object? json) parse,
+    Set<String> Function(T manifest) revokes,
+  ) {
     if (envelopeBytes.length > maxEnvelopeBytes) {
       return const Left(InstallationFailure.manifest('too large'));
     }
@@ -84,10 +110,8 @@ class SignedManifestVerifier {
     } on Object catch (e) {
       return Left(InstallationFailure.manifest('payload is not JSON: $e'));
     }
-    final parsed = ReleaseManifest.parse(json, location);
-    if (parsed case Right(
-      :final value,
-    ) when value.revokedKeys.contains(keyId)) {
+    final parsed = parse(json);
+    if (parsed case Right(:final value) when revokes(value).contains(keyId)) {
       return const Left(
         InstallationFailure.manifest('signed by a key it revokes'),
       );
@@ -95,7 +119,6 @@ class SignedManifestVerifier {
     return parsed;
   }
 
-  /// Ed25519 verification of [message]; false for any malformed input.
   static bool verifySignature({
     required List<int> publicKey,
     required List<int> message,

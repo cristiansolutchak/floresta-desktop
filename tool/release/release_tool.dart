@@ -7,6 +7,7 @@
 //   dart run tool/release/release_tool.dart keygen   --out <seed file>
 //   dart run tool/release/release_tool.dart pubkey   --key <seed file>
 //   dart run tool/release/release_tool.dart manifest --artifacts <dir> --serial <n> [--valid-days 90]
+//   dart run tool/release/release_tool.dart app-manifest --artifacts <dir> --version <x.y.z> --serial <n> [--notes <text>] [--valid-days 90]
 //   dart run tool/release/release_tool.dart sign     --artifacts <dir> --key <seed file> [--key-id dev]
 //   dart run tool/release/release_tool.dart assemble --artifacts <dir> --signature <64-byte file> --key-id <id>
 //   dart run tool/release/release_tool.dart verify   --artifacts <dir> --public-key <hex> [--key-id dev]
@@ -20,6 +21,7 @@ import 'dart:math';
 
 import 'package:blockchain_utils/blockchain_utils.dart';
 import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
+import 'package:floresta_gui/features/installation/domain/app_update.dart';
 import 'package:floresta_gui/features/installation/domain/release_manifest.dart';
 
 Never _die(String message) {
@@ -92,7 +94,12 @@ void _manifest(Map<String, String> f) {
   final first = infos.first;
   final artifacts = <Map<String, Object?>>[];
   for (final i in infos) {
-    for (final k in ['version', 'upstreamTag', 'upstreamCommit']) {
+    for (final k in [
+      'version',
+      'upstreamTag',
+      'upstreamCommit',
+      'upstreamRef',
+    ]) {
       if (i[k] != first[k]) _die('artifacts disagree on $k');
     }
     final name = i['artifact']! as String;
@@ -123,6 +130,9 @@ void _manifest(Map<String, String> f) {
     'version': first['version'],
     'upstreamTag': first['upstreamTag'],
     'upstreamCommit': first['upstreamCommit'],
+    // `master@<sha>` for a pinned master build, whose --version still says
+    // the last version on master; the app shows it next to the version.
+    if (first['upstreamRef'] case final String ref) 'upstreamRef': ref,
     'artifacts': artifacts,
   };
   final out = File('${dir.path}/payload.json');
@@ -169,16 +179,47 @@ void _verify(Map<String, String> f) => _check(
   _need(f, 'public-key'),
 );
 
-/// Runs the app's own verifier on the envelope and re-hashes every artifact.
+/// Runs the app's own verifier on the envelope (florestad's or the app's,
+/// by the payload's `type`) and re-hashes every artifact.
 void _check(Directory dir, String keyId, String publicKeyHex) {
   final bytes = File('${dir.path}/manifest.json').readAsBytesSync();
   final verifier = SignedManifestVerifier([
     TrustedReleaseKey(id: keyId, publicKeyHex: publicKeyHex),
   ]);
-  final manifest = verifier
-      .verify(bytes, Uri.parse('http://127.0.0.1/manifest.json'))
-      .match((f) => _die('verification failed: ${f.message}'), (m) => m);
-  for (final a in manifest.artifacts) {
+  final location = Uri.parse('http://127.0.0.1/manifest.json');
+  final payload =
+      jsonDecode(
+            utf8.decode(
+              base64.decode(
+                jsonDecode(utf8.decode(bytes))['payload'] as String,
+              ),
+            ),
+          )
+          as Map<String, Object?>;
+  final List<({Uri url, String sha256, int size})> files;
+  final String summary;
+  if (payload['type'] == AppReleaseManifest.type) {
+    final m = verifier
+        .verifyApp(bytes, location)
+        .match((f) => _die('verification failed: ${f.message}'), (m) => m);
+    files = [
+      for (final a in m.artifacts) (url: a.url, sha256: a.sha256, size: a.size),
+    ];
+    summary =
+        'app ${m.version} serial ${m.serial}, ${m.artifacts.length} '
+        'packages, expires ${m.expires}';
+  } else {
+    final m = verifier
+        .verify(bytes, location)
+        .match((f) => _die('verification failed: ${f.message}'), (m) => m);
+    files = [
+      for (final a in m.artifacts) (url: a.url, sha256: a.sha256, size: a.size),
+    ];
+    summary =
+        '${m.version} serial ${m.serial}, ${m.artifacts.length} '
+        'artifacts, expires ${m.expires}';
+  }
+  for (final a in files) {
     final file = File('${dir.path}/${a.url.pathSegments.last}');
     final sha = BytesUtils.toHexString(
       QuickCrypto.sha256Hash(file.readAsBytesSync()),
@@ -187,10 +228,75 @@ void _check(Directory dir, String keyId, String publicKeyHex) {
       _die('${file.path} does not match the manifest');
     }
   }
-  stdout.writeln(
-    'verified: ${manifest.version} serial ${manifest.serial}, '
-    '${manifest.artifacts.length} artifacts, expires ${manifest.expires}',
-  );
+  stdout.writeln('verified: $summary');
+}
+
+/// Writes `<dir>/payload.json` for an app release (ADR-0012) from the
+/// packages made by tool/package_macos.sh and tool/package_linux.sh:
+/// `Floresta-<v>-macos-<arch>[-unsigned].zip`,
+/// `floresta-gui-<v>-linux-<arm64|x64>.tar.gz`,
+/// `floresta-gui_<v>_<arm64|amd64>.deb`.
+void _appManifest(Map<String, String> f) {
+  final dir = Directory(_need(f, 'artifacts'));
+  final version = _need(f, 'version');
+  final serial = int.parse(_need(f, 'serial'));
+  final validDays = int.parse(f['valid-days'] ?? '90');
+  final v = RegExp.escape(version);
+  final patterns = <(RegExp, String, String Function(Match))>[
+    (
+      RegExp('^Floresta-$v-macos-(arm64|x64|universal)(-unsigned)?\\.zip\$'),
+      'macos-app-zip',
+      (m) => m[1]!,
+    ),
+    (
+      RegExp('^floresta-gui-$v-linux-(arm64|x64)\\.tar\\.gz\$'),
+      'linux-tar-gz',
+      (m) => m[1]!,
+    ),
+    (
+      RegExp('^floresta-gui_${v}_(arm64|amd64)\\.deb\$'),
+      'linux-deb',
+      (m) => m[1] == 'amd64' ? 'x64' : 'arm64',
+    ),
+  ];
+  final artifacts = <Map<String, Object?>>[];
+  for (final e in dir.listSync()..sort((a, b) => a.path.compareTo(b.path))) {
+    if (e is! File) continue;
+    final name = e.uri.pathSegments.last;
+    for (final (re, format, arch) in patterns) {
+      final m = re.firstMatch(name);
+      if (m == null) continue;
+      final os = format.startsWith('macos') ? 'macos' : 'linux';
+      if (name.endsWith('-unsigned.zip')) {
+        stderr.writeln('note: $name is not signed with a Developer ID');
+      }
+      final bytes = e.readAsBytesSync();
+      artifacts.add({
+        'os': os,
+        'arch': arch(m),
+        'format': format,
+        'url': name,
+        'sha256': BytesUtils.toHexString(QuickCrypto.sha256Hash(bytes)),
+        'size': bytes.length,
+        if (os == 'macos') 'minOs': '11.0',
+      });
+    }
+  }
+  if (artifacts.isEmpty) _die('no packages for $version in ${dir.path}');
+  final now = DateTime.now().toUtc();
+  final payload = {
+    'type': AppReleaseManifest.type,
+    'schema': AppReleaseManifest.schema,
+    'serial': serial,
+    'issued': _iso(now),
+    'expires': _iso(now.add(Duration(days: validDays))),
+    'version': version,
+    'notes': f['notes'] ?? '',
+    'artifacts': artifacts,
+  };
+  final out = File('${dir.path}/payload.json');
+  out.writeAsStringSync(const JsonEncoder.withIndent('  ').convert(payload));
+  stdout.writeln('wrote ${out.path} (${artifacts.length} packages)');
 }
 
 Future<void> _serve(Map<String, String> f) async {
@@ -255,6 +361,8 @@ Future<void> main(List<String> args) async {
       stdout.writeln(_publicKeyHex(_readSeed(_need(f, 'key'))));
     case 'manifest':
       _manifest(f);
+    case 'app-manifest':
+      _appManifest(f);
     case 'sign':
       _sign(f);
     case 'assemble':

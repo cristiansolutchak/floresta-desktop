@@ -480,8 +480,12 @@ void main() {
     );
 
     var serial = 0;
-    void publish(String version, {String? reports}) {
-      final bin = _fakeFlorestad(reports ?? version);
+    void publish(String version, {String? reports, String build = ''}) {
+      final bin = [
+        ..._fakeFlorestad(reports ?? version),
+        // Another build of the same version (a later master commit).
+        if (build.isNotEmpty) ...utf8.encode('# $build\n'),
+      ];
       server.files['/florestad-$version'] = bin;
       server.files['/manifest.json'] = key.envelope(
         _manifest(
@@ -549,7 +553,27 @@ void main() {
             .listSync()
             .map((e) => e.uri.pathSegments.where((s) => s.isNotEmpty).last)
             .toSet();
-        expect(dirs, {'0.9.1', '0.9.2'});
+        expect(dirs.map((d) => d.split('-').first).toSet(), {'0.9.1', '0.9.2'});
+        expect(dirs, hasLength(2));
+      },
+    );
+
+    test(
+      'a new build of the same version never replaces the running one',
+      () async {
+        // Master builds all report 0.9.0; each gets its own folder, and the
+        // one that may still be running stays as the rollback copy.
+        publish('0.9.0', build: 'master@aaaa');
+        await installer().install(_platform).toList();
+        final first = (await store.read()).toNullable()!;
+        publish('0.9.0', build: 'master@bbbb');
+        final states = await installer().install(_platform).toList();
+        expect(states.last, isA<InstallCompleted>());
+        final record = (await store.read()).toNullable()!;
+        expect(record.sha256, isNot(first.sha256));
+        expect(record.path, isNot(first.path));
+        expect(record.previous?.path, first.path);
+        expect(File(first.path).existsSync(), isTrue);
       },
     );
 

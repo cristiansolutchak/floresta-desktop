@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:floresta_gui/core/errors/failure.dart';
 import 'package:floresta_gui/features/node/data/florestad_launch_args.dart';
 import 'package:floresta_gui/features/node/data/florestad_process_manager.dart';
+import 'package:floresta_gui/features/node/domain/swift_sync.dart';
 import 'package:floresta_gui/features/node/domain/node_process_state.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:floresta_gui/features/settings/domain/node_settings.dart';
@@ -21,6 +22,8 @@ void main() {
         'signet',
         '--rpc-address',
         '127.0.0.1:38332',
+        // ADR-0011: Swift Sync by default, which needs assume-utreexo off.
+        '--no-assume-utreexo',
         // CFG-08: no birthday, so filters start at signet's snapshot.
         '--filters-start-height',
         '296870',
@@ -69,15 +72,36 @@ void main() {
         '127.0.0.1:19000',
         '--log-to-file',
         '--no-cfilters',
+        // Regtest has no built-in state: validates from the first block.
+        '--no-assume-utreexo',
       ]);
     });
 
     test('fast start: no backfill keeps assume-utreexo', () {
       final args = florestadLaunchArgs(
-        const NodeSettings(logToFile: false, backfill: false),
+        const NodeSettings(
+          logToFile: false,
+          swiftSync: false,
+          assumeUtreexo: true,
+          backfill: false,
+        ),
       );
       expect(args, contains('--no-backfill'));
       expect(args, isNot(contains('--no-assume-utreexo')));
+    });
+
+    test('Swift Sync wins over a stored assume-utreexo', () {
+      final args = florestadLaunchArgs(
+        const NodeSettings(logToFile: false, assumeUtreexo: true),
+      );
+      expect(args, contains('--no-assume-utreexo'));
+      expect(args, isNot(contains('--no-backfill')));
+    });
+
+    test('Swift Sync is not offered where no hints exist', () {
+      const s = NodeSettings(network: BitcoinNetwork.testnet4);
+      expect(s.syncMethod, SyncMethod.full);
+      expect(florestadLaunchArgs(s), contains('--no-assume-utreexo'));
     });
 
     test('fast start: no assume-utreexo makes backfill moot', () {
@@ -132,6 +156,57 @@ void main() {
       process.emitStdout('INFO Electrum Server is running at 127.0.0.1:60001');
       await pump();
       expect(m.logs.last.text, contains('Electrum Server is running'));
+    });
+
+    test('counts Swift Sync block lines but keeps few in the log', () async {
+      // swift_sync_ctx.rs at 3a47993; about 650 such lines a second on
+      // signet would push everything else out of the 2000-line buffer.
+      final m = manager();
+      await m.start(
+        executablePath: '/bin/florestad',
+        settings: const NodeSettings(network: BitcoinNetwork.signet),
+      );
+      process.emitStdout(
+        '2026-11-13 18:27:08  INFO wire: Performing SwiftSync up to height '
+        '320000 with up to 10 validation workers',
+      );
+      final total = FlorestadProcessManager.swiftSyncBlockLineEvery + 5;
+      for (var h = 1; h <= total; h++) {
+        process.emitStdout(
+          '2026-11-13 18:27:08  INFO wire: SwiftSync block: block_hash=00ab '
+          'height=$h tx_count=1',
+        );
+      }
+      process.emitStdout('INFO wire: an unrelated line');
+      await pump();
+      expect(m.swiftSync.phase, SwiftSyncPhase.running);
+      expect(m.swiftSync.processed, total);
+      expect(m.swiftSync.stopHeight, 320000);
+      final kept = m.logs.where((l) => l.text.contains('SwiftSync block:'));
+      expect(kept, hasLength(1));
+      expect(m.logs.last.text, contains('an unrelated line'));
+    });
+
+    test('a new start forgets the previous Swift Sync', () async {
+      final m = manager();
+      await m.start(
+        executablePath: '/bin/florestad',
+        settings: const NodeSettings(),
+      );
+      process.emitStdout(
+        'Performing SwiftSync up to height 970000 with up to 8 validation '
+        'workers',
+      );
+      await pump();
+      expect(m.swiftSync.isRunning, isTrue);
+      await process.exit(0);
+      await pump();
+      process = FakeProcess(pid: 4243);
+      await m.start(
+        executablePath: '/bin/florestad',
+        settings: const NodeSettings(),
+      );
+      expect(m.swiftSync, const SwiftSyncProgress());
     });
 
     test('stop goes to the port the node was started on', () async {

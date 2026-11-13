@@ -3,6 +3,7 @@ import 'package:fpdart/fpdart.dart';
 import '../../../core/errors/failure.dart';
 import '../domain/installation.dart';
 import '../domain/installation_repository.dart';
+import 'capability_scan.dart';
 import 'executable_locator.dart';
 import 'managed_install_store.dart';
 import 'version_probe.dart';
@@ -14,10 +15,12 @@ class InstallationRepositoryImpl implements InstallationRepository {
     required this.locator,
     required this.probe,
     this.managed,
+    this.scanCapabilities = scanForSwiftSync,
   });
 
   final ExecutableLocator locator;
   final VersionProbe probe;
+  final CapabilityScan scanCapabilities;
   final ManagedInstallStore? managed;
 
   @override
@@ -25,6 +28,7 @@ class InstallationRepositoryImpl implements InstallationRepository {
     String? configuredPath,
   }) async {
     final ExecutableCandidate candidate;
+    final String? upstreamRef;
     if (configuredPath != null) {
       if (!await locator.isUsable(configuredPath)) {
         return Left(
@@ -41,9 +45,12 @@ class InstallationRepositoryImpl implements InstallationRepository {
         configuredPath,
         ExecutableSource.configured,
       );
+      upstreamRef = null;
     } else if (await _managedCandidate() case final managedResult?) {
       if (managedResult case Left(:final value)) return Left(value);
-      candidate = managedResult.getOrElse((_) => throw StateError(''));
+      (candidate, upstreamRef) = managedResult.getOrElse(
+        (_) => throw StateError(''),
+      );
     } else {
       final found = await locator.find();
       if (found == null) {
@@ -54,21 +61,26 @@ class InstallationRepositoryImpl implements InstallationRepository {
         );
       }
       candidate = found;
+      upstreamRef = null;
     }
 
     final version = await probe.probe(candidate.path);
-    return version.map(
-      (v) => FlorestaInstallation(
+    if (version case Left(:final value)) return Left(value);
+    return Right(
+      FlorestaInstallation(
         executablePath: candidate.path,
         source: candidate.source,
-        version: v,
+        version: version.getOrElse((_) => throw StateError('')),
+        swiftSync: await scanCapabilities(candidate.path),
+        upstreamRef: upstreamRef,
       ),
     );
   }
 
   /// Null when there is no managed install. A damaged one is an error rather
   /// than a silent fallback to some other florestad on the system.
-  Future<Either<Failure, ExecutableCandidate>?> _managedCandidate() async {
+  Future<Either<Failure, (ExecutableCandidate, String?)>?>
+  _managedCandidate() async {
     final store = managed;
     if (store == null) return null;
     final record = await store.read();
@@ -84,6 +96,9 @@ class InstallationRepositoryImpl implements InstallationRepository {
         ),
       );
     }
-    return Right(ExecutableCandidate(install.path, ExecutableSource.managed));
+    return Right((
+      ExecutableCandidate(install.path, ExecutableSource.managed),
+      install.upstreamRef,
+    ));
   }
 }

@@ -31,6 +31,8 @@ pkg="$work/$name"
 mkdir -p "$pkg/DEBIAN" "$pkg/opt/floresta-gui" "$pkg/usr/bin" \
   "$pkg/usr/share/applications" "$pkg/usr/share/icons"
 cp -R "$bundle/." "$pkg/opt/floresta-gui/"
+# The in-app updater (ADR-0012) checks this against the signed manifest.
+echo "$version" > "$pkg/opt/floresta-gui/VERSION"
 ln -s /opt/floresta-gui/floresta_gui "$pkg/usr/bin/floresta-gui"
 # Every size from tool/brand/render_app_icon.swift (16-512 px).
 cp -R "$root/linux/icons/hicolor" "$pkg/usr/share/icons/"
@@ -61,8 +63,15 @@ Description: Desktop app to install, configure and run a Floresta node
  child process and shows its state. Watch-only; never handles keys.
 CONTROL
 dpkg-deb --root-owner-group --build "$pkg" "$out/$name.deb" >/dev/null
-cp "$root/LICENSE-MIT" "$root/LICENSE-APACHE" "$root/README.md" "$work/"
-tar -C "$bundle/.." -czf "$out/floresta-gui-$version-linux-$flutter_arch.tar.gz" \
-  bundle -C "$work" LICENSE-MIT LICENSE-APACHE README.md
+# One top-level folder, unpacked anywhere the user owns (for example
+# ~/Applications/floresta-gui); the app then updates itself in place
+# (ADR-0012), and checks VERSION against the signed manifest.
+tarroot="$work/tar/floresta-gui"
+mkdir -p "$tarroot"
+cp -R "$bundle/." "$tarroot/"
+echo "$version" > "$tarroot/VERSION"
+cp "$root/LICENSE-MIT" "$root/LICENSE-APACHE" "$root/README.md" "$tarroot/"
+tar -C "$work/tar" -czf "$out/floresta-gui-$version-linux-$flutter_arch.tar.gz" \
+  floresta-gui
 (cd "$out" && sha256sum "$name.deb" "floresta-gui-$version-linux-$flutter_arch.tar.gz" | tee SHA256SUMS-linux-$flutter_arch)
 echo "package_linux: wrote $out/$name.deb"

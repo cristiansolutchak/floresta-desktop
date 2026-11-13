@@ -23,6 +23,10 @@ import 'package:floresta_gui/features/node/domain/node_status.dart';
 import 'package:floresta_gui/features/node/domain/node_rpc_repository.dart';
 import 'package:floresta_gui/features/node/domain/peer.dart';
 import 'package:floresta_gui/features/node/domain/preflight.dart';
+import 'package:floresta_gui/features/node/domain/swift_sync.dart';
+import 'package:floresta_gui/features/node/data/swift_sync_hints.dart';
+import 'package:floresta_gui/features/settings/domain/node_settings.dart';
+import 'package:floresta_gui/features/settings/presentation/settings_controller.dart';
 import 'package:floresta_gui/features/onboarding/presentation/wizard_widgets.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:floresta_gui/features/wallet/presentation/wallet_controller.dart';
@@ -85,6 +89,7 @@ class _Harness {
   final manager = FakeProcessManager();
   final wallet = FakeWalletRepository();
   final preflight = FakePreflightProbe();
+  final hints = FakeSwiftSyncHints();
   final electrum = FakeElectrumProbe();
 
   BuildFlavor flavor = BuildFlavor.production;
@@ -130,6 +135,7 @@ class _Harness {
           nodeProcessManagerProvider.overrideWithValue(manager),
           walletRepositoryProvider.overrideWithValue(wallet),
           preflightProbeProvider.overrideWithValue(preflight),
+          swiftSyncHintsProvider.overrideWithValue(hints),
           electrumProbeProvider.overrideWithValue(electrum),
           buildFlavorProvider.overrideWithValue(flavor),
           // The real engine over the Bitcoin Core fixture chain: no sockets.
@@ -242,7 +248,7 @@ void main() {
     await toWizard(tester);
     await tapNext(tester);
     await tapNext(tester);
-    await tester.tap(find.textContaining('Assume Utreexo'));
+    await tester.tap(find.textContaining('Full validation'));
     await tester.pumpAndSettle();
     expect(find.text('Starting from the first block is slow'), findsOneWidget);
     await tapNext(tester, 'Back');
@@ -337,9 +343,9 @@ void main() {
     await tester.pumpAndSettle();
     await tapNext(tester);
     await tapNext(tester, 'Review configuration');
-    await tester.tap(find.bySemanticsLabel('Edit fast start'));
+    await tester.tap(find.bySemanticsLabel('Edit sync'));
     await tester.pumpAndSettle();
-    expect(find.text('Fast start'), findsWidgets);
+    expect(find.text('How the node gets to the tip of the chain.'), findsOne);
     expect(find.text('History stays assumed'), findsOneWidget);
     await tapNext(tester);
     await tapNext(tester, 'Review configuration');
@@ -829,8 +835,123 @@ void main() {
     await toWizard(tester);
     await tapNext(tester);
     await tapNext(tester);
-    expect(find.text('Validates from the first block'), findsOneWidget);
+    expect(find.textContaining('Full validation'), findsOneWidget);
     expect(find.textContaining('Assume Utreexo'), findsNothing);
+    expect(find.textContaining('Swift Sync'), findsNothing);
+  });
+
+  group('Swift Sync (ADR-0011)', () {
+    const swiftCapable = FlorestaInstallation(
+      executablePath: '/Users/a/.cargo/bin/florestad',
+      source: ExecutableSource.wellKnown,
+      version: FlorestaVersion(0, 9, 0),
+      swiftSync: true,
+    );
+
+    testWidgets('is the default for a new node and prepares hints first', (
+      tester,
+    ) async {
+      final h = _Harness()..install.result = const Right(swiftCapable);
+      h.hints.result = const Right(HintsReady(970000, downloaded: true));
+      await h.pump(tester, onboarded: false);
+      await toWizard(tester);
+      await tapNext(tester);
+      await tapNext(tester);
+      expect(find.textContaining('Swift Sync (recommended)'), findsOneWidget);
+      expect(find.text('Before the first start'), findsOneWidget);
+      await tapNext(tester);
+      await tapNext(tester, 'Review configuration');
+      expect(find.textContaining('Swift Sync from the first block'), findsOne);
+      await tapNext(tester, 'Finish');
+      final (_, settings) = h.manager.starts.single;
+      expect(settings.syncMethod, SyncMethod.swiftSync);
+      expect(h.hints.prepared.single.syncMethod, SyncMethod.swiftSync);
+    });
+
+    testWidgets('is unavailable with a florestad built without it', (
+      tester,
+    ) async {
+      await _Harness().pump(tester, onboarded: false);
+      await toWizard(tester);
+      await tapNext(tester);
+      await tapNext(tester);
+      expect(find.textContaining('Swift Sync (unavailable)'), findsOneWidget);
+      expect(find.textContaining('built without Swift Sync'), findsOneWidget);
+      // The default gives way to Fast Start so the node can start.
+      expect(find.textContaining('Backfill in background'), findsOneWidget);
+    });
+
+    testWidgets('a failed hints download keeps the node stopped', (
+      tester,
+    ) async {
+      final h = _Harness()..install.result = const Right(swiftCapable);
+      h.hints.result = const Left(
+        SwiftSyncHintsFailure('Could not download the Swift Sync hints.'),
+      );
+      await h.pump(tester, onboarded: false);
+      await toWizard(tester);
+      for (var i = 0; i < 3; i++) {
+        await tapNext(tester);
+      }
+      await tapNext(tester, 'Review configuration');
+      await tapNext(tester, 'Finish');
+      expect(h.manager.starts, isEmpty);
+      expect(find.textContaining('Swift Sync hints problem'), findsOneWidget);
+    });
+
+    testWidgets('a selected Swift Sync never starts a florestad without it', (
+      tester,
+    ) async {
+      final h = _Harness();
+      await h.pump(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(FlorestaApp)),
+      );
+      await container
+          .read(settingsControllerProvider.notifier)
+          .update(
+            container
+                .read(settingsControllerProvider)
+                .withSyncMethod(SyncMethod.swiftSync),
+          );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Start node'));
+      await tester.pumpAndSettle();
+      expect(h.manager.starts, isEmpty);
+      expect(h.hints.prepared, isEmpty);
+    });
+
+    testWidgets('progress from the log keeps a long Swift Sync from '
+        'looking stalled', (tester) async {
+      final h = _Harness()
+        ..install.result = const Right(swiftCapable)
+        ..rpc.info = Right(
+          RpcModels.blockchainInfo(
+            blockchainInfoJson(blocks: 0, headers: 320500, ibd: true),
+          ),
+        );
+      await h.pump(tester, network: 'signet');
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(FlorestaApp)),
+      );
+      h.manager.swiftSync = const SwiftSyncProgress(
+        phase: SwiftSyncPhase.running,
+        processed: 98000,
+        stopHeight: 320000,
+        workers: 10,
+      );
+      h.manager.emit(ProcessRunning(9, DateTime(2026)));
+      await container.read(nodeControllerProvider.notifier).refresh();
+      await tester.pumpAndSettle();
+      expect(
+        container.read(nodeReadinessProvider).stage,
+        ReadinessStage.swiftSyncing,
+      );
+      // Overview: the processed count, not a validated height of 0.
+      expect(find.text('Blocks Processed'), findsOneWidget);
+      expect(find.text('98,000'), findsOneWidget);
+      expect(container.read(nodeReadinessProvider).stalledFor, isNull);
+    });
   });
 
   testWidgets('a blocking preflight problem prevents the start', (

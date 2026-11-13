@@ -11,6 +11,7 @@ import 'package:floresta_gui/features/installation/data/release_source.dart';
 import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
 import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
 import 'package:floresta_gui/features/installation/domain/installation.dart';
+import 'package:floresta_gui/features/installation/domain/app_update.dart';
 import 'package:floresta_gui/features/installation/domain/installer.dart';
 import 'package:floresta_gui/features/installation/presentation/install_controller.dart';
 import 'package:floresta_gui/features/installation/presentation/installation_providers.dart';
@@ -26,6 +27,11 @@ import '../../helpers/fakes.dart';
 
 /// A real (non-mock) installer whose progress the test drives by hand.
 class _ScriptedInstaller implements Installer {
+  @override
+  Future<Either<Failure, FlorestadUpdateOffer?>> checkForUpdate(
+    HostPlatform platform,
+  ) async => const Right(null);
+
   StreamController<InstallProgress>? _out;
   int installs = 0;
   int cancels = 0;
@@ -93,6 +99,7 @@ Future<FakeInstallationRepository> _pump(
         nodeProcessManagerProvider.overrideWithValue(FakeProcessManager()),
         walletRepositoryProvider.overrideWithValue(FakeWalletRepository()),
         preflightProbeProvider.overrideWithValue(FakePreflightProbe()),
+        swiftSyncHintsProvider.overrideWithValue(FakeSwiftSyncHints()),
         electrumProbeProvider.overrideWithValue(FakeElectrumProbe()),
         releaseSourceProvider.overrideWithValue(source),
         installerProvider.overrideWithValue(installer),

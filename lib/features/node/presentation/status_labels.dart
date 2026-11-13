@@ -2,6 +2,7 @@ import '../../../shared/widgets/common.dart';
 import '../domain/node_process_state.dart';
 import '../domain/node_readiness.dart';
 import '../domain/node_status.dart';
+import '../domain/swift_sync.dart';
 import '../domain/verification_breakdown.dart';
 
 typedef StatusLabel = ({String label, String? caption, Tone tone});
@@ -51,6 +52,9 @@ abstract final class StatusLabels {
   /// ("Syncing", "Synced"). Derived from the same readiness as every other
   /// label (SYNC-08).
   static StatusLabel short(NodeReadiness r, NodeStatus s) {
+    if (s.preparing) {
+      return (label: 'Preparing', caption: null, tone: Tone.warning);
+    }
     if (s.api != ApiReachability.reachable) {
       return switch (s.process) {
         ProcessStarting() || ProcessRunning() || ProcessAdopted() => (
@@ -94,6 +98,7 @@ abstract final class StatusLabels {
       ),
       ReadinessStage.findingPeers ||
       ReadinessStage.downloadingHeaders ||
+      ReadinessStage.swiftSyncing ||
       ReadinessStage.validatingBlocks => (
         label: 'Syncing',
         caption: null,
@@ -115,8 +120,12 @@ abstract final class StatusLabels {
   /// The node is doing work right now (syncing, starting, stopping), so its
   /// status icon moves. Stalled, behind, stopped, synced and errors are
   /// still: nothing is progressing, or it is done.
-  static bool isActive(StatusLabel short) =>
-      const {'Syncing', 'Starting', 'Stopping'}.contains(short.label);
+  static bool isActive(StatusLabel short) => const {
+    'Syncing',
+    'Starting',
+    'Stopping',
+    'Preparing',
+  }.contains(short.label);
 
   static StatusLabel api(NodeStatus s) => switch (s.api) {
     ApiReachability.unknown => (
@@ -172,6 +181,11 @@ abstract final class StatusLabels {
       ReadinessStage.downloadingHeaders => (
         label: 'Downloading block headers',
         caption: headersCaption(r, s),
+        tone: Tone.warning,
+      ),
+      ReadinessStage.swiftSyncing => (
+        label: 'Swift Sync',
+        caption: swiftSyncCaption(s),
         tone: Tone.warning,
       ),
       ReadinessStage.behindNetwork => (
@@ -255,6 +269,11 @@ abstract final class StatusLabels {
         caption: verifiedCaption(s, r),
         tone: Tone.warning,
       ),
+      ReadinessStage.swiftSyncing => (
+        label: 'Swift Sync',
+        caption: swiftSyncCaption(s),
+        tone: Tone.warning,
+      ),
       ReadinessStage.stopped ||
       ReadinessStage.starting ||
       ReadinessStage.findingPeers ||
@@ -278,6 +297,21 @@ abstract final class StatusLabels {
     final share = (chain.headerHeight / tip).clamp(0.0, 1.0);
     return '$headers (about ${(share * 100).floor()}% of the network, '
         'estimated from peers)';
+  }
+
+  /// "X of Y blocks processed without Utreexo proofs". The count comes from
+  /// the node's output; Y is the hints' stop height, after which the proof
+  /// sync takes over.
+  static String? swiftSyncCaption(NodeStatus s) {
+    final swift = s.swiftSync;
+    if (swift.phase == SwiftSyncPhase.finished) {
+      return 'Done up to block ${formatInt(swift.stopHeight ?? 0)}; '
+          'switching to Utreexo proofs for the rest.';
+    }
+    final stop = swift.stopHeight;
+    if (stop == null) return null;
+    return '${formatInt(swift.processed)} of ${formatInt(stop)} blocks '
+        'processed without Utreexo proofs';
   }
 
   /// "X of Y blocks since the snapshot verified by this node": never counts

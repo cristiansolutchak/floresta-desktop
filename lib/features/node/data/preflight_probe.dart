@@ -81,7 +81,8 @@ class PreflightProbe {
         final ours =
             names.isEmpty ||
             names.contains('chaindata') ||
-            names.contains('conf');
+            names.contains('conf') ||
+            names.any((n) => n.endsWith('.hints'));
         if (!ours) return false;
       }
     } on FileSystemException {

@@ -13,6 +13,8 @@ import 'package:floresta_gui/features/installation/data/release_source.dart';
 import 'package:floresta_gui/features/installation/data/release_trust_store.dart';
 import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
 import 'package:floresta_gui/features/installation/domain/release_manifest.dart';
+import 'package:floresta_gui/features/installation/domain/installation.dart';
+import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/local_artifact_server.dart';
@@ -296,6 +298,9 @@ void main() {
         with_('upstreamTag', 'v0.9.0'),
         with_('serial', 0),
         with_('expires', '2026-09-01T00:00:00Z'),
+        // A ref must name this version's tag or this exact master commit.
+        with_('upstreamRef', 'v0.9.0'),
+        with_('upstreamRef', 'master@3a47993595d1d865fb6bea6bce5e9818b5a6bd7e'),
       ]) {
         expect(
           ReleaseManifest.parse(bad, base).isLeft(),
@@ -303,6 +308,62 @@ void main() {
           reason: '$bad',
         );
       }
+      for (final good in [
+        with_('upstreamRef', 'v0.9.1'),
+        with_('upstreamRef', 'master@bc2db8d07e72651f9981ce589c5688f4d575dc7a'),
+        with_('unrelated', 1), // manifests signed before upstreamRef existed
+      ]) {
+        expect(ReleaseManifest.parse(good, base).isRight(), isTrue);
+      }
+    });
+  });
+
+  group('version label', () {
+    const master = FlorestaInstallation(
+      executablePath: '/a/florestad',
+      source: ExecutableSource.managed,
+      version: FlorestaVersion(0, 9, 0),
+      upstreamRef: 'master@3a47993595d1d865fb6bea6bce5e9818b5a6bd7e',
+    );
+
+    test('a pinned master build shows its commit', () {
+      expect(master.versionLabel, 'v0.9.0 (master 3a47993)');
+      expect(master.isReleaseBuild, isFalse);
+    });
+
+    test('a release or unknown build shows the version only', () {
+      const release = FlorestaInstallation(
+        executablePath: '/a/florestad',
+        source: ExecutableSource.path,
+        version: FlorestaVersion(0, 9, 1),
+      );
+      expect(release.versionLabel, 'v0.9.1');
+      expect(release.isReleaseBuild, isTrue);
+    });
+
+    test('the install record keeps the ref', () {
+      const record = ManagedInstall(
+        version: '0.9.0',
+        path: '/a/florestad',
+        sha256: 'ab',
+        upstreamRef: 'master@3a47993595d1d865fb6bea6bce5e9818b5a6bd7e',
+        previous: ManagedInstall(
+          version: '0.9.1',
+          path: '/b',
+          sha256: 'cd',
+          upstreamRef: 'v0.9.1',
+        ),
+      );
+      expect(ManagedInstall.fromJson(record.toJson()), record);
+      // Records written before 2026-11-13 have no ref.
+      expect(
+        ManagedInstall.fromJson({
+          'version': '0.9.1',
+          'path': '/b',
+          'sha256': 'cd',
+        }).upstreamRef,
+        isNull,
+      );
     });
   });
 }

@@ -3,6 +3,8 @@ import 'package:floresta_gui/features/node/domain/node_process_state.dart';
 import 'package:floresta_gui/features/node/domain/node_readiness.dart';
 import 'package:floresta_gui/features/node/domain/node_status.dart';
 import 'package:floresta_gui/features/node/domain/peer.dart';
+import 'package:floresta_gui/features/node/domain/swift_sync.dart';
+import 'package:floresta_gui/features/node/domain/sync_progress.dart';
 import 'package:floresta_gui/features/node/presentation/status_labels.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -266,5 +268,58 @@ void main() {
       final synced = StatusLabels.sync(r, s).label == 'Synced';
       expect(synced, r.stage == ReadinessStage.ready, reason: '${r.stage}');
     }
+  });
+
+  group('Swift Sync (ADR-0011)', () {
+    const running = SwiftSyncProgress(
+      phase: SwiftSyncPhase.running,
+      processed: 176000,
+      stopHeight: 320000,
+      workers: 10,
+    );
+    NodeStatus swift(SwiftSyncProgress p, {DateTime? progressAt}) => _status(
+      chain: _chain(headers: 320500, validated: 0, ibd: true),
+      peers: [_peer()],
+      progressAt: progressAt ?? _now,
+    ).copyWith(swiftSync: p);
+
+    test('0 validated blocks with Swift Sync running is its own stage', () {
+      final r = assessReadiness(
+        swift(running),
+        expected: BitcoinNetwork.signet,
+        now: _now,
+      );
+      expect(r.stage, ReadinessStage.swiftSyncing);
+      expect(r.missingUtreexoPeers, isFalse);
+      expect(StatusLabels.short(r, swift(running)).label, 'Syncing');
+      expect(
+        StatusLabels.readiness(r, swift(running)).caption,
+        '176,000 of 320,000 blocks processed without Utreexo proofs',
+      );
+    });
+
+    test('progress shows the processed count against the tip', () {
+      final s = swift(running);
+      final r = assessReadiness(s, expected: BitcoinNetwork.signet, now: _now);
+      final p = SyncProgress.of(s.chain!, r, null, swiftSync: s.swiftSync);
+      expect(p.step, SyncStep.blocks);
+      expect(p.leadingStat, (label: 'Blocks Processed', value: 176000));
+      // The tip is the peers' height (327,831), past the headers.
+      expect(p.fraction, closeTo(176000 / 327831, 1e-9));
+      expect(p.behind, 327831 - 176000);
+    });
+
+    test('a skipped Swift Sync is not shown as running', () {
+      const skipped = SwiftSyncProgress(
+        phase: SwiftSyncPhase.skipped,
+        reason: 'proof sync has already reached height 5.',
+      );
+      final r = assessReadiness(
+        swift(skipped),
+        expected: BitcoinNetwork.signet,
+        now: _now,
+      );
+      expect(r.stage, ReadinessStage.downloadingHeaders);
+    });
   });
 }

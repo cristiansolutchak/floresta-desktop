@@ -9,10 +9,12 @@ import 'package:floresta_gui/features/node/domain/node_process_manager.dart';
 import 'package:floresta_gui/features/node/domain/node_process_state.dart';
 import 'package:floresta_gui/features/node/data/electrum_probe.dart';
 import 'package:floresta_gui/features/node/data/preflight_probe.dart';
+import 'package:floresta_gui/features/node/data/swift_sync_hints.dart';
 import 'package:floresta_gui/features/node/domain/node_readiness.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:floresta_gui/features/node/domain/node_rpc_repository.dart';
 import 'package:floresta_gui/features/node/domain/preflight.dart';
+import 'package:floresta_gui/features/node/domain/swift_sync.dart';
 import 'package:floresta_gui/features/node/domain/peer.dart';
 import 'package:floresta_gui/features/settings/domain/node_settings.dart';
 import 'package:floresta_gui/features/wallet/domain/descriptor_input.dart';
@@ -84,6 +86,9 @@ class FakeNodeRpcRepository implements NodeRpcRepository {
 }
 
 class FakeProcessManager implements NodeProcessManager {
+  @override
+  SwiftSyncProgress swiftSync = const SwiftSyncProgress();
+
   final _states = StreamController<NodeProcessState>.broadcast();
   final starts = <(String, NodeSettings)>[];
 
@@ -196,6 +201,29 @@ class FakeElectrumProbe extends ElectrumProbe {
   @override
   Future<ElectrumCheck> check(BitcoinNetwork network, {int? port}) async {
     checks++;
+    return result;
+  }
+}
+
+/// Records hints preparations and answers with [result], touching no files.
+class FakeSwiftSyncHints extends SwiftSyncHints {
+  FakeSwiftSyncHints() : super(homeDir: null);
+
+  Either<Failure, HintsOutcome> result = const Right(HintsNotUsed());
+  final prepared = <NodeSettings>[];
+
+  /// Reported to the progress callback before answering.
+  List<int> progress = const [];
+
+  @override
+  Future<Either<Failure, HintsOutcome>> prepare(
+    NodeSettings settings, {
+    HintsProgress? onProgress,
+  }) async {
+    prepared.add(settings);
+    for (final p in progress) {
+      onProgress?.call(p);
+    }
     return result;
   }
 }

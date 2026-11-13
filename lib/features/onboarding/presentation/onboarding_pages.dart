@@ -17,6 +17,7 @@ import '../../settings/domain/bitcoin_network.dart';
 import '../../settings/domain/node_settings.dart';
 import '../../settings/domain/wallet_birthday.dart';
 import '../../settings/presentation/settings_controller.dart';
+import '../../settings/presentation/sync_method_labels.dart';
 import 'wizard_widgets.dart';
 
 class WelcomePage extends StatelessWidget {
@@ -128,14 +129,27 @@ class InstallStepPage extends StatelessWidget {
 class SetupStepPage extends ConsumerStatefulWidget {
   const SetupStepPage({super.key});
 
-  static const steps = ['Network', 'Storage', 'Fast Start', 'Services'];
+  static const steps = ['Network', 'Storage', 'Sync', 'Services'];
 
   @override
   ConsumerState<SetupStepPage> createState() => _SetupStepPageState();
 }
 
 class _SetupStepPageState extends ConsumerState<SetupStepPage> {
-  late NodeSettings _draft = ref.read(settingsControllerProvider);
+  late NodeSettings _draft = _initialDraft();
+
+  /// The saved settings, except that Swift Sync (the default) gives way to
+  /// Fast Start when the installed Floresta cannot do it, so the default
+  /// choice can always start.
+  NodeSettings _initialDraft() {
+    final saved = ref.read(settingsControllerProvider);
+    final install = ref.read(setupStateProvider).installation;
+    final cannot = install != null && !install.swiftSync;
+    return cannot && saved.syncMethod == SyncMethod.swiftSync
+        ? saved.withSyncMethod(SyncMethod.fastStart)
+        : saved;
+  }
+
   int _step = 0;
   bool _startNow = true;
   bool _saving = false;
@@ -203,9 +217,9 @@ class _SetupStepPageState extends ConsumerState<SetupStepPage> {
         _StorageStep(draft: _draft, onChanged: _edit),
       ),
       2 => (
-        'Fast start',
+        'Sync',
         'How the node gets to the tip of the chain.',
-        _FastStartStep(draft: _draft, onChanged: _edit),
+        _SyncMethodStep(draft: _draft, onChanged: _edit),
       ),
       3 => (
         'Services',
@@ -439,67 +453,87 @@ class _StorageStepState extends ConsumerState<_StorageStep> {
   }
 }
 
-class _FastStartStep extends StatelessWidget {
-  const _FastStartStep({required this.draft, required this.onChanged});
+class _SyncMethodStep extends ConsumerWidget {
+  const _SyncMethodStep({required this.draft, required this.onChanged});
 
   final NodeSettings draft;
   final ValueChanged<NodeSettings> onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    final height = draft.network.assumeUtreexoHeight;
-    if (height == 0) {
-      return Notice(
-        tone: Tone.info,
-        title: 'Validates from the first block',
-        message:
-            'Floresta has no built-in starting state for '
-            '${draft.network.label}, so it checks the whole chain. On this '
-            'network that is quick.',
+  Widget build(BuildContext context, WidgetRef ref) {
+    final network = draft.network;
+    final supports = ref.watch(setupStateProvider).installation?.swiftSync;
+    final method = draft.syncMethod;
+    final height = network.assumeUtreexoHeight;
+
+    Widget option(SyncMethod m, {String? note}) {
+      final why = SyncMethodLabels.unavailable(
+        m,
+        network,
+        binarySupportsSwiftSync: supports,
+      );
+      return OptionCard(
+        title: SyncMethodLabels.title(m),
+        trailingNote: why == null ? note : '(unavailable)',
+        subtitle: [SyncMethodLabels.description(m, network), ?why].join(' '),
+        selected: method == m,
+        control: OptionControl.radio,
+        onChanged: why == null
+            ? (_) => onChanged(draft.withSyncMethod(m))
+            : null,
       );
     }
+
+    final swiftOffered = network.supportsSwiftSync;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        OptionCard(
-          title: 'Assume Utreexo',
-          trailingNote: '(recommended)',
-          subtitle:
-              'Start from the chain state built into Floresta at block '
-              '${formatInt(height)}, so the node is usable in minutes '
-              'instead of days.',
-          selected: draft.assumeUtreexo,
-          control: OptionControl.checkbox,
-          onChanged: (v) => onChanged(draft.copyWith(assumeUtreexo: v)),
-        ),
-        OptionCard(
-          title: 'Backfill in background',
-          trailingNote: '(recommended)',
-          subtitle:
-              'Afterwards, re-check every block before ${formatInt(height)} '
-              'so nothing stays assumed.',
-          selected: draft.assumeUtreexo && draft.backfill,
-          control: OptionControl.checkbox,
-          onChanged: draft.assumeUtreexo
-              ? (v) => onChanged(draft.copyWith(backfill: v))
-              : null,
-        ),
-        if (!draft.assumeUtreexo)
-          const Notice(
+        if (swiftOffered) option(SyncMethod.swiftSync, note: '(recommended)'),
+        if (height > 0)
+          option(
+            SyncMethod.fastStart,
+            note: swiftOffered ? null : '(recommended)',
+          ),
+        option(SyncMethod.full),
+        if (method == SyncMethod.fastStart)
+          OptionCard(
+            title: 'Backfill in background',
+            trailingNote: '(recommended)',
+            subtitle:
+                'Afterwards, re-check every block before ${formatInt(height)} '
+                'so nothing stays assumed.',
+            selected: draft.backfill,
+            control: OptionControl.checkbox,
+            onChanged: (v) => onChanged(draft.copyWith(backfill: v)),
+          ),
+        switch (method) {
+          SyncMethod.swiftSync => Notice(
+            tone: Tone.info,
+            title: 'Before the first start',
+            message:
+                'The app downloads the hints file '
+                '(${network.isMainnet ? 'about 125 MB' : 'about 25 MB'}) from '
+                '${draft.hintsOrigin} into the data folder. Swift Sync runs '
+                'only on a new data folder. If the hints do not match the '
+                'chain, Floresta notices, drops them and validates with '
+                'Utreexo proofs instead: slower, never less safe.',
+          ),
+          SyncMethod.full when height > 0 || swiftOffered => const Notice(
             tone: Tone.warning,
             title: 'Starting from the first block is slow',
             message:
                 'Floresta needs peers that serve Utreexo proofs for the whole '
                 'history. Few exist, so getting to the tip can take days.',
-          )
-        else if (!draft.backfill)
-          const Notice(
+          ),
+          SyncMethod.fastStart when !draft.backfill => const Notice(
             tone: Tone.warning,
             title: 'History stays assumed',
             message:
                 'Without backfill, blocks before the starting state are never '
                 'checked by this node.',
           ),
+          _ => const SizedBox.shrink(),
+        },
       ],
     );
   }
@@ -711,11 +745,7 @@ class _ReviewStep extends ConsumerWidget {
     final env = ref.watch(environmentProvider);
     final installation = ref.watch(setupStateProvider).installation;
     final network = draft.network;
-    final fastStart = draft.snapshotHeight == 0
-        ? 'Validates every block from the first one'
-        : 'Starts from block ${formatInt(draft.snapshotHeight)} '
-              '(Assume Utreexo), '
-              '${draft.backfill ? 'then re-checks the history before it' : 'history before it stays assumed'}';
+    final fastStart = SyncMethodLabels.summary(draft);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -747,7 +777,7 @@ class _ReviewStep extends ConsumerWidget {
           ],
         ),
         _ReviewGroup(
-          title: 'Fast start',
+          title: 'Sync',
           onEdit: () => onEdit(2),
           rows: [('Sync', fastStart, false)],
         ),
@@ -777,7 +807,7 @@ class _ReviewStep extends ConsumerWidget {
           _ReviewGroup(
             title: 'Floresta',
             rows: [
-              ('Version', '${i.version}', false),
+              ('Version', i.versionLabel, false),
               ('Found', i.source.label, false),
             ],
           ),

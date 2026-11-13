@@ -55,6 +55,14 @@ class AppPaths {
   /// revoked signing keys (anti-rollback state).
   File get trustRecord => File('${floresta.path}${_sep}trust.json');
 
+  /// `<root>/updates/`: app update packages, unpacked bundles, the swap
+  /// helper and its result record (ADR-0012).
+  Directory get updates => Directory('${root.path}${_sep}updates');
+
+  /// Anti-rollback state for app update manifests, kept apart from
+  /// florestad's [trustRecord] (separate serial sequences).
+  File get appTrustRecord => File('${updates.path}${_sep}trust.json');
+
   /// `<root>/wallet/<network>/`: the watch-only wallet's synced public chain
   /// data (ADR-0007), one JSON file per account. Never keys.
   Directory walletStore(String network) =>

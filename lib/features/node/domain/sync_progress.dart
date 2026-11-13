@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 
 import 'blockchain_info.dart';
 import 'node_readiness.dart';
+import 'swift_sync.dart';
 import 'verification_breakdown.dart';
 
 /// The three steps the Sync screen shows (Figma "Step n/3").
@@ -39,7 +40,13 @@ class SyncProgress extends Equatable {
     required this.behind,
     required this.tipIsEstimate,
     required this.tipKnown,
+    this.swiftSync,
   });
+
+  /// Set while Swift Sync runs ([ReadinessStage.swiftSyncing]): the blocks
+  /// step then counts blocks processed from the node's output, since the
+  /// RPC reports none validated yet.
+  final SwiftSyncProgress? swiftSync;
 
   final SyncStep step;
 
@@ -72,21 +79,43 @@ class SyncProgress extends Equatable {
   /// is validated yet, so [currentHeight] stays 0 next to a growing
   /// percentage; the header count is what moves. Later steps show the
   /// validated height.
-  ({String label, int value}) get leadingStat => step == SyncStep.headers
-      ? (label: 'Headers Downloaded', value: headerHeight)
-      : (label: 'Current Height', value: currentHeight);
+  ({String label, int value}) get leadingStat => switch (swiftSync) {
+    final swift? => (label: 'Blocks Processed', value: swift.processed),
+    _ when step == SyncStep.headers => (
+      label: 'Headers Downloaded',
+      value: headerHeight,
+    ),
+    _ => (label: 'Current Height', value: currentHeight),
+  };
 
   /// Pure: derives the progress from a chain snapshot and readiness.
   static SyncProgress of(
     BlockchainInfo chain,
     NodeReadiness readiness,
-    VerificationBreakdown? breakdown,
-  ) {
+    VerificationBreakdown? breakdown, {
+    SwiftSyncProgress? swiftSync,
+  }) {
     final tip = max(readiness.peerTip ?? 0, chain.headerHeight);
     var tipKnown = true;
     final current = chain.validatedHeight;
     final SyncStep step;
     double? fraction;
+    if (readiness.stage == ReadinessStage.swiftSyncing && swiftSync != null) {
+      // Blocks are processed out of order by parallel workers, so the count
+      // is shown, not a height, against the whole chain (the proof sync
+      // after the hints' height counts the same way).
+      return SyncProgress(
+        step: SyncStep.blocks,
+        fraction: tip == 0 ? null : (swiftSync.processed / tip).clamp(0.0, 1.0),
+        currentHeight: current,
+        headerHeight: chain.headerHeight,
+        targetHeight: tip,
+        behind: max(0, tip - swiftSync.processed),
+        tipIsEstimate: (readiness.peerTip ?? 0) > chain.headerHeight,
+        tipKnown: true,
+        swiftSync: swiftSync,
+      );
+    }
     if (readiness.stage == ReadinessStage.ready) {
       step = SyncStep.live;
       fraction = 1;
@@ -126,5 +155,6 @@ class SyncProgress extends Equatable {
     behind,
     tipIsEstimate,
     tipKnown,
+    swiftSync,
   ];
 }

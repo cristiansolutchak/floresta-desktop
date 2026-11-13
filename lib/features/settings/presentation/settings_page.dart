@@ -6,6 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/common.dart';
 import '../../installation/presentation/advanced_setup.dart';
+import '../../installation/presentation/setup_state_provider.dart';
+import '../../installation/presentation/updates_panel.dart';
+import '../../node/domain/swift_sync.dart';
 import '../../node/presentation/node_controller.dart';
 import '../../node/presentation/status_labels.dart';
 import '../domain/node_settings.dart';
@@ -14,6 +17,7 @@ import 'diagnostics.dart';
 import 'node_settings_widgets.dart';
 import 'reset_panel.dart';
 import 'settings_controller.dart';
+import 'sync_method_labels.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -83,10 +87,17 @@ class SettingsPage extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
+        SyncMethodPanel(
+          settings: settings,
+          onSave: (next) => _save(context, ref, next),
+        ),
+        const SizedBox(height: 16),
         _AdvancedPanel(
           settings: settings,
           onSave: (next) => _save(context, ref, next),
         ),
+        const SizedBox(height: 16),
+        const UpdatesPanel(),
         const SizedBox(height: 16),
         const _DiagnosticsPanel(),
         const SizedBox(height: 16),
@@ -162,31 +173,6 @@ class _AdvancedPanelState extends State<_AdvancedPanel> {
             value: s.logToFile,
             onChanged: (v) => widget.onSave(s.copyWith(logToFile: v)),
           ),
-          if (s.network.assumeUtreexoHeight > 0) ...[
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Assume Utreexo'),
-              subtitle: Text(
-                'Start from the chain state built into Floresta at block '
-                '${formatInt(s.network.assumeUtreexoHeight)}. Off validates '
-                'from the first block, which can take days.',
-              ),
-              value: s.assumeUtreexo,
-              onChanged: (v) => widget.onSave(s.copyWith(assumeUtreexo: v)),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Backfill in background'),
-              subtitle: const Text(
-                'Re-check the assumed history in the background so nothing '
-                'stays assumed.',
-              ),
-              value: s.assumeUtreexo && s.backfill,
-              onChanged: s.assumeUtreexo
-                  ? (v) => widget.onSave(s.copyWith(backfill: v))
-                  : null,
-            ),
-          ],
           if (!s.disableCompactFilters) ...[
             const SizedBox(height: 8),
             _WalletBirthdayField(settings: s, onSave: widget.onSave),
@@ -202,6 +188,122 @@ class _AdvancedPanelState extends State<_AdvancedPanel> {
             onChanged: (v) =>
                 widget.onSave(s.copyWith(disableCompactFilters: v)),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// How the node gets to the tip (ADR-0011). The method is tied to the data
+/// folder: a folder that already holds a chain keeps going the way it
+/// started, which the panel says instead of pretending a switch applies.
+class SyncMethodPanel extends ConsumerStatefulWidget {
+  const SyncMethodPanel({
+    super.key,
+    required this.settings,
+    required this.onSave,
+  });
+
+  final NodeSettings settings;
+  final ValueChanged<NodeSettings> onSave;
+
+  @override
+  ConsumerState<SyncMethodPanel> createState() => _SyncMethodPanelState();
+}
+
+class _SyncMethodPanelState extends ConsumerState<SyncMethodPanel> {
+  late final _origin = TextEditingController(text: widget.settings.hintsOrigin);
+  String? _originError;
+
+  @override
+  void dispose() {
+    _origin.dispose();
+    super.dispose();
+  }
+
+  void _saveOrigin() {
+    final text = _origin.text.trim();
+    final value = text.isEmpty ? defaultHintsOrigin : text;
+    final problem = hintsOriginProblem(value);
+    setState(() => _originError = problem);
+    if (problem != null || value == widget.settings.hintsOrigin) return;
+    widget.onSave(widget.settings.copyWith(hintsOrigin: value));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.settings;
+    final supports = ref.watch(setupStateProvider).installation?.swiftSync;
+    final method = s.syncMethod;
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget option(SyncMethod m) {
+      final why = SyncMethodLabels.unavailable(
+        m,
+        s.network,
+        binarySupportsSwiftSync: supports,
+      );
+      final selected = method == m;
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        enabled: why == null || selected,
+        leading: Icon(
+          selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+          color: selected ? scheme.primary : null,
+        ),
+        title: Text(SyncMethodLabels.title(m)),
+        subtitle: Text(
+          [SyncMethodLabels.description(m, s.network), ?why].join(' '),
+        ),
+        selected: selected,
+        onTap: why == null && !selected
+            ? () => widget.onSave(s.withSyncMethod(m))
+            : null,
+      );
+    }
+
+    return Panel(
+      title: 'Sync method',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Applies to a new data folder. A folder that already holds a '
+            'chain continues the way it started.',
+            style: context.text.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          if (s.network.supportsSwiftSync) option(SyncMethod.swiftSync),
+          if (s.network.assumeUtreexoHeight > 0) option(SyncMethod.fastStart),
+          option(SyncMethod.full),
+          if (method == SyncMethod.fastStart)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Backfill in background'),
+              subtitle: const Text(
+                'Re-check the assumed history in the background so nothing '
+                'stays assumed.',
+              ),
+              value: s.backfill,
+              onChanged: (v) => widget.onSave(s.copyWith(backfill: v)),
+            ),
+          if (method == SyncMethod.swiftSync) ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _origin,
+              keyboardType: TextInputType.url,
+              decoration: InputDecoration(
+                labelText: 'Hints address',
+                hintText: '$defaultHintsOrigin (default)',
+                helperText:
+                    'The app downloads <address>/${s.network.cliValue} before '
+                    'the first start. https only.',
+                errorText: _originError,
+              ),
+              onSubmitted: (_) => _saveOrigin(),
+              onTapOutside: (_) => _saveOrigin(),
+            ),
+          ],
         ],
       ),
     );

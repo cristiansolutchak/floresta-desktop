@@ -11,16 +11,19 @@ typedef ReleaseTrust = ({int highestSerial, Set<String> revokedKeys});
 
 /// Persists anti-rollback state in `trust.json`, replaced atomically.
 class ReleaseTrustStore {
-  ReleaseTrustStore(this.paths);
+  ReleaseTrustStore(this.paths, {File? record}) : _record = record;
 
   final AppPaths paths;
+  final File? _record;
+
+  /// florestad's record by default; the app updater passes its own.
+  File get file => _record ?? paths.trustRecord;
 
   static const ReleaseTrust initial = (highestSerial: 0, revokedKeys: {});
 
   /// Fails closed: an unreadable record is an error, never "nothing seen",
   /// because that would re-open rollback.
   Future<Either<Failure, ReleaseTrust>> read() async {
-    final file = paths.trustRecord;
     if (!await file.exists()) return const Right(initial);
     try {
       final m = jsonDecode(await file.readAsString()) as Map<String, Object?>;
@@ -54,7 +57,6 @@ class ReleaseTrustStore {
       'revokedKeys': ({...current.revokedKeys, ...revokedKeys}.toList()
         ..sort()),
     };
-    final file = paths.trustRecord;
     await file.parent.create(recursive: true);
     final temp = File('${file.path}.tmp');
     await temp.writeAsString(jsonEncode(next), flush: true);

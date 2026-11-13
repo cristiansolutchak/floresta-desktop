@@ -8,12 +8,14 @@ import '../../../core/logging/log_buffer.dart';
 import '../../../core/providers.dart';
 import '../../../core/rpc/json_rpc_client.dart';
 import '../../installation/presentation/installation_providers.dart';
+import '../../settings/domain/node_settings.dart';
 import '../../settings/presentation/settings_controller.dart';
 import '../../../core/processes/process_inspector.dart';
 import '../data/florestad_process_manager.dart';
 import '../data/electrum_probe.dart';
 import '../data/managed_node_store.dart';
 import '../data/preflight_probe.dart';
+import '../data/swift_sync_hints.dart';
 import '../data/wallet_store_repair.dart';
 import '../data/node_rpc_repository_impl.dart';
 import '../domain/node_process_manager.dart';
@@ -66,6 +68,11 @@ final walletStoreRepairProvider = Provider<WalletStoreRepair>((ref) {
 final preflightProbeProvider = Provider<PreflightProbe>((ref) {
   final env = ref.watch(environmentProvider);
   return PreflightProbe(homeDir: env['HOME'] ?? env['USERPROFILE']);
+});
+
+final swiftSyncHintsProvider = Provider<SwiftSyncHints>((ref) {
+  final env = ref.watch(environmentProvider);
+  return SwiftSyncHints(homeDir: env['HOME'] ?? env['USERPROFILE']);
 });
 
 final electrumProbeProvider = Provider<ElectrumProbe>(
@@ -202,11 +209,17 @@ class NodeController extends Notifier<NodeStatus> {
           if (!ref.mounted) return;
           final now = DateTime.now();
           final before = state.chain;
+          // During Swift Sync the RPC reports no validated block for a long
+          // time (15 min on signet); the processed-block count from the
+          // node's output is the progress then.
+          final swift = _manager.swiftSync;
           final moved =
               before == null ||
               state.lastProgressAt == null ||
               before.headerHeight != chain.headerHeight ||
-              before.validatedHeight != chain.validatedHeight;
+              before.validatedHeight != chain.validatedHeight ||
+              state.swiftSync.processed != swift.processed ||
+              state.swiftSync.phase != swift.phase;
           state = state.copyWith(
             api: ApiReachability.reachable,
             chain: chain,
@@ -215,6 +228,7 @@ class NodeController extends Notifier<NodeStatus> {
             clearFailure: true,
             lastUpdated: now,
             lastProgressAt: moved ? now : null,
+            swiftSync: swift,
           );
           await _checkElectrum(now);
         },
@@ -289,12 +303,73 @@ class NodeController extends Notifier<NodeStatus> {
       }
       await ref.read(preflightProbeProvider).restrictDataDir(settings);
       if (!ref.mounted) return const Left(ProcessStateFailure('Closed.'));
+      if (settings.syncMethod == SyncMethod.swiftSync && !install.swiftSync) {
+        return const Left(
+          PreflightFailure(
+            title: 'This Floresta has no Swift Sync',
+            message:
+                'Swift Sync is selected, but the installed florestad was '
+                'built without it (it is not in v0.9.1). Started like this, '
+                'the node would validate every block with Utreexo proofs.',
+            recovery:
+                'Choose Fast Start or Full validation in Settings, or '
+                'install a Floresta build that includes Swift Sync.',
+          ),
+        );
+      }
+      final hints = await _prepareHints(settings);
+      if (!ref.mounted) return const Left(ProcessStateFailure('Closed.'));
+      if (hints case Left(:final value)) return Left(value);
       _schedule(_pollActive);
       return _manager.start(
         executablePath: install.executablePath,
         settings: settings,
       );
     });
+  }
+
+  /// Downloads or parks the Swift Sync hints, showing the bytes received.
+  Future<Either<Failure, HintsOutcome>> _prepareHints(
+    NodeSettings settings,
+  ) async {
+    state = state.copyWith(hintsDownload: 0);
+    var shownAt = DateTime.now();
+    try {
+      final result = await ref
+          .read(swiftSyncHintsProvider)
+          .prepare(
+            settings,
+            onProgress: (received) {
+              final now = DateTime.now();
+              if (!ref.mounted ||
+                  now.difference(shownAt) < const Duration(milliseconds: 250)) {
+                return;
+              }
+              shownAt = now;
+              state = state.copyWith(hintsDownload: received);
+            },
+          );
+      if (result case Right(value: HintsExistingChain()) when ref.mounted) {
+        state = state.copyWith(
+          preflightWarnings: [
+            ...state.preflightWarnings,
+            const PreflightIssue(
+              severity: PreflightSeverity.warning,
+              title: 'Swift Sync will not run on this data folder',
+              message:
+                  'The folder already holds a chain, and Swift Sync only '
+                  'runs from the first block. The node continues the way it '
+                  'started.',
+              recovery:
+                  'To use Swift Sync, choose a new data folder in Settings.',
+            ),
+          ],
+        );
+      }
+      return result;
+    } finally {
+      if (ref.mounted) state = state.copyWith(clearHintsDownload: true);
+    }
   }
 
   /// Stops the node: supervised processes with escalation, an external node
@@ -354,6 +429,7 @@ final syncProgressProvider = Provider<SyncProgress?>((ref) {
     chain,
     ref.watch(nodeReadinessProvider),
     ref.watch(verificationBreakdownProvider),
+    swiftSync: ref.watch(nodeControllerProvider.select((s) => s.swiftSync)),
   );
 });
 

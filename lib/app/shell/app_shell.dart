@@ -15,6 +15,8 @@ import '../../features/node/presentation/status_labels.dart';
 import '../../features/settings/presentation/settings_controller.dart';
 import '../../features/node/presentation/utreexo_peer_controller.dart';
 import '../../features/wallet/presentation/wallet_rescan_controller.dart';
+import '../../features/installation/presentation/update_bar.dart';
+import '../../features/installation/presentation/update_controller.dart';
 import '../../shared/widgets/common.dart';
 import '../../shared/widgets/dash.dart';
 import '../../shared/widgets/status_motion.dart';
@@ -110,6 +112,8 @@ class AppShell extends ConsumerWidget {
     ref.watch(walletRescanProvider);
     // Keeps the Utreexo peer search alive while the app runs (SYNC-05).
     ref.watch(utreexoPeerSearchProvider);
+    // Checks for updates at start and periodically (ADR-0012).
+    ref.watch(updateControllerProvider);
     final isMac = Theme.of(context).platform == TargetPlatform.macOS;
     final current = _destinations.firstWhere(
       (d) => location.startsWith(d.path),
@@ -139,6 +143,7 @@ class AppShell extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _HeaderBar(title: current.label),
+                  const UpdateBar(),
                   Expanded(
                     child: ShellTitleScope(
                       child: Theme(
@@ -446,7 +451,7 @@ class _SidebarFooter extends ConsumerWidget {
     final version = switch (ref.watch(nextActionProvider).value) {
       OpenNodeManagement(:final installation) ||
       ConfigureNode(:final installation) ||
-      UpdateFloresta(:final installation) => installation.version.toString(),
+      UpdateFloresta(:final installation) => installation.versionLabel,
       _ => null,
     };
     final online = status.api == ApiReachability.reachable;

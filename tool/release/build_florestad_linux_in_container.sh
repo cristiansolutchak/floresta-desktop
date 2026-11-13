@@ -10,7 +10,8 @@
 # pinned to the version the macOS artifacts were built with. Caches live in
 # ~/.cache/floresta-gui-tools/linux-<arch>; output defaults to
 # ~/.cache/floresta-gui-tools/release-artifacts. FLORESTA_TAG and
-# FLORESTA_COMMIT pass through (see build_florestad_artifact.sh). Nothing is
+# FLORESTA_COMMIT, and FLORESTA_MASTER_COMMIT (pinned master, UPS-01), pass
+# through (see build_florestad_artifact.sh). Nothing is
 # signed here.
 set -euo pipefail
 arch="${1:-}"
@@ -30,6 +31,7 @@ docker run --rm --platform "$platform" \
   -v "$root:/src:ro" -v "$cache:/tools" -v "$out:/out" \
   -e TARGET="$target" -e RUST_VERSION="$rust_version" \
   -e FLORESTA_TAG="${FLORESTA_TAG:-}" -e FLORESTA_COMMIT="${FLORESTA_COMMIT:-}" \
+  -e FLORESTA_MASTER_COMMIT="${FLORESTA_MASTER_COMMIT:-}" \
   debian:bookworm bash -euo pipefail -c '
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq

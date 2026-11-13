@@ -4,6 +4,7 @@ import '../../../core/errors/failure.dart';
 import '../../../core/logging/log_buffer.dart';
 import '../../settings/domain/node_settings.dart';
 import 'node_process_state.dart';
+import 'swift_sync.dart';
 
 /// Supervises one florestad child process.
 abstract interface class NodeProcessManager {
@@ -12,6 +13,10 @@ abstract interface class NodeProcessManager {
 
   List<LogLine> get logs;
   Stream<LogLine> get logLines;
+
+  /// Swift Sync as the output of the process started by [start] tells it;
+  /// reset on every start, unknown for an adopted process.
+  SwiftSyncProgress get swiftSync;
 
   /// Spawns florestad. Fails if a process is already active.
   Future<Either<Failure, Unit>> start({

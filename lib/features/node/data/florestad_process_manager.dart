@@ -12,6 +12,7 @@ import '../../settings/domain/node_settings.dart';
 import '../domain/managed_node_record.dart';
 import '../domain/node_process_manager.dart';
 import '../domain/node_process_state.dart';
+import '../domain/swift_sync.dart';
 import 'florestad_launch_args.dart';
 import 'managed_node_store.dart';
 
@@ -91,6 +92,15 @@ class FlorestadProcessManager implements NodeProcessManager {
   @override
   Stream<LogLine> get logLines => _logController.stream;
 
+  SwiftSyncProgress _swiftSync = const SwiftSyncProgress();
+  @override
+  SwiftSyncProgress get swiftSync => _swiftSync;
+
+  /// Of florestad's one-line-per-block Swift Sync output (about 650 lines a
+  /// second), only every this many reach the log view; the rest would push
+  /// everything else out of it within seconds. All are counted.
+  static const swiftSyncBlockLineEvery = 10000;
+
   @override
   Future<Either<Failure, Unit>> start({
     required String executablePath,
@@ -102,6 +112,7 @@ class FlorestadProcessManager implements NodeProcessManager {
     final args = florestadLaunchArgs(settings);
     _rpcPort = settings.effectiveRpcPort;
     _stopRequested = false;
+    _swiftSync = const SwiftSyncProgress();
     _setState(const ProcessStarting());
     _appLog('Starting $executablePath ${args.join(' ')}');
 
@@ -154,6 +165,7 @@ class FlorestadProcessManager implements NodeProcessManager {
       return false;
     }
     _stopRequested = false;
+    _swiftSync = const SwiftSyncProgress();
     _adopted = record;
     _adoptedGone = Completer<void>();
     _appLog(
@@ -323,8 +335,17 @@ class FlorestadProcessManager implements NodeProcessManager {
       stream
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const LineSplitter())
-          .listen((line) => _emit(source, line)),
+          .listen((line) => _onOutput(source, line)),
     );
+  }
+
+  void _onOutput(LogSource source, String line) {
+    _swiftSync = _swiftSync.next(line);
+    if (SwiftSyncProgress.isBlockLine(line) &&
+        _swiftSync.processed % swiftSyncBlockLineEvery != 0) {
+      return;
+    }
+    _emit(source, line);
   }
 
   void _appLog(String text) => _emit(LogSource.app, text);
