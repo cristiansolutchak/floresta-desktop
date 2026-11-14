@@ -23,7 +23,7 @@ bundle="$root/build/linux/$flutter_arch/release/bundle"
 [[ -x "$bundle/floresta_desktop" ]] || die "no release build at $bundle"
 version="$(awk '/^version:/ { split($2, v, "+"); print v[1] }' "$root/pubspec.yaml")"
 # Debian sorts "0.0.1~beta" before "0.0.1"; file names keep "-beta".
-deb_version="${version//-/~}"
+deb_version="$(printf '%s' "$version" | tr '-' '~')"
 name="floresta-desktop_${version}_${deb_arch}"
 mkdir -p "$out"
 work="$(mktemp -d)"
