@@ -79,7 +79,8 @@ class SwapResult {
 ///    (its own anti-rollback record), and compare versions.
 /// 2. **Download:** resumable, size and SHA-256 checked before use.
 /// 3. **Unpack and check:** macOS: `ditto`, then the bundle id must match
-///    the running app's, the version the manifest's, and `codesign
+///    the running app's, the version the manifest's (its numbers: macOS
+///    drops a pre-release suffix), and `codesign
 ///    --verify --deep --strict` must pass. Linux tarball: `tar`, then the
 ///    bundle's `VERSION` file must say the manifest's version. `.deb`:
 ///    `dpkg-deb` must report package `floresta-desktop` at that version.
@@ -287,7 +288,10 @@ class AppUpdater {
         final id = await _plist(plist, 'CFBundleIdentifier');
         final shortVersion = await _plist(plist, 'CFBundleShortVersionString');
         if (id != bundleId) return fail('bundle id $id');
-        if (shortVersion != '$version') {
+        // macOS keeps only the numbers (0.0.1 for 0.0.1-beta): Apple
+        // requires a numeric CFBundleShortVersionString.
+        if (shortVersion !=
+            '${version.major}.${version.minor}.${version.patch}') {
           return fail('it says version $shortVersion');
         }
         final sig = await _run('/usr/bin/codesign', [

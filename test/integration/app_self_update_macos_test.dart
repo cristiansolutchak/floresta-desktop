@@ -47,7 +47,14 @@ void main() {
       final source = Directory(_bundle!).absolute.path;
       final current = await _plist(source, 'CFBundleShortVersionString');
       final now = AppVersion.tryParse(current)!;
-      final next = AppVersion(now.major, now.minor, now.patch + 1);
+      // A pre-release: macOS keeps only its numbers in the bundle.
+      final next = AppVersion(
+        now.major,
+        now.minor,
+        now.patch + 1,
+        preRelease: 'beta',
+      );
+      final nextNumbers = '${next.major}.${next.minor}.${next.patch}';
 
       final root = await Directory.systemTemp.createTemp('floresta_selfupd_');
       addTearDown(() async {
@@ -67,7 +74,7 @@ void main() {
         '-replace',
         'CFBundleShortVersionString',
         '-string',
-        '$next',
+        nextNumbers,
         '$newer/Contents/Info.plist',
       ]);
       await _ok('/usr/bin/codesign', [
@@ -155,7 +162,10 @@ void main() {
         result = await updater.lastResult();
       }
       expect(result?.ok, isTrue, reason: result?.reason);
-      expect(await _plist(installed, 'CFBundleShortVersionString'), '$next');
+      expect(
+        await _plist(installed, 'CFBundleShortVersionString'),
+        nextNumbers,
+      );
       await _ok('/usr/bin/codesign', [
         '--verify',
         '--deep',
