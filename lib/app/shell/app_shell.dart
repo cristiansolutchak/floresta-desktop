@@ -517,22 +517,34 @@ class _SidebarFooter extends ConsumerWidget {
           children: [
             dot,
             const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: t.textPrimary,
-                ),
+            // "v0.9.0 (master 3a47993)" may not fit next to the status, and
+            // the sidebar passes through narrower widths while it animates:
+            // the tag moves to a second line, and shortens with an ellipsis
+            // only if it does not fit alone (the tooltip keeps it whole).
+            Expanded(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: t.textPrimary,
+                    ),
+                  ),
+                  if (version != null)
+                    Tooltip(
+                      message: 'Floresta $version',
+                      child: DashTag(version, tone: DashTone.neutral),
+                    ),
+                ],
               ),
             ),
-            if (version != null) ...[
-              const SizedBox(width: 8),
-              DashTag(version, tone: DashTone.neutral),
-            ],
-            const Spacer(),
             toggle,
           ],
         ),

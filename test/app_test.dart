@@ -475,6 +475,42 @@ void main() {
     );
   });
 
+  testWidgets('a long Floresta version never overflows the sidebar, '
+      'also while it collapses and expands', (tester) async {
+    // Regression (2026-11-13): "v0.9.0 (master 3a47993)" overflowed the
+    // footer by 2 px at 264 px, and by 38 px mid-animation.
+    final h = _Harness()
+      ..install.result = const Right(
+        FlorestaInstallation(
+          executablePath: '/Users/a/.cargo/bin/florestad',
+          source: ExecutableSource.managed,
+          version: FlorestaVersion(0, 9, 0),
+          upstreamRef: 'master@3a47993595d1d865fb6bea6bce5e9818b5a6bd7e',
+        ),
+      );
+    await h.pump(tester);
+    expect(tester.takeException(), isNull);
+    expect(find.text('v0.9.0 (master 3a47993)'), findsOneWidget);
+    expect(find.byTooltip('Floresta v0.9.0 (master 3a47993)'), findsOneWidget);
+
+    // Real motion, frame by frame, through every intermediate width.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures();
+    for (final toggle in ['Collapse sidebar', 'Expand sidebar']) {
+      await tester.tap(find.byTooltip(toggle));
+      for (var ms = 0; ms <= 300; ms += 10) {
+        await tester.pump(const Duration(milliseconds: 10));
+        expect(tester.takeException(), isNull, reason: '$toggle at $ms ms');
+      }
+    }
+    // Narrowest window: still no overflow, at either width.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    tester.view.physicalSize = const Size(960, 640);
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('compact sidebar: icons only, labels in tooltips, remembered', (
     tester,
   ) async {
