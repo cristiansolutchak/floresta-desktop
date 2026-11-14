@@ -1,14 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_version.dart';
 import '../../../core/logging/log_buffer.dart';
-
 import '../../../core/providers.dart';
 import '../../installation/presentation/installation_providers.dart';
 import '../../node/presentation/node_controller.dart';
 import 'settings_controller.dart';
-
-/// App version shown in diagnostics; keep in sync with pubspec.yaml.
-const appVersion = '0.0.1';
 
 /// What the app reports about itself for support: versions, paths, ports
 /// and node state. No wallet data, descriptors or keys.
@@ -23,7 +20,7 @@ final diagnosticsRowsProvider = Provider<List<(String, String)>>((ref) {
     separator: platform.pathSeparator,
   );
   return [
-    ('App version', appVersion),
+    ('App version', appVersionText),
     ('Platform', platform.label),
     (
       'Floresta',

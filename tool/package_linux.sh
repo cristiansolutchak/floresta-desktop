@@ -22,6 +22,8 @@ esac
 bundle="$root/build/linux/$flutter_arch/release/bundle"
 [[ -x "$bundle/floresta_desktop" ]] || die "no release build at $bundle"
 version="$(awk '/^version:/ { split($2, v, "+"); print v[1] }' "$root/pubspec.yaml")"
+# Debian sorts "0.0.1~beta" before "0.0.1"; file names keep "-beta".
+deb_version="${version//-/~}"
 name="floresta-desktop_${version}_${deb_arch}"
 mkdir -p "$out"
 work="$(mktemp -d)"
@@ -52,7 +54,7 @@ Terminal=false
 DESKTOP
 cat > "$pkg/DEBIAN/control" <<CONTROL
 Package: floresta-desktop
-Version: $version
+Version: $deb_version
 Architecture: $deb_arch
 Maintainer: Floresta Desktop <noreply@localhost>
 Depends: libgtk-3-0 | libgtk-3-0t64, libegl1, libgles2

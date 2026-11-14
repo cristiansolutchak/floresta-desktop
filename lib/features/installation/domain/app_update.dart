@@ -11,18 +11,30 @@ import '../../../core/platform/host_platform.dart';
 /// The app's own version (`pubspec.yaml` `version`, without the build
 /// number).
 class AppVersion extends Equatable implements Comparable<AppVersion> {
-  const AppVersion(this.major, this.minor, this.patch);
+  const AppVersion(this.major, this.minor, this.patch, {this.preRelease});
 
   final int major;
   final int minor;
   final int patch;
 
-  static final _pattern = RegExp(r'^v?(\d+)\.(\d+)\.(\d+)(?:\+\d+)?$');
+  /// `beta`, `rc.1`…: a pre-release of [major].[minor].[patch], which sorts
+  /// before the release itself (semantic versioning).
+  final String? preRelease;
+
+  static final _pattern = RegExp(
+    r'^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*))?'
+    r'(?:\+[0-9A-Za-z.]+)?$',
+  );
 
   static AppVersion? tryParse(String text) {
     final m = _pattern.firstMatch(text.trim());
     if (m == null) return null;
-    return AppVersion(int.parse(m[1]!), int.parse(m[2]!), int.parse(m[3]!));
+    return AppVersion(
+      int.parse(m[1]!),
+      int.parse(m[2]!),
+      int.parse(m[3]!),
+      preRelease: m[4],
+    );
   }
 
   @override
@@ -34,16 +46,39 @@ class AppVersion extends Equatable implements Comparable<AppVersion> {
     ]) {
       if (a != b) return a.compareTo(b);
     }
-    return 0;
+    return _comparePre(preRelease, other.preRelease);
+  }
+
+  /// No pre-release ranks above any; otherwise identifiers compare left to
+  /// right, numbers numerically and below words.
+  static int _comparePre(String? a, String? b) {
+    if (a == b) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    final x = a.split('.');
+    final y = b.split('.');
+    for (var i = 0; i < x.length && i < y.length; i++) {
+      final nx = int.tryParse(x[i]);
+      final ny = int.tryParse(y[i]);
+      final c = switch ((nx, ny)) {
+        (final p?, final q?) => p.compareTo(q),
+        (_?, null) => -1,
+        (null, _?) => 1,
+        _ => x[i].compareTo(y[i]),
+      };
+      if (c != 0) return c;
+    }
+    return x.length.compareTo(y.length);
   }
 
   bool operator >(AppVersion other) => compareTo(other) > 0;
 
   @override
-  String toString() => '$major.$minor.$patch';
+  String toString() =>
+      '$major.$minor.$patch${preRelease == null ? '' : '-$preRelease'}';
 
   @override
-  List<Object?> get props => [major, minor, patch];
+  List<Object?> get props => [major, minor, patch, preRelease];
 }
 
 /// How the app was installed, which decides how it can be updated.

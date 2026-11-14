@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/dash_tokens.dart';
+import '../../../core/app_version.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/dash.dart';
 import '../../installation/domain/next_action.dart';
@@ -49,7 +50,7 @@ class HelpPage extends ConsumerWidget {
               onPressed: () => showLicensePage(
                 context: context,
                 applicationName: 'Floresta Desktop',
-                applicationVersion: appVersion,
+                applicationVersion: appVersionText,
                 applicationLegalese:
                     'MIT OR Apache-2.0. florestad is MIT OR Apache-2.0, '
                     '© The Floresta Project Developers.',

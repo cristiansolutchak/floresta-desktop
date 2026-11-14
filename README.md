@@ -2,7 +2,7 @@
 
 A desktop app for running and managing a [Floresta](https://github.com/getfloresta/Floresta) Bitcoin node without the terminal. It installs `florestad` from signed builds, guides setup, starts and stops the node, shows sync, peers and logs, and follows watch-only wallets.
 
-> **Status: pre-release (v0.0.1).** No packaged release is published yet; build it from source (below).
+> **Status: pre-release (v0.0.1-beta).** Downloads are on the [Releases](https://github.com/cristiansolutchak/floresta-desktop/releases) page; see [CHANGELOG.md](CHANGELOG.md) for what is in it and the known issues.
 
 ## Features
 

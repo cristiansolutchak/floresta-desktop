@@ -359,7 +359,10 @@ class AppUpdater {
     };
     if (r.exitCode != 0 ||
         fields['Package'] != _debPackage ||
-        !(fields['Version'] ?? '').startsWith('$version')) {
+        // Debian writes a pre-release as `0.0.1~beta` so it sorts first.
+        !(fields['Version'] ?? '')
+            .replaceAll('~', '-')
+            .startsWith('$version')) {
       return Left(
         InstallationFailure(
           stage: 'verify',

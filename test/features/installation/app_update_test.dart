@@ -43,6 +43,33 @@ void main() {
       expect(const AppVersion(0, 1, 0) > const AppVersion(0, 0, 9), isTrue);
       expect(const AppVersion(1, 0, 0) > const AppVersion(1, 0, 0), isFalse);
     });
+
+    test('a pre-release sorts before its release (semver)', () {
+      final beta = AppVersion.tryParse('0.0.1-beta+1')!;
+      expect(beta, const AppVersion(0, 0, 1, preRelease: 'beta'));
+      expect('$beta', '0.0.1-beta');
+      expect(AppVersion.tryParse('0.0.1')! > beta, isTrue);
+      expect(beta > AppVersion.tryParse('0.0.1-alpha')!, isTrue);
+      expect(
+        AppVersion.tryParse('0.0.1-beta.2')! >
+            AppVersion.tryParse('0.0.1-beta.1')!,
+        isTrue,
+      );
+      expect(
+        AppVersion.tryParse('0.0.1-beta.11')! >
+            AppVersion.tryParse('0.0.1-beta.2')!,
+        isTrue,
+      );
+      expect(
+        AppVersion.tryParse('0.0.1-rc.1')! > AppVersion.tryParse('0.0.1-beta')!,
+        isTrue,
+      );
+      expect(
+        AppVersion.tryParse('0.0.2-beta')! > AppVersion.tryParse('0.0.1')!,
+        isTrue,
+      );
+      expect(AppVersion.tryParse('0.0.1-'), isNull);
+    });
   });
 
   group('AppReleaseManifest', () {
