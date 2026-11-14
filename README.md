@@ -62,7 +62,7 @@ Release builds and packages:
 ```bash
 tool/build_app.sh production
 tool/package_macos.sh            # macOS: .dmg and the .zip used by updates
-tool/build_linux_in_container.sh arm64|x64   # Linux: .deb and .tar.gz (Docker)
+FLORESTA_LINUX_ARCH=arm64 tool/build_linux_in_container.sh production   # Linux (Docker): .deb and .tar.gz; arm64 or x64
 ```
 
 On Windows: `tool\windows\build_app.ps1 production`, then `tool\windows\package_windows.ps1`.
