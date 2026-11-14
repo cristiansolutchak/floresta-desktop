@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  group('app_reset domain (INS-12)', () {
+  group('app_reset domain', () {
     test('only a folder with florestad chain state counts as Floresta', () {
       expect(looksLikeFlorestaData({'chaindata', 'db'}), isTrue);
       expect(looksLikeFlorestaData({'db', 'debug.log'}), isFalse);

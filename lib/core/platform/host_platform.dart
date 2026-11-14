@@ -26,8 +26,7 @@ enum CpuArch {
 /// How much upstream evidence exists that Floresta runs on a platform.
 ///
 /// Source: `.github/workflows/rust.yml` cross-testing matrix
-/// (ubuntu-latest, windows-latest, macos-latest). See
-/// docs/research/floresta-capabilities.md §4.
+/// (ubuntu-latest, windows-latest, macos-latest).
 enum UpstreamSupport {
   /// The upstream CI builds and tests on this OS/arch.
   ciTested,

@@ -67,9 +67,8 @@ class NodeSettings extends Equatable {
   final int? walletBirthdayYear;
 
   /// Start from the Utreexo state built into Floresta (on by default
-  /// upstream; docs/audit/assume-utreexo-v0.9.1.md). Off validates from
-  /// genesis (`--no-assume-utreexo`). Since ADR-0011 the app's default for
-  /// a new node is [swiftSync] instead. Read [syncMethod], not this field:
+  /// upstream). Off validates from genesis (`--no-assume-utreexo`). The
+  /// app's default for a new node is [swiftSync] instead. Read [syncMethod], not this field:
   /// Swift Sync wins when both are set.
   final bool assumeUtreexo;
 
@@ -83,7 +82,7 @@ class NodeSettings extends Equatable {
   /// launch options above do not apply.
   final bool useExistingNode;
 
-  /// Download Swift Sync hints before a node's first start (ADR-0011). Only
+  /// Download Swift Sync hints before a node's first start. Only
   /// on networks that have hints ([BitcoinNetwork.supportsSwiftSync]).
   final bool swiftSync;
 

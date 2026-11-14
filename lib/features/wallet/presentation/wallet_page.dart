@@ -5,11 +5,11 @@ import 'package:fpdart/fpdart.dart' hide State;
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/errors/failure.dart';
+import '../../../shared/format.dart';
 import '../../../shared/widgets/common.dart';
 import '../../node/domain/node_readiness.dart';
 import '../../node/domain/node_status.dart';
 import '../../node/presentation/node_controller.dart';
-import '../../node/presentation/status_labels.dart' show formatInt;
 import '../../settings/domain/bitcoin_network.dart';
 import '../../settings/presentation/settings_controller.dart';
 import '../domain/address_activity.dart';
@@ -22,7 +22,7 @@ import 'wallet_controller.dart';
 import 'wallet_rescan_controller.dart';
 import 'wallet_sync_controller.dart';
 
-/// Scheduled, started or abandoned rescans (WAL-06).
+/// Scheduled, started or abandoned rescans.
 class _RescanNotice extends ConsumerWidget {
   const _RescanNotice();
 
@@ -227,7 +227,7 @@ class _WalletPageState extends ConsumerState<WalletPage> {
     );
     heightController.dispose();
     if (start == null || !context.mounted) return;
-    // WAL-06: scheduled, not sent now. florestad refuses rescans while
+    // Scheduled, not sent now. florestad refuses rescans while
     // syncing, and the gate sends it once the node has been synced a while.
     await ref
         .read(walletRescanProvider.notifier)

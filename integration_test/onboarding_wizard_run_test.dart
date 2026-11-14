@@ -1,4 +1,4 @@
-/// UX-02: the REAL macOS app from first launch to a running node, through
+/// The REAL macOS app from first launch to a running node, through
 /// the setup wizard only (no preferences pre-set except the executable).
 ///
 ///   flutter test integration_test/onboarding_wizard_run_test.dart -d macos \

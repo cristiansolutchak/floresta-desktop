@@ -93,7 +93,7 @@ void main() {
     });
   });
 
-  group('WatchedList (WAL-07)', () {
+  group('WatchedList', () {
     test('"no wallets" only after two empty answers in a row', () {
       var l = const WatchedList([]);
       l = l.next(const []);

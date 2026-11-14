@@ -1,9 +1,9 @@
-/// INS-02 / INS-15 (C3, C5, C6, C8): the REAL macOS app, built with a
+/// The REAL macOS app, built with a
 /// release configuration, on a profile with no florestad anywhere: it
 /// installs florestad from the configured source through the onboarding
 /// screen, configures it in the wizard, starts it from Finish, stops it,
 /// then finds the managed install again after a restart. Finally it
-/// deletes the node data and removes that florestad from Settings (INS-12).
+/// deletes the node data and removes that florestad from Settings.
 ///
 ///   dart run tool/release/release_tool.dart serve --artifacts RELEASE_DIR
 ///   flutter test integration_test/clean_install_run_test.dart -d macos \
@@ -195,7 +195,7 @@ void main() {
       stopped = true;
       _step('restart found the managed install');
 
-      // INS-12 on the real files florestad wrote: delete the node data, then
+      // On the real files florestad wrote: delete the node data, then
       // remove the installed Floresta, both from Settings.
       final netDir = Directory('${temp.path}/data/regtest');
       expect(Directory('${netDir.path}/chaindata').existsSync(), isTrue);

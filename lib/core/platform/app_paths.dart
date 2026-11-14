@@ -56,7 +56,7 @@ class AppPaths {
   File get trustRecord => File('${floresta.path}${_sep}trust.json');
 
   /// `<root>/updates/`: app update packages, unpacked bundles, the swap
-  /// helper and its result record (ADR-0012).
+  /// helper and its result record.
   Directory get updates => Directory('${root.path}${_sep}updates');
 
   /// Anti-rollback state for app update manifests, kept apart from
@@ -64,7 +64,7 @@ class AppPaths {
   File get appTrustRecord => File('${updates.path}${_sep}trust.json');
 
   /// `<root>/wallet/<network>/`: the watch-only wallet's synced public chain
-  /// data (ADR-0007), one JSON file per account. Never keys.
+  /// data, one JSON file per account. Never keys.
   Directory walletStore(String network) =>
       Directory('${root.path}${_sep}wallet$_sep$network');
 

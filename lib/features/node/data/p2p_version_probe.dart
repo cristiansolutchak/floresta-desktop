@@ -8,7 +8,7 @@ import 'package:blockchain_utils/blockchain_utils.dart';
 import '../../settings/domain/bitcoin_network.dart';
 import '../domain/utreexo_peer.dart';
 
-/// SYNC-05: asks a Bitcoin node who it is, with the plain (v1) P2P
+/// Asks a Bitcoin node who it is, with the plain (v1) P2P
 /// handshake, and stops there. It sends one `version` message and reads the
 /// peer's `version`; it never sends `verack`, requests no data and keeps no
 /// connection. That is enough to learn the network (from the message magic),

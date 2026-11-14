@@ -8,8 +8,8 @@
 /// `getheaders` with an empty `headers` (`chain_selector_ctx.rs`
 /// `LookingForForks`); a utreexod that is not in sync ignores `getheaders`
 /// (utreexod v0.5.2 `server.go` `OnGetHeaders`). Here a fresh utreexod at
-/// genesis plays the mainnet utreexod that was 3 000 blocks behind
-/// (docs/audit/sync-selection-after-restart.md). It checks, with the app's
+/// genesis plays the mainnet utreexod that was 3 000 blocks behind. It
+/// checks, with the app's
 /// own process manager, log buffer and RPC client:
 ///
 /// 1. the selection start and end lines the app reads are the ones florestad

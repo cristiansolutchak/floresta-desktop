@@ -31,7 +31,7 @@ final walletDescriptorsProvider =
 class WalletController extends AsyncNotifier<Either<Failure, WatchedList>> {
   WalletRepository get _repo => ref.read(walletRepositoryProvider);
 
-  /// Pause before asking again after an empty answer (WAL-07).
+  /// Pause before asking again after an empty answer.
   static const recheckAfter = Duration(seconds: 3);
   Timer? _recheck;
 

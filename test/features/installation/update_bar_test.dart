@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:floresta_gui/core/errors/failure.dart';
 import 'package:floresta_gui/core/platform/app_paths.dart';
 import 'package:floresta_gui/core/platform/host_platform.dart';
@@ -14,8 +16,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'dart:io';
 
 const _kind = SelfUpdatable(
   AppPackageFormat.macosAppZip,

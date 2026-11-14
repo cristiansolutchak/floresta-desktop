@@ -42,7 +42,7 @@ docker run --rm ${platform[@]+"${platform[@]}"} \
     flutter config --no-analytics --enable-linux-desktop >/dev/null
     mkdir /work && cd /src
     tar --exclude=./build --exclude=./.dart_tool --exclude=./dist \
-      --exclude=./docs --exclude=./macos/Pods -cf - . |
+      --exclude=./macos/Pods -cf - . |
       tar -xf - -C /work
     cd /work
     flutter pub get >/dev/null

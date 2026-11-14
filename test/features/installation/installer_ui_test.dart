@@ -9,9 +9,9 @@ import 'package:floresta_gui/core/providers.dart';
 import 'package:floresta_gui/features/installation/data/managed_installer.dart';
 import 'package:floresta_gui/features/installation/data/release_source.dart';
 import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
+import 'package:floresta_gui/features/installation/domain/app_update.dart';
 import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
 import 'package:floresta_gui/features/installation/domain/installation.dart';
-import 'package:floresta_gui/features/installation/domain/app_update.dart';
 import 'package:floresta_gui/features/installation/domain/installer.dart';
 import 'package:floresta_gui/features/installation/presentation/install_controller.dart';
 import 'package:floresta_gui/features/installation/presentation/installation_providers.dart';
@@ -225,7 +225,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Download paused'), findsOneWidget);
-    // INS-04: the partial download is kept; the button resumes it.
+    // The partial download is kept; the button resumes it.
     await tester.tap(find.text('Resume download'));
     await tester.pump();
     expect(installer.installs, 2);
@@ -240,7 +240,7 @@ void main() {
     expect(find.text('Floresta is installed'), findsOneWidget);
   });
 
-  // INS-03: every stage a real install can stop at has its own headline.
+  // Every stage a real install can stop at has its own headline.
   for (final (stage, title) in [
     (InstallStage.resolve, 'Could not get the release information'),
     (InstallStage.download, 'The download did not finish'),

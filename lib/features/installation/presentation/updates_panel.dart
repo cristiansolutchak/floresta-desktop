@@ -3,14 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/app_version.dart';
+import '../../../shared/format.dart';
 import '../../../shared/widgets/common.dart';
-import '../../node/presentation/status_labels.dart';
 import '../domain/app_update.dart';
 import 'installation_providers.dart';
 import 'update_controller.dart';
 
 /// Settings → Updates: versions, the automatic-install preference, a
-/// manual check and the last result (ADR-0012).
+/// manual check and the last result.
 class UpdatesPanel extends ConsumerWidget {
   const UpdatesPanel({super.key});
 

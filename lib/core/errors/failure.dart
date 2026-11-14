@@ -73,7 +73,7 @@ final class FileWriteFailure extends Failure {
   List<Object?> get props => [path, detail];
 }
 
-/// INS-12: a reset or removal was refused or did not complete.
+/// A reset or removal was refused or did not complete.
 final class ResetFailure extends Failure {
   const ResetFailure(this.message, {this.recovery});
 

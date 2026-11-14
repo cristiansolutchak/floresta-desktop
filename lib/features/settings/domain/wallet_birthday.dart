@@ -4,7 +4,7 @@ import 'bitcoin_network.dart';
 ///
 /// florestad v0.9.1 downloads filters from block 1 unless
 /// `--filters-start-height` is given (`running_ctx.rs:491`), which is about
-/// 11 GB on mainnet (Mandacaru #53 saw 13+ GB). It applies the start height
+/// 11 GB on mainnet (13+ GB has been reported). It applies the start height
 /// only while its filter store is empty, so moving the birthday earlier
 /// later does not fetch older filters.
 abstract final class WalletBirthday {
@@ -16,8 +16,8 @@ abstract final class WalletBirthday {
 
   /// Approximate mainnet height at 1 January of each year, at or slightly
   /// before the year's first block. Values from Mandacaru
-  /// (`presentation/utils/WalletBirthday.kt`, MIT, © João Victor Sena) [UNV:
-  /// not re-derived here; [safetyMargin] covers small errors].
+  /// (`presentation/utils/WalletBirthday.kt`, MIT, © João Victor Sena), not
+  /// re-derived here; [safetyMargin] covers small errors.
   static const _mainnetJan1 = <int, int>{
     2009: 1,
     2010: 32256,

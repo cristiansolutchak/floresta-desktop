@@ -107,7 +107,7 @@ class WalletBalance extends Equatable {
   final int pending;
 
   /// Confirmed, mature, and not spent by any known transaction. Spending
-  /// still requires an external signer (watch-only, ADR-0006).
+  /// still requires an external signer: this app is watch-only.
   final int spendable;
 
   int get total => confirmed + pending;

@@ -7,7 +7,7 @@ import 'package:floresta_gui/features/node/domain/sync_progress.dart';
 import 'package:floresta_gui/features/node/domain/verification_breakdown.dart';
 import 'package:floresta_gui/features/node/presentation/status_labels.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/shared/widgets/dash.dart';
+import 'package:floresta_gui/shared/format.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'node_rpc_test.dart' show signetAfterSnapshot;

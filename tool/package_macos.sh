@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Packages the release build of the macOS app as a .dmg (INS-14).
+# Packages the release build of the macOS app as a .dmg.
 #
 #   tool/build_app.sh production
 #   tool/package_macos.sh [--out dist]
@@ -53,7 +53,7 @@ if [[ -n "${FLORESTA_NOTARY_PROFILE:-}" ]]; then
     --keychain-profile "$FLORESTA_NOTARY_PROFILE" --wait
   xcrun stapler staple "$work/Floresta.app"
 fi
-# The in-app updater's package (ADR-0012): the app alone, zipped with ditto
+# The in-app updater's package: the app alone, zipped with ditto
 # so permissions, symlinks and the signature survive.
 zip="$out/$name.zip"
 rm -f "$zip"

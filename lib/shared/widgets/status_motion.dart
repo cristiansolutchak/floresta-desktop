@@ -199,7 +199,7 @@ class AnimatedFraction extends StatelessWidget {
 
 /// The dashboard's status icons for one short status, shared by the header
 /// tag and the banner so a state looks the same in both. Sync work spins
-/// the Figma sync icon; a finished sync shows a check; errors an error.
+/// the sync icon; a finished sync shows a check; errors an error.
 Widget statusGlyph(
   BuildContext context, {
   required DashTone tone,

@@ -5,23 +5,23 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../core/errors/failure.dart';
 import '../../../core/logging/log_buffer.dart';
+import '../../../core/processes/process_inspector.dart';
 import '../../../core/providers.dart';
 import '../../../core/rpc/json_rpc_client.dart';
 import '../../installation/presentation/installation_providers.dart';
 import '../../settings/domain/node_settings.dart';
 import '../../settings/presentation/settings_controller.dart';
-import '../../../core/processes/process_inspector.dart';
-import '../data/florestad_process_manager.dart';
 import '../data/electrum_probe.dart';
+import '../data/florestad_process_manager.dart';
 import '../data/managed_node_store.dart';
+import '../data/node_rpc_repository_impl.dart';
 import '../data/preflight_probe.dart';
 import '../data/swift_sync_hints.dart';
 import '../data/wallet_store_repair.dart';
-import '../data/node_rpc_repository_impl.dart';
 import '../domain/node_process_manager.dart';
 import '../domain/node_process_state.dart';
-import '../domain/node_rpc_repository.dart';
 import '../domain/node_readiness.dart';
+import '../domain/node_rpc_repository.dart';
 import '../domain/node_status.dart';
 import '../domain/preflight.dart';
 import '../domain/sync_progress.dart';
@@ -95,9 +95,9 @@ class NodeController extends Notifier<NodeStatus> {
   /// so its (possibly stale) result is not the last word.
   bool _refreshAgain = false;
 
-  /// A busy node can miss a poll (Mandacaru #160 §3). While our own process
+  /// A busy node can miss a poll. While our own process
   /// is alive and the API was answering, this many consecutive failures are
-  /// needed before showing it as unreachable (NODE-12).
+  /// needed before showing it as unreachable.
   static const failuresBeforeUnreachable = 3;
   int _rpcFailures = 0;
 
@@ -131,7 +131,7 @@ class NodeController extends Notifier<NodeStatus> {
     ref.watch(settingsControllerProvider.select((s) => s.rpcEndpoint));
     final manager = ref.watch(nodeProcessManagerProvider);
     final sub = manager.states.listen(_onProcessState);
-    // CFG-08: watch the data folder while our node runs (it grows with
+    // Watch the data folder while our node runs (it grows with
     // filters and logs; free space can run out mid-sync).
     final diskTimer = Timer.periodic(diskEvery, (_) => unawaited(checkDisk()));
     ref.onDispose(() {
@@ -407,8 +407,8 @@ final nodeReadinessProvider = Provider<NodeReadiness>((ref) {
   );
 });
 
-/// What the node verified itself versus accepted from the snapshot
-/// (SYNC-02); null until the node reports its chain.
+/// What the node verified itself versus accepted from the snapshot; null
+/// until the node reports its chain.
 final verificationBreakdownProvider = Provider<VerificationBreakdown?>((ref) {
   final chain = ref.watch(nodeControllerProvider.select((s) => s.chain));
   final network = chain?.network;

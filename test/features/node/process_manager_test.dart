@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:floresta_gui/core/errors/failure.dart';
 import 'package:floresta_gui/features/node/data/florestad_launch_args.dart';
 import 'package:floresta_gui/features/node/data/florestad_process_manager.dart';
-import 'package:floresta_gui/features/node/domain/swift_sync.dart';
 import 'package:floresta_gui/features/node/domain/node_process_state.dart';
+import 'package:floresta_gui/features/node/domain/swift_sync.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:floresta_gui/features/settings/domain/node_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,9 +22,9 @@ void main() {
         'signet',
         '--rpc-address',
         '127.0.0.1:38332',
-        // ADR-0011: Swift Sync by default, which needs assume-utreexo off.
+        // Swift Sync by default, which needs assume-utreexo off.
         '--no-assume-utreexo',
-        // CFG-08: no birthday, so filters start at signet's snapshot.
+        // No birthday, so filters start at signet's snapshot.
         '--filters-start-height',
         '296870',
       ]);

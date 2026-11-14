@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Swift Sync**, the default sync method for new mainnet and signet nodes:
+  - the app downloads the network's hints file before the first start;
+  - the node then processes blocks from the first one in parallel, without Utreexo proofs;
+  - progress comes from the node's output;
+  - the setup wizard and Settings offer Swift Sync, Fast Start and Full validation.
+- **In-app updates** for the app and for `florestad`:
+  - a check at start and every 12 hours;
+  - Update now or Later, and an optional automatic mode;
+  - every package is verified against a signed manifest before it is installed;
+  - settings, wallets and chain data are kept;
+  - macOS and Linux (`.tar.gz` installs update themselves; `.deb` installs go through the system installer).
+
+### Changed
+
+- The app installs `florestad` from Floresta `master` at `3a47993`, which reports `v0.9.0` and includes Swift Sync. It is shown as "v0.9.0 (master 3a47993)".
+- Each installed `florestad` build gets its own folder, so an update never replaces the running binary or the rollback copy.
+- A development build whose local release server is not running says so, instead of blaming the internet connection.
+
+### Fixed
+
+- A long `florestad` version label overflowed the sidebar footer, also while the sidebar collapsed or expanded.
+
 ## v0.0.1 (first public pre-release)
 
 Floresta GUI installs, configures, runs and monitors a [Floresta](https://github.com/getfloresta/Floresta) Bitcoin node (`florestad` v0.9.1) without the terminal, and follows watch-only wallets.

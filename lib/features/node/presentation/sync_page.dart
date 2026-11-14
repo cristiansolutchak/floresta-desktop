@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/dash_tokens.dart';
+import '../../../shared/format.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/dash.dart';
 import '../../../shared/widgets/status_motion.dart';
@@ -14,9 +15,8 @@ import 'overview_page.dart';
 import 'status_labels.dart';
 import 'utreexo_peer_controller.dart';
 
-/// Figma "Sync" (frame 1:14673): step card, timeline, explanation,
-/// background backfill; then this app's verification details (SYNC-02),
-/// which the frame does not have but the honesty rules require.
+/// Sync: step card, timeline, explanation, background backfill, then what
+/// this node verified itself versus what it accepted.
 class SyncPage extends ConsumerWidget {
   const SyncPage({super.key});
 
@@ -405,7 +405,7 @@ class _ExplainCard extends StatelessWidget {
 }
 
 /// What this node checked itself versus accepted from the snapshot, peers
-/// that serve proofs, and the chain facts the node reports (SYNC-02/03/05).
+/// that serve proofs, and the chain facts the node reports.
 class _DetailsCard extends ConsumerWidget {
   const _DetailsCard(this.status);
   final NodeStatus status;
@@ -438,7 +438,7 @@ class _DetailsCard extends ConsumerWidget {
             )
           else ...[
             DashDetailRow('Block headers known', formatInt(chain.headerHeight)),
-            // SYNC-03: peers' heights are from when they connected, so this
+            // Peers' heights are from when they connected, so this
             // is an estimate and says so.
             if (readiness.peerTip case final tip?
                 when tip > chain.validatedHeight)

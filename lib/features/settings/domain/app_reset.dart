@@ -1,4 +1,4 @@
-/// INS-12: what each reset removes. Three separate scopes, never combined
+/// What each reset removes. Three separate scopes, never combined
 /// silently:
 ///
 /// - [ResetScope.settings]: this app's preferences (the first-run wizard

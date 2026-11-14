@@ -53,15 +53,6 @@ class DockerContainer extends Equatable {
   bool get looksLikeFloresta =>
       [image, name, command].any((s) => s.toLowerCase().contains('floresta'));
 
-  /// The host port that reaches [containerPort] inside, if published.
-  PublishedPort? publishing(int containerPort) => ports
-      .where((p) => p.containerPort == containerPort)
-      .fold<PublishedPort?>(
-        null,
-        // Prefer a loopback binding when both exist.
-        (best, p) => best == null || best.onAllInterfaces ? p : best,
-      );
-
   /// The first published port that is [hostPort] on this computer.
   PublishedPort? onHostPort(int hostPort) =>
       ports.where((p) => p.hostPort == hostPort).firstOrNull;

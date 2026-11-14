@@ -1,11 +1,10 @@
 import 'package:equatable/equatable.dart';
 
-/// WAL-07: the node's watched descriptors, and whether "none" is certain.
+/// The node's watched descriptors, and whether "none" is certain.
 ///
 /// Right after start, florestad can answer `listdescriptors` with an empty
 /// list before it has loaded its stored wallet, so one empty answer does not
-/// mean "no wallets" (Mandacaru `WalletDescriptorStatus.isKnown`, which
-/// needs two). The UI says "No wallets yet" only when [knownEmpty].
+/// mean "no wallets"; two in a row do. The UI says "No wallets yet" only when [knownEmpty].
 class WatchedList extends Equatable {
   const WatchedList(this.descriptors, {this.emptyAnswers = 0});
 

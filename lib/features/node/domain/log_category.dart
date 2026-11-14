@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-/// The Logs screen filters (Figma 1:17706), mapped from florestad's tracing
+/// The Logs screen filters, mapped from florestad's tracing
 /// targets: v0.9.1 logs `<date> <time>  <LEVEL> <crate::module>: <message>`
 /// (`bin/florestad/src/main.rs`, `with_target(true)`), one crate per area.
 enum LogCategory {

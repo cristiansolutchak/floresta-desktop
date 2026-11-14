@@ -1,8 +1,7 @@
 // Release tooling: makes, signs and serves a manifest for artifacts built by
-// build_florestad_artifact.sh. Nothing here publishes anything. Production
-// manifests are signed with `sign` on the owner's Mac, whose keys live in
-// ~/.config/floresta-gui-release/ (owner's decision, 2026-10-27); `assemble`
-// remains for a signature made on an offline machine instead.
+// build_florestad_artifact.sh and the app packages. Nothing here publishes
+// anything. `sign` signs with a seed file kept outside the repository;
+// `assemble` takes a signature made on an offline machine instead.
 //
 //   dart run tool/release/release_tool.dart keygen   --out <seed file>
 //   dart run tool/release/release_tool.dart pubkey   --key <seed file>
@@ -231,7 +230,7 @@ void _check(Directory dir, String keyId, String publicKeyHex) {
   stdout.writeln('verified: $summary');
 }
 
-/// Writes `<dir>/payload.json` for an app release (ADR-0012) from the
+/// Writes `<dir>/payload.json` for an app release from the
 /// packages made by tool/package_macos.sh and tool/package_linux.sh:
 /// `Floresta-<v>-macos-<arch>[-unsigned].zip`,
 /// `floresta-gui-<v>-linux-<arm64|x64>.tar.gz`,

@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Colours of the Figma dashboard (file `RufQekcBeaxI8H0jYaQpSM`, light
-/// page). Values come from the file's variables (`get_variable_defs`,
-/// 2026-10-24) and from the exported Overview/Sync frames; the palette is
-/// Untitled UI's, which the file uses (e.g. Success/600 #079455). The dark
-/// values follow the app's existing dark theme until the Figma dark page
-/// can be read (MCP limit reached on 2026-10-25).
+/// Colours of the dashboard design. The palette is Untitled UI's (for
+/// example Success/600 #079455); the dark values follow the app's dark
+/// theme.
 @immutable
 class DashTokens extends ThemeExtension<DashTokens> {
   const DashTokens({
@@ -86,7 +83,7 @@ class DashTokens extends ThemeExtension<DashTokens> {
   final Color dangerBorder;
 
   /// The dark code panels (RPC/Electrum response, logs) look the same in both
-  /// themes, as in Figma: near-black, light text, blue keys and tags, green
+  /// themes: near-black, light text, blue keys and tags, green
   /// strings, orange numbers.
   final Color codeBg;
   final Color codeText;
@@ -112,7 +109,7 @@ class DashTokens extends ThemeExtension<DashTokens> {
     sidebarActive: Color(0xFFF1F4F8),
     brand: Color(0xFF266F52),
     warning: Color(0xFFF79009), // Warning/500
-    // Warning/700: Figma's Warning/600 (#DC6803) is 3.4:1 on white, below
+    // Warning/700: Warning/600 (#DC6803) is 3.4:1 on white, below
     // WCAG's 4.5:1 for text; checked by the accessibility test.
     warningText: Color(0xFFB54708),
     warningBg: Color(0xFFFFFCF5), // Warning/25

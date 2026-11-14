@@ -4,8 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/dash.dart';
 
-/// Layout of the first-run screens, after the Figma "Setup Wizard" frames
-/// (light `1:14372`…`1:14457`): logo, optional stepper, one white card with
+/// Layout of the first-run screens: logo, optional stepper, one white card with
 /// a title and subtitle, then Back / primary actions under the card.
 class WizardFrame extends StatefulWidget {
   const WizardFrame({
@@ -27,7 +26,7 @@ class WizardFrame extends StatefulWidget {
   final VoidCallback? onBack;
   final Widget? primary;
 
-  /// Card width in the Figma frames (590 of 1440).
+  /// Card width of the setup screens.
   static const cardWidth = 590.0;
 
   @override
@@ -309,8 +308,8 @@ class _StepBox extends StatelessWidget {
 enum OptionControl { radio, checkbox, toggle }
 
 /// A selectable option card (network, fast-start option, service). The
-/// selected card gets the accent border and a tinted background, as in the
-/// Figma wizard. [onChanged] null means read-only (shown, not editable).
+/// selected card gets the accent border and a tinted background.
+/// [onChanged] null means read-only (shown, not editable).
 class OptionCard extends StatelessWidget {
   const OptionCard({
     super.key,

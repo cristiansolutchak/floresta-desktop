@@ -1,4 +1,4 @@
-/// WAL-03 on a real regtest cluster, through the Wallet screen only.
+/// The Wallet screen against a real regtest cluster, through the UI only.
 ///
 /// bitcoind mines and signs test transactions for a disposable "subject"
 /// wallet; utreexod serves proofs; florestad runs with its Electrum server
@@ -84,10 +84,7 @@ void main() {
               for (final e in find.byType(Text).evaluate())
                 (e.widget as Text).data ?? '',
             ].where((t) => t.isNotEmpty).join(' | ');
-            File(
-              '${Directory.systemTemp.path}/wallet-ui-screen.txt',
-            ).writeAsStringSync(texts);
-            fail('timed out: $f');
+            fail('timed out: $f\nOn screen: $texts');
           }
           await tester.runAsync(
             () => Future<void>.delayed(const Duration(milliseconds: 100)),

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Packages the Linux release build as a .deb and a .tar.gz (INS-14).
+# Packages the Linux release build as a .deb and a .tar.gz.
 #
 #   tool/build_app.sh production      # on Linux
 #   tool/package_linux.sh [--out dist]
@@ -31,7 +31,7 @@ pkg="$work/$name"
 mkdir -p "$pkg/DEBIAN" "$pkg/opt/floresta-gui" "$pkg/usr/bin" \
   "$pkg/usr/share/applications" "$pkg/usr/share/icons"
 cp -R "$bundle/." "$pkg/opt/floresta-gui/"
-# The in-app updater (ADR-0012) checks this against the signed manifest.
+# The in-app updater checks this against the signed manifest.
 echo "$version" > "$pkg/opt/floresta-gui/VERSION"
 ln -s /opt/floresta-gui/floresta_gui "$pkg/usr/bin/floresta-gui"
 # Every size from tool/brand/render_app_icon.swift (16-512 px).
@@ -65,7 +65,7 @@ CONTROL
 dpkg-deb --root-owner-group --build "$pkg" "$out/$name.deb" >/dev/null
 # One top-level folder, unpacked anywhere the user owns (for example
 # ~/Applications/floresta-gui); the app then updates itself in place
-# (ADR-0012), and checks VERSION against the signed manifest.
+#, and checks VERSION against the signed manifest.
 tarroot="$work/tar/floresta-gui"
 mkdir -p "$tarroot"
 cp -R "$bundle/." "$tarroot/"

@@ -6,9 +6,9 @@ import 'package:fpdart/fpdart.dart';
 import '../../../core/errors/failure.dart';
 import '../../../core/platform/app_paths.dart';
 import '../../../core/platform/host_platform.dart';
-import '../domain/installation.dart';
-import '../domain/floresta_version.dart';
 import '../domain/app_update.dart';
+import '../domain/floresta_version.dart';
+import '../domain/installation.dart';
 import '../domain/installer.dart';
 import '../domain/release_manifest.dart';
 import 'artifact_downloader.dart';
@@ -302,7 +302,7 @@ class ManagedInstaller implements Installer {
     final artifact = artifactE.getOrElse(
       (_) => throw StateError('unreachable'),
     );
-    // INS-09: a relative URL resolves against the manifest; either way the
+    // A relative URL resolves against the manifest; either way the
     // artifact must come from the manifest's host or an allowlisted one.
     if (!isAllowedRedirect(manifestUrl, artifact.url, source.redirectHosts)) {
       return Left(

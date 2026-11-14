@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/dash_tokens.dart';
+import '../../../shared/format.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/dash.dart';
 import '../../installation/domain/setup_state.dart';
 import '../../installation/presentation/setup_state_provider.dart';
-import '../../settings/presentation/settings_controller.dart';
 import '../../settings/domain/node_settings.dart';
+import '../../settings/presentation/settings_controller.dart';
 import '../domain/node_process_state.dart';
 import '../domain/node_readiness.dart';
 import '../domain/node_status.dart';
@@ -18,9 +19,8 @@ import '../domain/swift_sync.dart';
 import '../domain/sync_progress.dart';
 import 'node_controller.dart';
 import 'node_status_banner.dart';
-import 'status_labels.dart';
 
-/// Figma "Overview" (frame 1:14488): status banner, then Syncing, Backfill,
+/// Overview: status banner, then Syncing, Backfill,
 /// Network Peers and Active Services cards. Every number comes from the
 /// node; what florestad does not report is said in words, not drawn.
 class OverviewPage extends ConsumerWidget {
@@ -139,7 +139,7 @@ String behindText(SyncProgress p) => !p.tipKnown
 String targetText(SyncProgress p) =>
     p.tipKnown ? formatInt(p.targetHeight) : 'Waiting for peers';
 
-/// What the percentage measures, per phase (SYNC-02, SYNC-06).
+/// What the percentage measures, per phase.
 String fractionMeaning(SyncProgress p, {required bool snapshotApplied}) =>
     switch (p.step) {
       SyncStep.headers when !p.tipKnown =>
@@ -414,7 +414,7 @@ class _ServicesCard extends ConsumerWidget {
             tone: up ? DashTone.success : DashTone.disabled,
           ),
           const SizedBox(height: 8),
-          // Always loopback and unauthenticated; never exposed (ADR-0001).
+          // Always loopback and unauthenticated; never exposed.
           DashServiceRow(
             name: 'RPC (local only)',
             status: up ? '127.0.0.1:${settings.effectiveRpcPort}' : 'Off',

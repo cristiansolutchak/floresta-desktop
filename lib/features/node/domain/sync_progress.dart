@@ -7,7 +7,7 @@ import 'node_readiness.dart';
 import 'swift_sync.dart';
 import 'verification_breakdown.dart';
 
-/// The three steps the Sync screen shows (Figma "Step n/3").
+/// The three steps the Sync screen shows ("Step n/3").
 enum SyncStep {
   headers(1, 'Headers', 'Downloading Block Headers'),
   blocks(2, 'Blocks', 'Downloading & Verifying Blocks'),
@@ -26,8 +26,8 @@ enum SyncStep {
 /// - headers: headers / network tip (an estimate from peers); with no peer
 ///   tip yet, nothing ([tipKnown] is false);
 /// - blocks: blocks this node verified itself after the assume-utreexo
-///   snapshot / blocks between the snapshot and the network tip (SYNC-02;
-///   florestad's `progress` is not used, and neither is its own header
+///   snapshot / blocks between the snapshot and the network tip
+///   (florestad's `progress` is not used, and neither is its own header
 ///   count, which can stop far below the tip);
 /// - live: 100 %.
 class SyncProgress extends Equatable {

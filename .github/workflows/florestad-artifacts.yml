@@ -11,7 +11,7 @@
 # Started by hand (Actions -> florestad artifacts -> Run workflow) with the
 # upstream tag and its commit. Nothing is signed or published: download the
 # "florestad-<tag>-unsigned" artifact, review it, then sign and publish on
-# the machine that holds the release key (docs/release/florestad-ci.md).
+# the machine that holds the release key (tool/release/release_tool.dart).
 name: florestad artifacts
 
 on:

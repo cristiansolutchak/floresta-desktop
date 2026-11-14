@@ -1,4 +1,4 @@
-/// Decides when an owed wallet rescan may be sent (WAL-06).
+/// Decides when an owed wallet rescan may be sent.
 ///
 /// Adapted from Mandacaru's `WalletRescanGate` (MIT, © João Victor Sena):
 /// wait [grace] after the chain is synced, back off geometrically on

@@ -7,7 +7,7 @@ import '../../../core/errors/failure.dart';
 import '../../../core/platform/app_paths.dart';
 import '../domain/app_reset.dart';
 
-/// INS-12: carries out the three [ResetScope]s. Each removes only what it
+/// Carries out the three [ResetScope]s. Each removes only what it
 /// names; callers must stop the node first and confirm with the user.
 class AppResetService {
   AppResetService({required this.prefs, required this.paths});

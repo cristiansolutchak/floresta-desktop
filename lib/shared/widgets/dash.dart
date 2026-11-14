@@ -5,12 +5,11 @@ import '../../app/theme/dash_tokens.dart';
 import 'common.dart';
 import 'status_motion.dart';
 
-/// Building blocks of the Figma dashboard (Overview and Sync frames). Sizes
-/// are the frame's, in logical pixels: 24 card padding, 48 icon blocks,
+/// Building blocks of the dashboard. Sizes in logical pixels: 24 card padding, 48 icon blocks,
 /// 12 progress bars, 32/40/48 buttons, square corners on cards and buttons.
 
-/// Text styles of the frame (FK Grotesk in Figma; the system font here until
-/// a licensed substitute is chosen, DS-03).
+/// Text styles of the dashboard, in the app font (Space Grotesk, set by the
+/// theme).
 abstract final class DashText {
   static TextStyle title(BuildContext c) => TextStyle(
     fontSize: 24,
@@ -58,8 +57,7 @@ abstract final class DashText {
   );
 }
 
-/// The Figma file's icons and logo (`assets/`, exported from the dashboard
-/// frames). All are single-colour, so [DashSvg] tints them for the theme.
+/// The dashboard's icons and logo (`assets/`). All are single-colour, so [DashSvg] tints them for the theme.
 abstract final class DashIcons {
   static const logo = 'assets/logo-icon-text.svg';
   static const overview = 'assets/icons/sidebar/overview.svg';
@@ -88,7 +86,7 @@ abstract final class DashIcons {
   static const helpCircle = 'assets/icons/overview/body/help-circle.svg';
 }
 
-/// A Figma SVG drawn in one theme colour (the files hard-code light-theme
+/// An SVG icon drawn in one theme colour (the files hard-code light-theme
 /// strokes). Decorative: the label next to it carries the meaning.
 class DashSvg extends StatelessWidget {
   const DashSvg(this.asset, {super.key, this.size = 24, this.color});
@@ -110,7 +108,7 @@ class DashSvg extends StatelessWidget {
   );
 }
 
-/// A Material icon or a Figma SVG, for widgets that take either.
+/// A Material icon or an SVG icon, for widgets that take either.
 Widget dashGlyph(
   BuildContext context, {
   IconData? icon,
@@ -162,7 +160,7 @@ class DashIconBlock extends StatelessWidget {
   }) : asset = null,
        glyph = null;
 
-  /// A Figma icon; drawn at two thirds of the block like the frame (32/48).
+  /// An SVG icon, drawn at two thirds of the block (32/48).
   const DashIconBlock.asset(
     String this.asset, {
     super.key,
@@ -230,7 +228,7 @@ class DashCardHeader extends StatelessWidget {
 
   final IconData? icon;
 
-  /// A Figma icon (preferred over [icon]).
+  /// An SVG icon (preferred over [icon]).
   final String? asset;
   final String title;
   final String? subtitle;
@@ -756,20 +754,6 @@ class _DashPageState extends State<DashPage> {
   }
 }
 
-/// "14.4k" for the header's Behind count.
-String formatCompact(int n) {
-  if (n < 1000) return '$n';
-  if (n < 1000000) {
-    final k = n / 1000;
-    return '${k >= 100 ? k.toStringAsFixed(0) : k.toStringAsFixed(1)}k';
-  }
-  final m = n / 1000000;
-  return '${m >= 100 ? m.toStringAsFixed(0) : m.toStringAsFixed(1)}M';
-}
-
-/// "62.5%".
-String formatPercent1(double f) => '${(f * 100).toStringAsFixed(1)}%';
-
 /// Top card of the Peers, RPC, Electrum, Logs and Help screens: a 32 icon
 /// block, title (and tag), subtitle, actions on the right and an optional
 /// help box underneath.
@@ -977,7 +961,7 @@ final _jsonToken = RegExp(
   r'("(?:[^"\\]|\\.)*")(\s*:)?|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b',
 );
 
-/// Colours pretty-printed JSON like the Figma response panel.
+/// Colours pretty-printed JSON for the console response panel.
 TextSpan highlightJson(BuildContext context, String json) {
   final t = context.dash;
   final spans = <TextSpan>[];

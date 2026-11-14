@@ -2,9 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
 
 import '../../../core/errors/failure.dart';
+import '../../../core/platform/app_paths.dart';
 import '../../../core/providers.dart';
 import '../../settings/presentation/settings_controller.dart';
-import '../../../core/platform/app_paths.dart';
 import '../data/artifact_downloader.dart';
 import '../data/executable_locator.dart';
 import '../data/existing_node_probe.dart';
@@ -79,9 +79,8 @@ final existingNodeProbeProvider = Provider<ExistingNodeProbe>(
   (ref) => ExistingNodeProbe(httpClient: ref.watch(httpClientProvider)),
 );
 
-/// The release source compiled into this build, or null when none is
-/// configured (the default until hosting and signing are decided; see
-/// docs/distribution-pipeline-design.md).
+/// The release source compiled into this build (`--dart-define-from-file`),
+/// or null when none is configured.
 final releaseSourceProvider = Provider<ReleaseSource?>(
   (ref) => ReleaseSource.fromEnvironment(),
 );

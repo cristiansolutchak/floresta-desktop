@@ -91,8 +91,8 @@ class Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Inside the dashboard shell: the dashboard's card (square corners, its
-    // border and surface tokens, 24 px padding, 18 px titles), so these
-    // screens match the Figma ones. Elsewhere (onboarding) the interim look.
+    // border and surface tokens, 24 px padding, 18 px titles). Elsewhere
+    // (onboarding) the plain Material card.
     final dash = ShellTitleScope.active(context);
     final t = context.dash;
     return DecoratedBox(
@@ -225,7 +225,7 @@ class _PageBodyState extends State<PageBody> {
   @override
   Widget build(BuildContext context) {
     // Inside the dashboard shell: its page background, 952 px centred
-    // column and 24 px margins, like the Figma screens.
+    // column and 24 px margins.
     final dash = ShellTitleScope.active(context);
     final body = Scrollbar(
       controller: _scrollController,

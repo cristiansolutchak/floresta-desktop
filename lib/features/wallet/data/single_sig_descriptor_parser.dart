@@ -9,7 +9,7 @@ import '../domain/wallet_account.dart';
 import '../domain/wallet_sync_ports.dart';
 import 'descriptor_checksum.dart';
 
-/// Parser for the single-key descriptor subset of ADR-0007.
+/// Parser for the single-key descriptor subset the wallet supports.
 ///
 /// Rejects before anything reaches florestad: private keys, `addr()`/`raw()`,
 /// multisig, hardened steps after the key (florestad v0.9.1 panics on

@@ -11,11 +11,10 @@ import '../../installation/presentation/installation_providers.dart';
 import '../../settings/presentation/diagnostics.dart';
 import '../../settings/presentation/settings_controller.dart';
 
-/// Figma "Help" (1:18555): the installed node and a glossary.
+/// Help: the installed node and a glossary.
 class HelpPage extends ConsumerWidget {
   const HelpPage({super.key});
 
-  /// Terms and definitions from the Figma frame.
   static const glossary = [
     ('Node', 'A computer running software to validate Bitcoin rules.'),
     ('Utreexo', 'A cryptographic accumulator that makes the UTXO set tiny.'),

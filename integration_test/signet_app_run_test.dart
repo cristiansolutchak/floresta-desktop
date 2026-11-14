@@ -1,4 +1,4 @@
-/// NODE-11: the REAL macOS app on public signet (needs internet).
+/// The REAL macOS app on public signet (needs internet).
 ///
 ///   flutter test integration_test/signet_app_run_test.dart -d macos \
 ///     --dart-define=FLORESTAD_PATH=/abs/path/to/florestad \

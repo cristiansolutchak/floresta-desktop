@@ -44,7 +44,7 @@ final rescanClockProvider = Provider<Duration Function()>((ref) {
   return () => watch.elapsed;
 });
 
-/// Sends owed rescans only once the node is synced (WAL-06): never during
+/// Sends owed rescans only once the node is synced: never during
 /// sync (florestad refuses it), never twice at once, never forever.
 class WalletRescanController extends Notifier<RescanSchedule> {
   static const tickEvery = Duration(seconds: 10);

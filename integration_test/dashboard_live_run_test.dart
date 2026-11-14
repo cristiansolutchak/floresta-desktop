@@ -1,4 +1,4 @@
-/// UX-03/04: the REAL macOS app with a syncing node.
+/// The REAL macOS app with a syncing node.
 ///
 ///   flutter test integration_test/dashboard_live_run_test.dart -d macos \
 ///     --dart-define=FLORESTAD_PATH=/abs/path/to/florestad \
@@ -318,7 +318,7 @@ void main() {
       expect(sync['tipShown'], isTrue);
       expect(find.text('Accepted from snapshot'), findsOneWidget);
 
-      // The other Figma screens, against the same node.
+      // The other screens, against the same node.
       Future<void> open(String item, String shot) async {
         // Small windows scroll the sidebar (10 items).
         await tester.ensureVisible(find.text(item).first);

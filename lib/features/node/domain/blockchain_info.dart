@@ -52,7 +52,7 @@ class BlockchainInfo extends Equatable {
   final int? sizeOnDisk;
   final List<String> warnings;
 
-  /// SYNC-04: size of the Utreexo accumulator (UTXOs ever added, and the
+  /// Size of the Utreexo accumulator (UTXOs ever added, and the
   /// number of tree roots). v0.9.x `leaf_count`/`root_count`; null on nodes
   /// that report Core's shape. Non-zero leaves mean a chain state is loaded.
   final int? utreexoLeaves;
@@ -63,9 +63,6 @@ class BlockchainInfo extends Equatable {
     if (validatedHeight < headerHeight) return SyncPhase.catchingUp;
     return SyncPhase.synced;
   }
-
-  int get blocksBehind =>
-      headerHeight > validatedHeight ? headerHeight - validatedHeight : 0;
 
   @override
   List<Object?> get props => [

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_version.dart';
+import '../../../shared/format.dart';
 import '../../../shared/widgets/common.dart';
-import '../../node/presentation/status_labels.dart';
 import '../domain/app_update.dart';
 import 'update_controller.dart';
 

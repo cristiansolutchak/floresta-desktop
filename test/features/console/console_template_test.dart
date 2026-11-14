@@ -66,7 +66,7 @@ void main() {
       electrumTemplates.map((t) => t.method).toSet(),
       everyElement(isIn(_v091Electrum)),
     );
-    // Figma's getnetworkinfo and help do not exist in v0.9.1.
+    // getnetworkinfo and help do not exist in florestad v0.9.1.
     expect(
       rpcTemplates.map((t) => t.method),
       isNot(contains('getnetworkinfo')),

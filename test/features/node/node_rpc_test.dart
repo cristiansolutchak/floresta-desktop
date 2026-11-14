@@ -10,6 +10,7 @@ import 'package:floresta_gui/features/node/domain/node_readiness.dart';
 import 'package:floresta_gui/features/node/domain/node_status.dart';
 import 'package:floresta_gui/features/node/presentation/status_labels.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_gui/shared/format.dart';
 import 'package:floresta_gui/shared/widgets/common.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -123,7 +124,7 @@ void main() {
       expect(info.headerHeight, 0);
       expect(info.initialBlockDownload, isTrue);
       expect(info.sizeOnDisk, isNull);
-      // SYNC-04: v0.9.x reports the accumulator size; Core's shape does not.
+      // V0.9.x reports the accumulator size; Core's shape does not.
       expect(info.utreexoLeaves, 0);
       expect(info.utreexoRoots, 0);
       expect(info.warnings, isEmpty);

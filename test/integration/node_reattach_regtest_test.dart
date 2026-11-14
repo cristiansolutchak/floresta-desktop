@@ -1,4 +1,5 @@
-/// Opt-in: NODE-02 and NODE-05 against a REAL florestad on regtest.
+/// Opt-in: reattaching to a running node, and the start checks, against a
+/// REAL florestad on regtest.
 ///
 ///   FLORESTAD_PATH=/path/to/florestad flutter test test/integration/node_reattach_regtest_test.dart
 ///
@@ -67,7 +68,7 @@ void main() {
       );
       final probe = PreflightProbe(homeDir: temp.path);
 
-      // NODE-05 before start: the real machine is ready.
+      // Before start: the real machine is ready.
       final before = evaluatePreflight(await probe.gather(settings));
       expect(before.where((i) => i.blocks), isEmpty, reason: '$before');
 
@@ -100,7 +101,7 @@ void main() {
       }
       expect((await ManagedNodeStore(paths).read())?.pid, pid);
 
-      // NODE-05 while it runs: the RPC port is now taken.
+      // While it runs: the RPC port is now taken.
       final during = evaluatePreflight(await probe.gather(settings));
       expect(
         during.map((i) => i.title),

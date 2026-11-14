@@ -24,7 +24,7 @@ enum ElectrumCheck {
 /// signals: the process, the RPC API, peers, the header and validated
 /// heights from `getblockchaininfo`, and the Electrum server's genesis hash.
 ///
-/// Observed on signet with v0.9.1 (2026-10-24, docs/audit/node-readiness.md):
+/// Observed on signet with v0.9.1 (2026-10-24):
 /// peers within ~15 s; headers start ~80 s later; `height` counts headers
 /// while `validated` stays 0 until the assumed Utreexo state is applied.
 enum ReadinessStage {
@@ -40,8 +40,8 @@ enum ReadinessStage {
   validatingBlocks,
 
   /// The node says it is done, but its headers are well behind what its
-  /// peers report (Mandacaru #63: "100%" at block 17,904 while peers were
-  /// near 947k). Never shown as ready.
+  /// peers report (seen: "100%" at block 17,904 while peers were near
+  /// 947k). Never shown as ready.
   behindNetwork,
   ready,
 }
@@ -184,7 +184,7 @@ NodeReadiness assessReadiness(
 /// they connected: the median. A plain maximum lets one peer on another
 /// chain decide; on mainnet (2026-10-25) Knots peers on a separate chain
 /// reported ~978 900 while every other peer was at ~973 080, which made the
-/// node look 5 800 blocks behind (SYNC-10).
+/// node look 5 800 blocks behind.
 int? consensusPeerTip(List<int> heights) {
   if (heights.isEmpty) return null;
   final sorted = [...heights]..sort();

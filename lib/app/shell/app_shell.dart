@@ -9,14 +9,15 @@ import 'package:go_router/go_router.dart';
 import '../../core/build_flavor.dart';
 import '../../features/installation/domain/next_action.dart';
 import '../../features/installation/presentation/installation_providers.dart';
+import '../../features/installation/presentation/update_bar.dart';
+import '../../features/installation/presentation/update_controller.dart';
 import '../../features/node/domain/node_status.dart';
 import '../../features/node/presentation/node_controller.dart';
 import '../../features/node/presentation/status_labels.dart';
-import '../../features/settings/presentation/settings_controller.dart';
 import '../../features/node/presentation/utreexo_peer_controller.dart';
+import '../../features/settings/presentation/settings_controller.dart';
 import '../../features/wallet/presentation/wallet_rescan_controller.dart';
-import '../../features/installation/presentation/update_bar.dart';
-import '../../features/installation/presentation/update_controller.dart';
+import '../../shared/format.dart';
 import '../../shared/widgets/common.dart';
 import '../../shared/widgets/dash.dart';
 import '../../shared/widgets/status_motion.dart';
@@ -33,13 +34,12 @@ class _Destination {
   /// Cmd/Ctrl+digit shortcut; Help has none (only 1…9 exist).
   final LogicalKeyboardKey? key;
 
-  /// Sidebar icon (Figma, and `installation.svg` for Installation).
+  /// Sidebar icon (`assets/icons/sidebar/`).
   final String asset;
 }
 
-/// The Figma sidebar order (Overview, Sync, Peers, Wallet, RPC Console,
-/// Electrum, Logs, Settings, Help), plus Installation, which has no Figma
-/// frame yet.
+/// Sidebar order: Overview, Sync, Peers, Wallet, RPC Console, Electrum,
+/// Logs, Settings, Help, then Installation.
 const _destinations = [
   _Destination(
     '/node',
@@ -98,7 +98,7 @@ const _destinations = [
   _Destination('/help', 'Help', null, asset: DashIcons.help),
 ];
 
-/// Dashboard layout from Figma: 328 px sidebar, 82 px header bar, content.
+/// Dashboard layout: sidebar, header bar, content.
 /// Cmd/Ctrl+1…9 switch sections.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.location, required this.child});
@@ -110,9 +110,9 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Keeps the rescan schedule running on every screen, not only Wallet.
     ref.watch(walletRescanProvider);
-    // Keeps the Utreexo peer search alive while the app runs (SYNC-05).
+    // Keeps the Utreexo peer search alive while the app runs.
     ref.watch(utreexoPeerSearchProvider);
-    // Checks for updates at start and periodically (ADR-0012).
+    // Checks for updates at start and periodically.
     ref.watch(updateControllerProvider);
     final isMac = Theme.of(context).platform == TargetPlatform.macOS;
     final current = _destinations.firstWhere(
@@ -433,8 +433,8 @@ class _ValidationCard extends StatelessWidget {
   }
 }
 
-/// "Online · v0.9.1", plus the network the app drives (owner decision 3:
-/// always visible), the development build marker and the compact toggle.
+/// "Online · v0.9.1", plus the network the app drives (always
+/// visible), the development build marker and the compact toggle.
 /// Compact: the status dot and the network as one tooltip.
 class _SidebarFooter extends ConsumerWidget {
   const _SidebarFooter({required this.iconsOnly});

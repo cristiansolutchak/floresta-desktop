@@ -2,9 +2,8 @@ import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 
 import '../../../core/errors/failure.dart';
-import 'app_update.dart';
-
 import '../../../core/platform/host_platform.dart';
+import 'app_update.dart';
 
 /// States an install attempt moves through. Every real implementation must
 /// pass through [InstallVerifying] before [InstallCompleted]; an artifact
@@ -62,7 +61,7 @@ final class InstallFailed extends InstallProgress {
   /// Stopped by the user; a partial download is kept for resuming.
   final bool cancelled;
 
-  /// A short headline for the failure, by stage (INS-03).
+  /// A short headline for the failure, by stage.
   String get title => cancelled
       ? 'Download paused'
       : switch (stage) {

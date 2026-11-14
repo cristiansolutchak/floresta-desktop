@@ -12,7 +12,7 @@ import '../domain/peer.dart';
 import '../domain/utreexo_peer.dart';
 import 'node_controller.dart';
 
-/// What the app has done to find Utreexo peers (SYNC-05).
+/// What the app has done to find Utreexo peers.
 class UtreexoPeerSearch extends Equatable {
   const UtreexoPeerSearch({
     this.lastAttempt,
@@ -33,11 +33,11 @@ class UtreexoPeerSearch extends Equatable {
   final List<String> dropped;
 
   /// When the app restarted the node because it never left header
-  /// selection (SYNC-09).
+  /// selection.
   final List<DateTime> restarts;
 
   /// Peers on another chain disconnected so florestad could finish header
-  /// selection (SYNC-10).
+  /// selection.
   final List<String> forkPeersDropped;
 
   UtreexoPeerSearch copyWith({

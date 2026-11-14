@@ -71,8 +71,8 @@ abstract final class AppTheme {
   static const _accentDark = Color(0xFF74C29A);
 
   /// Space Grotesk (SIL OFL 1.1, `assets/fonts/Space_Grotesk/OFL.txt`):
-  /// the free design FK Grotesk grew from. FK Grotesk is what Figma uses
-  /// and needs a paid licence (DS-03).
+  /// the free design FK Grotesk grew from (FK Grotesk, used in the design,
+  /// needs a paid licence).
   static const fontFamily = 'SpaceGrotesk';
 
   static ThemeData light() => _build(

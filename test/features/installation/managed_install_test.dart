@@ -15,9 +15,9 @@ import 'package:floresta_gui/features/installation/data/executable_locator.dart'
 import 'package:floresta_gui/features/installation/data/installation_repository_impl.dart';
 import 'package:floresta_gui/features/installation/data/managed_install_store.dart';
 import 'package:floresta_gui/features/installation/data/managed_installer.dart';
+import 'package:floresta_gui/features/installation/data/release_keys.dart';
 import 'package:floresta_gui/features/installation/data/release_source.dart';
 import 'package:floresta_gui/features/installation/data/release_trust_store.dart';
-import 'package:floresta_gui/features/installation/data/release_keys.dart';
 import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
 import 'package:floresta_gui/features/installation/data/version_probe.dart';
 import 'package:floresta_gui/features/installation/domain/installation.dart';
@@ -241,7 +241,7 @@ void main() {
       );
     });
 
-    test('ships exactly the owner\'s production keys, never the dev key', () {
+    test('ships exactly the production keys, never the dev key', () {
       // Pinned so a key change is always a visible, reviewed diff.
       expect(
         {for (final k in productionReleaseKeys) k.id: k.publicKeyHex},
@@ -437,7 +437,7 @@ void main() {
     expect(satisfiesMinOs('10.0.10240', '6.3.9600'), isFalse);
   });
 
-  group('satisfiesMinOs (INS-09)', () {
+  group('satisfiesMinOs', () {
     test('compares dotted versions of the same kind', () {
       expect(satisfiesMinOs('11.0', '26.3.1'), isTrue);
       expect(satisfiesMinOs('11.0', '11'), isTrue);
@@ -632,53 +632,41 @@ void main() {
       },
     );
 
-    test(
-      'INS-09: refuses an artifact on a host the source does not trust',
-      () async {
-        final bin = _fakeFlorestad('0.9.1');
-        server.files['/manifest.json'] = key.envelope(
-          _manifest(artifact: bin, url: 'https://elsewhere.example/florestad'),
-        );
-        final states = await installer().install(_platform).toList();
-        expect(
-          (states.last as InstallFailed).reason,
-          contains('does not trust (elsewhere.example)'),
-        );
-        expect(
-          server.requests.where((r) => r.path != '/manifest.json'),
-          isEmpty,
-        );
-        expect((await store.read()).toNullable(), isNull);
-      },
-    );
+    test('Refuses an artifact on a host the source does not trust', () async {
+      final bin = _fakeFlorestad('0.9.1');
+      server.files['/manifest.json'] = key.envelope(
+        _manifest(artifact: bin, url: 'https://elsewhere.example/florestad'),
+      );
+      final states = await installer().install(_platform).toList();
+      expect(
+        (states.last as InstallFailed).reason,
+        contains('does not trust (elsewhere.example)'),
+      );
+      expect(server.requests.where((r) => r.path != '/manifest.json'), isEmpty);
+      expect((await store.read()).toNullable(), isNull);
+    });
 
-    test(
-      'INS-09: refuses a build for a newer system, before downloading',
-      () async {
-        final bin = _fakeFlorestad('0.9.1');
-        server.files['/florestad-0.9.1'] = bin;
-        final m = _manifest(artifact: bin, url: 'florestad-0.9.1');
-        ((m['artifacts']! as List).first as Map)['minOs'] = '11.0';
-        server.files['/manifest.json'] = key.envelope(m);
-        final states = await installer(
-          hostOsVersion: () async => '10.15.7',
-        ).install(_platform).toList();
-        final failed = states.last as InstallFailed;
-        expect(failed.reason, contains('needs macOS 11.0 or newer'));
-        expect(failed.reason, contains('10.15.7'));
-        expect(
-          server.requests.where((r) => r.path != '/manifest.json'),
-          isEmpty,
-        );
+    test('Refuses a build for a newer system, before downloading', () async {
+      final bin = _fakeFlorestad('0.9.1');
+      server.files['/florestad-0.9.1'] = bin;
+      final m = _manifest(artifact: bin, url: 'florestad-0.9.1');
+      ((m['artifacts']! as List).first as Map)['minOs'] = '11.0';
+      server.files['/manifest.json'] = key.envelope(m);
+      final states = await installer(
+        hostOsVersion: () async => '10.15.7',
+      ).install(_platform).toList();
+      final failed = states.last as InstallFailed;
+      expect(failed.reason, contains('needs macOS 11.0 or newer'));
+      expect(failed.reason, contains('10.15.7'));
+      expect(server.requests.where((r) => r.path != '/manifest.json'), isEmpty);
 
-        final ok = await installer(
-          hostOsVersion: () async => '26.3.1',
-        ).install(_platform).toList();
-        expect(ok.last, isA<InstallCompleted>());
-      },
-    );
+      final ok = await installer(
+        hostOsVersion: () async => '26.3.1',
+      ).install(_platform).toList();
+      expect(ok.last, isA<InstallCompleted>());
+    });
 
-    test('INS-03: offline explains itself and installs nothing', () async {
+    test('Offline explains itself and installs nothing', () async {
       publish('0.9.1');
       final offline = installer();
       await server.stop(); // nothing listens on the manifest URL any more

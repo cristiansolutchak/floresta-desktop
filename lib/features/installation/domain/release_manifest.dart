@@ -34,7 +34,7 @@ class ReleaseArtifact extends Equatable {
   List<Object?> get props => [os, arch, url, sha256, size, minOs];
 }
 
-/// INS-09: whether a host satisfies an artifact's [ReleaseArtifact.minOs].
+/// Whether a host satisfies an artifact's [ReleaseArtifact.minOs].
 ///
 /// [hostVersion] uses the same form (`26.3.1`, `glibc 2.35`). Returns null
 /// when either side is unknown or the forms differ, so the caller can let
@@ -92,7 +92,7 @@ class ReleaseManifest extends Equatable {
   final String upstreamCommit;
 
   /// What [upstreamCommit] is: the release tag (`v0.9.1`) or
-  /// `master@<commit>` for a pinned master build (UPS-01), whose
+  /// `master@<commit>` for a pinned master build, whose
   /// `--version` still says the last version on master (0.9.0). Optional:
   /// manifests signed before 2026-11-13 do not carry it.
   final String? upstreamRef;

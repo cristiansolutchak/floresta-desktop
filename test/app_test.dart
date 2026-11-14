@@ -1,39 +1,39 @@
 import 'package:floresta_gui/app/app.dart';
 import 'package:floresta_gui/app/licenses.dart';
 import 'package:floresta_gui/core/build_flavor.dart';
-import 'package:floresta_gui/core/logging/log_buffer.dart';
-import 'package:floresta_gui/features/console/domain/console_repository.dart';
-import 'package:floresta_gui/features/console/presentation/console_page.dart';
 import 'package:floresta_gui/core/errors/failure.dart';
+import 'package:floresta_gui/core/logging/log_buffer.dart';
 import 'package:floresta_gui/core/platform/host_platform.dart';
 import 'package:floresta_gui/core/providers.dart';
-import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
-import 'package:floresta_gui/features/installation/domain/installation.dart';
+import 'package:floresta_gui/features/console/domain/console_repository.dart';
+import 'package:floresta_gui/features/console/presentation/console_page.dart';
 import 'package:floresta_gui/features/installation/data/existing_node_probe.dart';
 import 'package:floresta_gui/features/installation/domain/existing_node.dart';
+import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
+import 'package:floresta_gui/features/installation/domain/installation.dart';
 import 'package:floresta_gui/features/installation/presentation/installation_providers.dart';
-import 'package:floresta_gui/features/node/domain/node_readiness.dart';
 import 'package:floresta_gui/features/node/data/rpc_models.dart';
+import 'package:floresta_gui/features/node/data/swift_sync_hints.dart';
 import 'package:floresta_gui/features/node/data/utreexo_peer_finder.dart';
-import 'package:floresta_gui/features/node/domain/utreexo_peer.dart';
-import 'package:floresta_gui/features/node/presentation/node_controller.dart';
-import 'package:floresta_gui/features/node/presentation/utreexo_peer_controller.dart';
 import 'package:floresta_gui/features/node/domain/node_process_state.dart';
-import 'package:floresta_gui/features/node/domain/node_status.dart';
+import 'package:floresta_gui/features/node/domain/node_readiness.dart';
 import 'package:floresta_gui/features/node/domain/node_rpc_repository.dart';
+import 'package:floresta_gui/features/node/domain/node_status.dart';
 import 'package:floresta_gui/features/node/domain/peer.dart';
 import 'package:floresta_gui/features/node/domain/preflight.dart';
 import 'package:floresta_gui/features/node/domain/swift_sync.dart';
-import 'package:floresta_gui/features/node/data/swift_sync_hints.dart';
-import 'package:floresta_gui/features/settings/domain/node_settings.dart';
-import 'package:floresta_gui/features/settings/presentation/settings_controller.dart';
+import 'package:floresta_gui/features/node/domain/utreexo_peer.dart';
+import 'package:floresta_gui/features/node/presentation/node_controller.dart';
+import 'package:floresta_gui/features/node/presentation/utreexo_peer_controller.dart';
 import 'package:floresta_gui/features/onboarding/presentation/wizard_widgets.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/features/wallet/presentation/wallet_controller.dart';
-import 'package:floresta_gui/features/wallet/presentation/amount_format.dart';
-import 'package:floresta_gui/features/wallet/presentation/wallet_sync_controller.dart';
-import 'package:floresta_gui/features/wallet/data/wallet_sync_engine.dart';
+import 'package:floresta_gui/features/settings/domain/node_settings.dart';
+import 'package:floresta_gui/features/settings/presentation/settings_controller.dart';
 import 'package:floresta_gui/features/wallet/data/bip32_address_deriver.dart';
+import 'package:floresta_gui/features/wallet/data/wallet_sync_engine.dart';
+import 'package:floresta_gui/features/wallet/presentation/amount_format.dart';
+import 'package:floresta_gui/features/wallet/presentation/wallet_controller.dart';
+import 'package:floresta_gui/features/wallet/presentation/wallet_sync_controller.dart';
 import 'package:floresta_gui/shared/widgets/common.dart';
 import 'package:floresta_gui/shared/widgets/dash.dart' show DashStatRow;
 import 'package:flutter/material.dart';
@@ -595,9 +595,7 @@ void main() {
     expect(install.width, welcomeWidth);
   });
 
-  testWidgets('INS-12: resetting settings brings the wizard back', (
-    tester,
-  ) async {
+  testWidgets('Resetting settings brings the wizard back', (tester) async {
     await _Harness().pump(tester);
     await tester.tap(find.text('Settings').first);
     await tester.pumpAndSettle();
@@ -613,9 +611,7 @@ void main() {
     expect(prefs.getBool('settings.onboardingComplete'), isNull);
   });
 
-  testWidgets('INS-12: nothing can be reset while the node runs', (
-    tester,
-  ) async {
+  testWidgets('Nothing can be reset while the node runs', (tester) async {
     final h = _Harness();
     await h.pump(tester);
     await tester.tap(find.text('Start node'));
@@ -638,7 +634,7 @@ void main() {
     }
   });
 
-  testWidgets('SYNC-05: our node without Utreexo peers gets verified ones', (
+  testWidgets('Our node without Utreexo peers gets verified ones', (
     tester,
   ) async {
     final h = _Harness()
@@ -739,67 +735,66 @@ void main() {
     expect(h.manager.starts, hasLength(starts)); // dropped, not restarted
   });
 
-  testWidgets(
-    'SYNC-05: silent Utreexo peers do not stop the search (observed)',
-    (tester) async {
-      final h = _Harness()
-        ..probeResult = const PeerProbe(
-          protocolVersion: 70016,
-          services: 0x340d,
-          userAgent: '/btcwire:0.5.0/utreexod:0.5.2/',
-          height: 970486,
-        )
-        ..rpc.peers = const [
-          Peer(
-            id: 2,
-            address: '189.44.63.101:8333',
-            userAgent: '/bridge:0.1.3/',
-            inbound: false,
-            kind: 'regular',
-            state: 'Ready',
-            transport: 'V2',
-            initialHeight: 973099,
-            services: ['WITNESS', 'P2P_V2', '0x1000'],
-          ),
-          Peer(
-            id: 3,
-            address: '194.163.132.180:8333',
-            userAgent: '/bridge:0.1.3/',
-            inbound: false,
-            kind: 'regular',
-            state: 'Ready',
-            transport: 'V2',
-            initialHeight: 973099,
-            services: ['WITNESS', 'P2P_V2', '0x1000'],
-          ),
-          Peer(
-            id: 1,
-            address: '1.2.3.4:8333',
-            userAgent: '/Satoshi:31.1.0/',
-            inbound: false,
-            kind: 'regular',
-            state: 'Ready',
-            transport: 'V2',
-            initialHeight: 973047,
-            services: ['NETWORK', 'WITNESS'],
-          ),
-        ];
-      await h.pump(tester);
-      await tester.tap(find.text('Start node'));
-      await tester.pumpAndSettle();
-      // Our node is up and answering now.
-      h.rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
-      h.manager.emit(ProcessRunning(9, DateTime(2026)));
-      await tester.pump(const Duration(seconds: 3));
-      await tester.pumpAndSettle();
-      // Mainnet (production default): the curated utreexod entry, verified
-      // by the (fake) handshake, is added over v1 for good.
-      expect(
-        h.rpc.addNodeCalls,
-        contains(('161.97.178.61:8333', AddNodeCommand.add, false)),
-      );
-    },
-  );
+  testWidgets('Silent Utreexo peers do not stop the search (observed)', (
+    tester,
+  ) async {
+    final h = _Harness()
+      ..probeResult = const PeerProbe(
+        protocolVersion: 70016,
+        services: 0x340d,
+        userAgent: '/btcwire:0.5.0/utreexod:0.5.2/',
+        height: 970486,
+      )
+      ..rpc.peers = const [
+        Peer(
+          id: 2,
+          address: '189.44.63.101:8333',
+          userAgent: '/bridge:0.1.3/',
+          inbound: false,
+          kind: 'regular',
+          state: 'Ready',
+          transport: 'V2',
+          initialHeight: 973099,
+          services: ['WITNESS', 'P2P_V2', '0x1000'],
+        ),
+        Peer(
+          id: 3,
+          address: '194.163.132.180:8333',
+          userAgent: '/bridge:0.1.3/',
+          inbound: false,
+          kind: 'regular',
+          state: 'Ready',
+          transport: 'V2',
+          initialHeight: 973099,
+          services: ['WITNESS', 'P2P_V2', '0x1000'],
+        ),
+        Peer(
+          id: 1,
+          address: '1.2.3.4:8333',
+          userAgent: '/Satoshi:31.1.0/',
+          inbound: false,
+          kind: 'regular',
+          state: 'Ready',
+          transport: 'V2',
+          initialHeight: 973047,
+          services: ['NETWORK', 'WITNESS'],
+        ),
+      ];
+    await h.pump(tester);
+    await tester.tap(find.text('Start node'));
+    await tester.pumpAndSettle();
+    // Our node is up and answering now.
+    h.rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
+    h.manager.emit(ProcessRunning(9, DateTime(2026)));
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    // Mainnet (production default): the curated utreexod entry, verified
+    // by the (fake) handshake, is added over v1 for good.
+    expect(
+      h.rpc.addNodeCalls,
+      contains(('161.97.178.61:8333', AddNodeCommand.add, false)),
+    );
+  });
 
   testWidgets('start launches the detected executable', (tester) async {
     final h = _Harness();
@@ -876,7 +871,7 @@ void main() {
     expect(find.textContaining('Swift Sync'), findsNothing);
   });
 
-  group('Swift Sync (ADR-0011)', () {
+  group('Swift Sync', () {
     const swiftCapable = FlorestaInstallation(
       executablePath: '/Users/a/.cargo/bin/florestad',
       source: ExecutableSource.wellKnown,
@@ -1057,7 +1052,7 @@ void main() {
     expect(find.textContaining('90.5'), findsNothing);
   });
 
-  testWidgets('SYNC-03: the network tip from peers is labelled an estimate', (
+  testWidgets('The network tip from peers is labelled an estimate', (
     tester,
   ) async {
     final h = _Harness()
@@ -1106,9 +1101,7 @@ void main() {
     expect(find.text('Started outside this app'), findsNothing);
   });
 
-  testWidgets('a busy node missing polls is not shown as down (NODE-12)', (
-    tester,
-  ) async {
+  testWidgets('a busy node missing polls is not shown as down', (tester) async {
     final h = _Harness()
       ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
     await h.pump(tester);
@@ -1212,7 +1205,7 @@ void main() {
     expect(find.text('127.0.0.1:50001'), findsOneWidget); // mainnet default
   });
 
-  testWidgets('WAL-03: a synced wallet shows Core\'s balance, addresses '
+  testWidgets('A synced wallet shows Core\'s balance, addresses '
       'and activity', (tester) async {
     final h = _Harness()
       ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()))
@@ -1246,9 +1239,7 @@ void main() {
     }
   });
 
-  testWidgets('WAL-07: "No wallets yet" only after two empty answers', (
-    tester,
-  ) async {
+  testWidgets('"No wallets yet" only after two empty answers', (tester) async {
     final h = _Harness()
       ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
     await h.pump(tester);
@@ -1420,7 +1411,7 @@ void main() {
     expect(field.controller!.text, isEmpty);
   });
 
-  testWidgets('UX-03/04: Overview and Sync show the node\'s real numbers', (
+  testWidgets('Overview and Sync show the node\'s real numbers', (
     tester,
   ) async {
     final h = _Harness()
@@ -1569,7 +1560,7 @@ void main() {
     expect(find.textContaining('waiting for peers to report'), findsOneWidget);
   });
 
-  testWidgets('UX-05..09: every Figma sidebar screen opens', (tester) async {
+  testWidgets('Every sidebar screen opens', (tester) async {
     final h = _Harness()
       ..rpc.info = Right(RpcModels.blockchainInfo(blockchainInfoJson()));
     await h.pump(tester);

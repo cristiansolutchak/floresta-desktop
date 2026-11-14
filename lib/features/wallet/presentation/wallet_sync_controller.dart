@@ -67,7 +67,7 @@ final walletEngineFactoryProvider =
       };
     });
 
-/// Everything the Wallet screen shows (WAL-03).
+/// Everything the Wallet screen shows.
 class WalletOverview extends Equatable {
   const WalletOverview({
     this.watched = const WatchedAccounts(),

@@ -5,7 +5,7 @@
 #   tool/build_app.sh development [config]  # default config/release/development.json
 #
 # Production builds refuse any development key or development flavour in
-# their configuration (SEC-06), and say plainly when automatic installation
+# their configuration, and say plainly when automatic installation
 # will be unavailable (no manifest URL or no production key compiled in).
 # Builds for the host OS only. Signing and packaging: tool/package_macos.sh.
 set -euo pipefail

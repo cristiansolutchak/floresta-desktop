@@ -25,8 +25,7 @@ final electrumConsoleRepositoryProvider = Provider<ConsoleRepository>((ref) {
   return ElectrumConsoleRepository(host: '127.0.0.1', port: port);
 });
 
-/// Figma "RPC Call Console" (1:17085) and "Electrum Console" (1:16524):
-/// templates, a request editor and the node's raw answer.
+/// The RPC and Electrum consoles: templates, a request editor and the node's raw answer.
 class ConsolePage extends ConsumerStatefulWidget {
   const ConsolePage(this.kind, {super.key});
 

@@ -6,11 +6,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/build_flavor.dart';
+import '../../../shared/format.dart';
 import '../../../shared/widgets/common.dart';
 import '../../node/domain/blockchain_info.dart';
 import '../../node/domain/node_readiness.dart';
 import '../../node/presentation/node_controller.dart';
-import '../../node/presentation/status_labels.dart' show formatInt;
 import '../../settings/domain/bitcoin_network.dart';
 import '../../settings/presentation/settings_controller.dart';
 import '../data/existing_node_probe.dart';

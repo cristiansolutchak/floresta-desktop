@@ -269,7 +269,7 @@ void main() {
     });
   });
 
-  group('StuckSelectionTracker (SYNC-09)', () {
+  group('StuckSelectionTracker', () {
     final t0 = DateTime(2026, 10, 25, 10, 39);
     bool sample(
       StuckSelectionTracker t,
@@ -339,7 +339,7 @@ void main() {
     });
   });
 
-  group('forkPeersToDrop (SYNC-10)', () {
+  group('forkPeersToDrop', () {
     final peers = [
       for (var i = 0; i < 9; i++) (address: 'core$i:8333', height: 973080),
       (address: '176.132.253.23:8333', height: 978945),

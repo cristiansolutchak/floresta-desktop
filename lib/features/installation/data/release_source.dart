@@ -15,7 +15,7 @@ class ReleaseSource {
   final Uri manifestUrl;
   final Uri? _appManifestUrl;
 
-  /// The app's own update manifest (ADR-0012): `FLORESTA_APP_MANIFEST_URL`,
+  /// The app's own update manifest: `FLORESTA_APP_MANIFEST_URL`,
   /// else `app/manifest.json` next to florestad's folder in the same
   /// release repository (`…/florestad/manifest.json` →
   /// `…/app/manifest.json`).

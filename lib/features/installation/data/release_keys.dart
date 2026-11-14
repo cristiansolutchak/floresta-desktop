@@ -1,10 +1,8 @@
 import 'signed_manifest.dart';
 
-/// Ed25519 public keys trusted to sign production release manifests
-/// (SEC-05). Created 2026-10-27 with `release_tool.dart keygen` on the
-/// owner's Mac (decision of the owner); the seeds live outside the
-/// repository in ~/.config/floresta-gui-release/ (mode 600) and must be
-/// backed up offline. `prod-2026a` signs releases; `prod-2026b` is the
+/// Ed25519 public keys trusted to sign production release manifests.
+/// Created with `release_tool.dart keygen`; the seeds never enter this
+/// repository and are backed up offline. `prod-2026a` signs releases; `prod-2026b` is the
 /// backup, used only if the first is lost or compromised (then remove the
 /// old key here in a reviewed change).
 /// Never put a private key or seed in this repository.

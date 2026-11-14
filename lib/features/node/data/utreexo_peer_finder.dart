@@ -49,7 +49,7 @@ class UtreexoPeerAttempt {
   final String? action;
 }
 
-/// SYNC-05: finds Utreexo peers for florestad v0.9.1, whose built-in seeds
+/// Finds Utreexo peers for florestad v0.9.1, whose built-in seeds
 /// no longer answer. Candidates come from the seeds upstream maintains
 /// ([utreexoSeeds]) and [curatedUtreexoPeers]; each is checked with a P2P
 /// handshake first, and only verified ones are added:
@@ -63,7 +63,7 @@ class UtreexoPeerAttempt {
 /// - anything else is skipped, including nodes that do not answer v1. The
 ///   only v2-only Utreexo nodes seen so far (`/bridge:0.1.3/`) never
 ///   answered proof requests and stalled header download when added
-///   (real mainnet runs, 2026-10-25; docs/audit/sync-utreexo-root-cause.md).
+///   (mainnet, 2026-10-25).
 class UtreexoPeerFinder {
   UtreexoPeerFinder({
     required this.rpc,

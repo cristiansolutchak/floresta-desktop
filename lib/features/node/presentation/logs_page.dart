@@ -13,7 +13,7 @@ import '../domain/log_category.dart';
 import '../domain/node_process_state.dart';
 import 'node_controller.dart';
 
-/// Figma "Logs (Active)" (1:17706): daemon output filtered by area, Copy
+/// Logs: daemon output filtered by area, Copy
 /// Visible and Export Diagnostics. Lines are already redacted by
 /// [LogBuffer] (extended keys).
 class LogsPage extends ConsumerStatefulWidget {

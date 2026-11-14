@@ -72,7 +72,7 @@ class SwapResult {
   final String? backup;
 }
 
-/// Updates the app itself (ADR-0012).
+/// Updates the app itself.
 ///
 /// 1. **Check:** fetch the app manifest, verify its Ed25519 signature with
 ///    the same trusted keys as florestad's, its type, expiry and serial
@@ -483,7 +483,7 @@ class AppUpdater {
   /// The helper, as data. POSIX sh; arguments, not interpolation, carry
   /// every path. It only renames inside the folder that holds the app.
   static const swapScript = r'''#!/bin/sh
-# Written by Floresta GUI to replace itself after it quits (ADR-0012).
+# Written by Floresta GUI to replace itself after it quits.
 # Moves only the app bundle; settings, wallet and chain data live elsewhere.
 pid="$1"; new="$2"; target="$3"; exe="$4"; relaunch_flag="$5"
 result="$6"; version="$7"; os="$8"; pending="$9"

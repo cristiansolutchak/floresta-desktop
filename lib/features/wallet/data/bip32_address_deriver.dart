@@ -7,7 +7,7 @@ import '../domain/wallet_sync_ports.dart';
 /// Derives scripts with bitcoin_base/blockchain_utils (BIP-32 public
 /// derivation, secp256k1, BIP-86 tweak). No cryptography is implemented here.
 /// Verified against Bitcoin Core: 200/200 scripts for pkh, sh(wpkh), wpkh, tr
-/// on both branches (docs/wallet-balance-history-architecture.md §2).
+/// on both branches.
 class Bip32AddressDeriver implements AddressDeriver {
   final _branchKeys = <(String, int), Bip32Slip10Secp256k1>{};
 

@@ -1,16 +1,16 @@
-/// Opt-in WAL-06 (and part of CFG-08) against REAL processes (bitcoind →
-/// utreexod → florestad v0.9.1), see ADR-0008:
+/// Opt-in: owed rescans and the wallet start height against REAL processes
+/// (bitcoind → utreexod → florestad v0.9.1):
 ///
 ///   source "$(tool/regtest/bootstrap.sh --print-env)"
 ///   flutter test test/integration/rescan_birthday_regtest_test.dart
 ///
-/// * CFG-08 (partial): florestad v0.9.1 starts, syncs and serves RPC with
+/// * Start height (partial): florestad v0.9.1 starts, syncs and serves RPC with
 ///   `--filters-start-height`. The *effect* of the start height cannot be
 ///   shown on this cluster: florestad gets no compact filters here (its log
 ///   says "Loaded compact filters store at height 0" and every filter
 ///   rescan reports `rescan filter hits: []`, with or without the flag;
-///   observed 2026-10-25). See docs/audit/master-todo.md CFG-08.
-/// * WAL-06: the app's real `WalletRescanController`, on the real RPC, does
+///   observed 2026-10-25).
+/// * Owed rescans: the app's real `WalletRescanController`, on the real RPC, does
 ///   not send an owed rescan while the node is not ready, and sends it (and
 ///   the node accepts it) once ready.
 @Tags(['integration'])

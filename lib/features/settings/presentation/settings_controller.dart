@@ -5,8 +5,18 @@ import '../../../core/build_flavor.dart';
 import '../../../core/errors/failure.dart';
 import '../../../core/providers.dart';
 import '../data/shared_prefs_settings_repository.dart';
+import '../domain/bitcoin_network.dart';
 import '../domain/node_settings.dart';
 import '../domain/settings_repository.dart';
+
+/// Mainnet in production builds; test networks are opt-in there (advanced
+/// settings) and the default in development builds.
+extension BuildFlavorNetwork on BuildFlavor {
+  BitcoinNetwork get defaultNetwork => switch (this) {
+    BuildFlavor.production => BitcoinNetwork.bitcoin,
+    BuildFlavor.development => BitcoinNetwork.signet,
+  };
+}
 
 final settingsRepositoryProvider = Provider<SettingsRepository>(
   (ref) => SharedPrefsSettingsRepository(

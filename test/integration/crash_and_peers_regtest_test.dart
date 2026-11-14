@@ -1,5 +1,5 @@
-/// REL-11 and REL-12 against REAL nodes on a regtest cluster (bitcoind →
-/// utreexod → florestad, ADR-0008), through the app's own code: the process
+/// Crash recovery and Add Peer against REAL nodes on a regtest cluster
+/// (bitcoind → utreexod → florestad), through the app's own code: the process
 /// manager, the RPC repository and the Add Peer call.
 ///
 ///   - florestad killed with SIGKILL is reported as a crash (not a stop),

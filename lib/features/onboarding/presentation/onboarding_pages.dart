@@ -7,12 +7,12 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/build_flavor.dart';
 import '../../../core/providers.dart';
+import '../../../shared/format.dart';
 import '../../../shared/widgets/common.dart';
 import '../../installation/presentation/installation_view.dart';
 import '../../installation/presentation/setup_state_provider.dart';
 import '../../node/domain/preflight.dart';
 import '../../node/presentation/node_controller.dart';
-import '../../node/presentation/status_labels.dart';
 import '../../settings/domain/bitcoin_network.dart';
 import '../../settings/domain/node_settings.dart';
 import '../../settings/domain/wallet_birthday.dart';
@@ -124,7 +124,7 @@ class InstallStepPage extends StatelessWidget {
   }
 }
 
-/// The configuration wizard (Figma "Setup Wizard"): four steps and a review.
+/// The setup wizard: four steps and a review.
 /// Edits a draft; nothing is saved until Finish.
 class SetupStepPage extends ConsumerStatefulWidget {
   const SetupStepPage({super.key});
@@ -272,8 +272,8 @@ class _NetworkStep extends ConsumerStatefulWidget {
 }
 
 class _NetworkStepState extends ConsumerState<_NetworkStep> {
-  // Owner decision 3: test networks are advanced, open in development
-  // builds or when one is already chosen.
+  // Test networks are advanced: open in development builds or when one is
+  // already chosen.
   late bool _showTest =
       ref.read(buildFlavorProvider) == BuildFlavor.development ||
       !widget.draft.network.isMainnet;
@@ -562,7 +562,7 @@ class _SectionTitle extends StatelessWidget {
 }
 
 /// What the node offers, from what florestad v0.9.1 can actually do
-/// (`bin/florestad/src/cli.rs` at the pinned tag; docs/research). Only what
+/// (`bin/florestad/src/cli.rs` at the pinned commit). Only what
 /// the app can apply is a control; the rest is said in words.
 class _ServicesStep extends StatelessWidget {
   const _ServicesStep({required this.draft, required this.onChanged});

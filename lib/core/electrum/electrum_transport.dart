@@ -53,8 +53,8 @@ Future<Socket> _defaultConnect(String host, int port, Duration timeout) =>
 /// Electrum protocol transport: newline-delimited JSON-RPC 2.0 over TCP.
 ///
 /// Verified against florestad v0.9.1: plain TCP, batching supported,
-/// notifications interleaved with responses, EOF on server shutdown
-/// (docs/signet-descriptor-electrum-validation.md §4). Every pending request
+/// notifications interleaved with responses, EOF on server shutdown. Every
+/// pending request
 /// fails as soon as the connection drops, so callers never hang.
 class ElectrumTransport {
   ElectrumTransport({

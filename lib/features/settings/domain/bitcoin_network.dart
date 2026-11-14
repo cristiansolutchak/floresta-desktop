@@ -1,7 +1,6 @@
 /// Networks accepted by `florestad --network` (parsed by `bitcoin::Network`).
 ///
-/// Ports and data subdirectories mirror upstream exactly; see
-/// docs/research/upstream-sources.md. Note regtest RPC is 18442 in Floresta,
+/// Ports and data subdirectories mirror upstream exactly. Note regtest RPC is 18442 in Floresta,
 /// not Bitcoin Core's 18443.
 enum BitcoinNetwork {
   bitcoin(

@@ -36,7 +36,7 @@ class SyncStats {
 
 /// Synchronises one watch-only account from Floresta's Electrum server.
 ///
-/// Trust model (ADR-0007): Electrum answers are claims. A transaction counts
+/// Trust model: Electrum answers are claims. A transaction counts
 /// as confirmed only if its raw bytes hash to its txid, its merkle path
 /// matches the header at its height, and that header's hash equals the
 /// block hash florestad's RPC reports for the height. This also drops

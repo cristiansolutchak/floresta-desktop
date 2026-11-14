@@ -1,5 +1,5 @@
-/// SYNC-07: does florestad v0.9.1 clear `ibd` once it reaches the tip?
-/// Mandacaru needed a fork patch for `ibd: true` forever at the tip (#66).
+/// Does florestad v0.9.1 clear `ibd` once it reaches the tip?
+/// Other clients needed a patch for `ibd: true` forever at the tip.
 ///
 /// Opt-in: source the env printed by `tool/regtest/bootstrap.sh
 /// --print-env` (FLORESTAD_PATH, UTREEXOD_PATH, BITCOIND_PATH). Regtest

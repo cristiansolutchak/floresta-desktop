@@ -1,3 +1,4 @@
+import '../../../shared/format.dart';
 import '../../../shared/widgets/common.dart';
 import '../domain/node_process_state.dart';
 import '../domain/node_readiness.dart';
@@ -50,7 +51,7 @@ abstract final class StatusLabels {
 
   /// One or two words for the header bar tag and the Overview banner
   /// ("Syncing", "Synced"). Derived from the same readiness as every other
-  /// label (SYNC-08).
+  /// label.
   static StatusLabel short(NodeReadiness r, NodeStatus s) {
     if (s.preparing) {
       return (label: 'Preparing', caption: null, tone: Tone.warning);
@@ -239,8 +240,7 @@ abstract final class StatusLabels {
   }
 
   /// The blockchain cell. Derived from the same [NodeReadiness] as every
-  /// other sync label, so the screens cannot disagree (SYNC-08; Mandacaru
-  /// #103 had its notification and screen drift apart).
+  /// other sync label, so the screens cannot disagree.
   static StatusLabel sync(NodeReadiness r, NodeStatus s) {
     final chain = s.chain;
     if (chain == null) {
@@ -287,7 +287,7 @@ abstract final class StatusLabels {
 
   /// "N headers (about X% of the network, estimated from peers)". The
   /// percentage is shown only with a peer-reported tip and always labelled
-  /// as an estimate (SYNC-06).
+  /// as an estimate.
   static String? headersCaption(NodeReadiness r, NodeStatus s) {
     final chain = s.chain;
     if (chain == null) return null;
@@ -315,7 +315,7 @@ abstract final class StatusLabels {
   }
 
   /// "X of Y blocks since the snapshot verified by this node": never counts
-  /// the assumed snapshot as verified (SYNC-02).
+  /// the assumed snapshot as verified.
   static String? verifiedCaption(NodeStatus s, [NodeReadiness? r]) {
     final chain = s.chain;
     final network = chain?.network;
@@ -329,35 +329,4 @@ abstract final class StatusLabels {
     return '${formatInt(b.verifiedByNode)} of ${formatInt(b.toVerify)} '
         '$scope verified by this node';
   }
-}
-
-String formatPercent(double fraction) =>
-    '${(fraction * 100).toStringAsFixed(fraction >= 0.999 ? 1 : 2)}%';
-
-String formatInt(int n) {
-  final s = n.abs().toString();
-  final out = StringBuffer(n < 0 ? '-' : '');
-  for (var i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) out.write(',');
-    out.write(s[i]);
-  }
-  return out.toString();
-}
-
-String formatBytes(int bytes) {
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  var value = bytes.toDouble();
-  var unit = 0;
-  while (value >= 1000 && unit < units.length - 1) {
-    value /= 1000;
-    unit++;
-  }
-  return '${value.toStringAsFixed(unit == 0 ? 0 : 1)} ${units[unit]}';
-}
-
-String formatDuration(Duration d) {
-  if (d.inDays > 0) return '${d.inDays}d ${d.inHours % 24}h';
-  if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes % 60}m';
-  if (d.inMinutes > 0) return '${d.inMinutes}m';
-  return '${d.inSeconds}s';
 }

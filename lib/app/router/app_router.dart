@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/installation/presentation/installation_page.dart';
 import '../../features/console/domain/console_template.dart';
 import '../../features/console/presentation/console_page.dart';
 import '../../features/help/presentation/help_page.dart';
+import '../../features/installation/presentation/installation_page.dart';
 import '../../features/node/presentation/logs_page.dart';
 import '../../features/node/presentation/overview_page.dart';
 import '../../features/node/presentation/peers_page.dart';

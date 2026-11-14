@@ -4,8 +4,8 @@ import '../../../core/errors/failure.dart';
 import 'blockchain_info.dart';
 import 'node_process_state.dart';
 import 'node_readiness.dart';
-import 'preflight.dart';
 import 'peer.dart';
+import 'preflight.dart';
 import 'swift_sync.dart';
 
 enum ApiReachability { unknown, reachable, unreachable }
@@ -46,7 +46,7 @@ class NodeStatus extends Equatable {
   /// A start is preparing (downloading hints) and the process is not up yet.
   bool get preparing => hintsDownload != null;
 
-  /// Data-folder disk use while our node runs (CFG-08).
+  /// Data-folder disk use while our node runs.
   final DiskUsage? disk;
 
   final NodeProcessState process;

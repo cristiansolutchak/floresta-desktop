@@ -19,7 +19,7 @@
 # and be VALIDSIG by the pinned key). .github/workflows/florestad-artifacts.yml
 # runs this script that way.
 #
-# Pinned upstream-master mode (UPS-01): FLORESTA_MASTER_COMMIT=<40-hex sha>
+# Pinned upstream-master mode: FLORESTA_MASTER_COMMIT=<40-hex sha>
 # builds that exact commit instead of the release tag. It must be on
 # upstream master and its commit signature must be VALIDSIG by the same
 # pinned primary key. master's Cargo.toml (and so `--version`) says 0.9.0,

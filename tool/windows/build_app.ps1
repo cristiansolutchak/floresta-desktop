@@ -6,7 +6,7 @@ tool/build_app.sh does on macOS and Linux.
   powershell -ExecutionPolicy Bypass -File tool\windows\build_app.ps1 development [config.json]
 
 Production builds refuse any development key or development flavour in
-their configuration (SEC-06). Needs Flutter 3.35.5 and Visual Studio 2022
+their configuration. Needs Flutter 3.35.5 and Visual Studio 2022
 ("Desktop development with C++"). Output: build\windows\x64\runner\Release.
 
 Written 2026-10-27 without a Windows machine: NOT yet run.

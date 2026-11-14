@@ -45,7 +45,7 @@ class PreflightFacts extends Equatable {
 
 enum PreflightSeverity { blocking, warning }
 
-/// Disk use of the running node's data folder (CFG-08), refreshed
+/// Disk use of the running node's data folder, refreshed
 /// periodically. Null fields mean "could not be determined".
 class DiskUsage extends Equatable {
   const DiskUsage({required this.dataDir, this.usedBytes, this.freeBytes});

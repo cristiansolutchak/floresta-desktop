@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../settings/domain/bitcoin_network.dart';
 
-/// Single-key script types supported by the MVP (ADR-0007). Multisig is a
+/// Single-key script types supported by the MVP. Multisig is a
 /// later phase; it would be a new value plus parser/deriver support.
 enum ScriptType { pkh, shWpkh, wpkh, tr }
 

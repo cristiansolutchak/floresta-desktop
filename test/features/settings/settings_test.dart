@@ -4,6 +4,7 @@ import 'package:floresta_gui/features/node/domain/swift_sync.dart';
 import 'package:floresta_gui/features/settings/data/shared_prefs_settings_repository.dart';
 import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
 import 'package:floresta_gui/features/settings/domain/node_settings.dart';
+import 'package:floresta_gui/features/settings/presentation/settings_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,7 +29,7 @@ void main() {
   });
 
   group('NodeSettings', () {
-    test('defaults to mainnet in production builds (owner decision 3)', () {
+    test('defaults to mainnet in production builds', () {
       expect(const NodeSettings().network, BitcoinNetwork.bitcoin);
       expect(BuildFlavor.production.defaultNetwork, BitcoinNetwork.bitcoin);
     });
@@ -120,7 +121,7 @@ void main() {
       expect(r.load(), s);
     });
 
-    test('a new install defaults to Swift Sync (ADR-0011)', () async {
+    test('a new install defaults to Swift Sync', () async {
       final s = (await repo()).load();
       expect(s.syncMethod, SyncMethod.swiftSync);
       expect(s.assumeUtreexo, isFalse);
@@ -128,7 +129,7 @@ void main() {
     });
 
     test('a node set up before Swift Sync keeps Fast Start', () async {
-      // Stored before ADR-0011: onboarding done, no sync keys at all.
+      // Stored before Swift Sync: onboarding done, no sync keys at all.
       final s = (await repo({'settings.onboardingComplete': true})).load();
       expect(s.syncMethod, SyncMethod.fastStart);
     });

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/dash_tokens.dart';
 import '../../../core/errors/failure.dart';
+import '../../../shared/format.dart';
 import '../../../shared/widgets/common.dart';
 import '../../../shared/widgets/dash.dart';
 import '../../../shared/widgets/status_motion.dart';

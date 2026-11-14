@@ -52,7 +52,8 @@ class SharedPrefsSettingsRepository implements SettingsRepository {
       // A node set up before Swift Sync existed keeps the method it was
       // started with: its data folder could not use Swift Sync anyway.
       swiftSync: _prefs.getBool(_kSwiftSync) ?? !onboarded,
-      // Stored before ADR-0011 meant the old default, Fast Start.
+      // Missing on a node set up before Swift Sync: the old default, Fast
+      // Start.
       assumeUtreexo:
           _prefs.getBool(_kAssumeUtreexo) ??
           (onboarded ? true : defaults.assumeUtreexo),

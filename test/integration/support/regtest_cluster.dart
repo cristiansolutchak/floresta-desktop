@@ -11,7 +11,7 @@ import 'package:floresta_gui/features/settings/domain/node_settings.dart';
 import 'package:http/http.dart' as http;
 
 /// Test-only regtest cluster: bitcoind (miner + disposable test wallets) →
-/// utreexod bridge → florestad (system under test). ADR-0008.
+/// utreexod bridge → florestad (system under test).
 ///
 /// Everything runs on loopback in a fresh temp directory. bitcoind is forced
 /// to `-regtest` and its chain is checked before any test runs, so these
@@ -205,7 +205,7 @@ class RegtestCluster {
 
   /// Waits until florestad validated Core's tip and left IBD. Blocks must
   /// not be mined during florestad's IBD→running transition: v0.9.1 misses
-  /// announcements made then (docs/wallet-sync-implementation-plan.md §2).
+  /// announcements made then.
   Future<void> waitForFlorestaSynced({
     Duration timeout = const Duration(seconds: 90),
   }) async {

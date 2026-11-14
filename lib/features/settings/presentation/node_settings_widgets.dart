@@ -9,8 +9,8 @@ import '../../../shared/widgets/common.dart';
 import '../domain/bitcoin_network.dart';
 import '../domain/node_settings.dart';
 
-/// Mainnet first; the test networks sit under an advanced section
-/// (owner decision 3). Development builds open that section by default.
+/// Mainnet first; the test networks sit under an advanced section.
+/// Development builds open that section by default.
 class NetworkSelector extends ConsumerWidget {
   const NetworkSelector({
     super.key,

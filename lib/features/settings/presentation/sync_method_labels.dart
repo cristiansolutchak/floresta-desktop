@@ -1,4 +1,4 @@
-import '../../node/presentation/status_labels.dart';
+import '../../../shared/format.dart';
 import '../domain/bitcoin_network.dart';
 import '../domain/node_settings.dart';
 

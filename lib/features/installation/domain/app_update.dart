@@ -4,8 +4,8 @@ import 'package:fpdart/fpdart.dart';
 import '../../../core/errors/failure.dart';
 import '../../../core/platform/host_platform.dart';
 
-/// Updates of this app itself (ADR-0012). Same trust model as florestad
-/// installs (ADR-0009): an Ed25519-signed manifest, anti-rollback serial,
+/// Updates of this app itself. Same trust model as florestad
+/// installs: an Ed25519-signed manifest, anti-rollback serial,
 /// expiry, then each package's size and SHA-256 before anything is unpacked.
 
 /// The app's own version (`pubspec.yaml` `version`, without the build
@@ -405,8 +405,8 @@ final class FlorestadUpdateOffer extends UpdateOffer {
 class UpdatePreferences extends Equatable {
   const UpdatePreferences({this.autoInstall = false, this.postponedUntil});
 
-  /// Install without asking. Off by default (owner's choice, 2026-11-13):
-  /// the app checks and downloads, then asks.
+  /// Install without asking. Off by default: the app checks and
+  /// downloads, then asks.
   final bool autoInstall;
 
   /// "Later" hides the notice until then (the next launch at the latest).

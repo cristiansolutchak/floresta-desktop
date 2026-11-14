@@ -10,8 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 
 /// Exercises the real `dart:io` process path with a stand-in script that
-/// prints what florestad prints. This is not a Floresta integration test;
-/// see docs/development/testing.md for that.
+/// prints what florestad prints. The real-florestad tests are in
+/// `test/integration`.
 void main() {
   late Directory dir;
 

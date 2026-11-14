@@ -4,8 +4,8 @@
 <dict>
 	<!--
 	  App Sandbox is disabled on purpose: the app must spawn a user-installed
-	  `florestad` executable, which a sandboxed process cannot do.
-	  See docs/decisions/0004-desktop-targets.md before changing this.
+	  `florestad` executable, which a sandboxed process cannot do, and
+	  replace its own bundle when it updates.
 	-->
 	<key>com.apple.security.app-sandbox</key>
 	<false/>

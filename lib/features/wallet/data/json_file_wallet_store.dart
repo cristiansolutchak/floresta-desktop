@@ -6,8 +6,8 @@ import 'package:fpdart/fpdart.dart';
 import '../../../core/errors/failure.dart';
 import '../domain/wallet_sync_ports.dart';
 
-/// MVP persistence: one JSON file per account, replaced atomically
-/// (write temp file, then rename). Holds only public chain data. ADR-0007.
+/// One JSON file per account, replaced atomically (write a temp file, then
+/// rename). Holds only public chain data.
 class JsonFileWalletStore implements WalletStore {
   JsonFileWalletStore(this.directory);
 

@@ -47,7 +47,7 @@ class PeerProbe extends Equatable {
   ];
 }
 
-/// SYNC-05: whether a probed node is worth handing to florestad as a
+/// Whether a probed node is worth handing to florestad as a
 /// Utreexo peer: it must serve Utreexo and have blocks this node still has
 /// to verify, i.e. a height above both the assume-utreexo snapshot and
 /// [validatedHeight] (+ [margin]). A node that is behind the network tip
@@ -68,7 +68,7 @@ UtreexoCandidateVerdict judgeUtreexoCandidate(
   // While florestad selects the chain it waits for every peer to answer
   // `getheaders`; a utreexod that is behind ignores those (it only answers
   // once in sync, utreexod v0.5.2 `server.go` `OnGetHeaders`), so adding
-  // one then keeps the node there (docs/audit/sync-selection-after-restart.md).
+  // one then keeps the node there.
   // Added once selection is over, it serves the proofs as before.
   if (inSelection &&
       consensusTip != null &&
@@ -126,7 +126,7 @@ SelectionPhase selectionPhaseFromLogs(List<String> lines) {
 /// The rules that unblock selection used to test "validated == 0" instead.
 /// That is only true before the first validated block: after a restart of a
 /// node that had validated some, selection could hang and nothing helped
-/// (mainnet 2026-10-28, docs/audit/sync-selection-after-restart.md).
+/// (mainnet, 2026-10-28).
 bool inChainSelection({
   required SelectionPhase logged,
   required int validatedHeight,
@@ -178,7 +178,7 @@ const curatedUtreexoPeers = <BitcoinNetwork, List<CuratedUtreexoPeer>>{
   ],
 };
 
-/// SYNC-05: whether the app should look for Utreexo peers for the node now.
+/// Whether the app should look for Utreexo peers for the node now.
 /// Only for a node this app runs, on a network with Utreexo peers to find,
 /// once it has peers at all (headers flowing), while it has fewer than
 /// [wanted] *verified* Utreexo peers ([utreexoPeers] counts only those),
@@ -201,7 +201,7 @@ bool shouldSeekUtreexoPeers({
   return lastAttempt == null || now.difference(lastAttempt) >= every;
 }
 
-/// SYNC-05: Utreexo peers to disconnect because validation is stuck.
+/// Utreexo peers to disconnect because validation is stuck.
 ///
 /// florestad v0.9.1 asks a random Utreexo peer for each block's proof and
 /// validates blocks in order, so one peer that never answers stalls
@@ -230,7 +230,7 @@ List<String> stalledUtreexoPeersToDrop({
   ];
 }
 
-/// SYNC-09: florestad v0.9.1 can stay forever in its "checking if our peers
+/// Florestad v0.9.1 can stay forever in its "checking if our peers
 /// agree" step after downloading all headers, without applying the
 /// assume-utreexo snapshot: it waits for *every* peer to answer with no new
 /// headers and re-asks them every few minutes (`chain_selector_ctx.rs`
@@ -304,7 +304,7 @@ class StuckSelectionTracker {
   }
 }
 
-/// SYNC-10: peers to disconnect because they are on another chain.
+/// Peers to disconnect because they are on another chain.
 ///
 /// florestad v0.9.1 applies the assume-utreexo snapshot only after *every*
 /// peer answers "no new headers" (`chain_selector_ctx.rs`

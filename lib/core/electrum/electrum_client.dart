@@ -68,7 +68,7 @@ final class NewHeader extends ElectrumEvent {
 ///
 /// All methods exist in florestad v0.9.1
 /// (`crates/floresta-electrum/src/electrum_protocol.rs`) and were exercised
-/// against a real node on regtest (see ADR-0008 evidence).
+/// against a real node on regtest (`test/integration`).
 abstract interface class ElectrumClient {
   String get endpoint;
   Stream<ElectrumEvent> get events;

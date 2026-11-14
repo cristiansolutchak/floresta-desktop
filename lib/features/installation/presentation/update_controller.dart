@@ -186,7 +186,7 @@ final updateControllerProvider =
     NotifierProvider<UpdateController, UpdateCenter>(UpdateController.new);
 
 /// Checks for updates of the app and of florestad when the app starts and
-/// every [checkEvery] after, shows them, and installs them (ADR-0012).
+/// every [checkEvery] after, shows them, and installs them.
 class UpdateController extends Notifier<UpdateCenter> {
   static const startDelay = Duration(seconds: 8);
   static const checkEvery = Duration(hours: 12);

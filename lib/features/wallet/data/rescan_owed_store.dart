@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Persists "a wallet rescan is owed" across app restarts (WAL-06), so a
+/// Persists "a wallet rescan is owed" across app restarts, so a
 /// rescan requested during sync is not forgotten when the app closes.
 class RescanOwedStore {
   RescanOwedStore(this._prefs);

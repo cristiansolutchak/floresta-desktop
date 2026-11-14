@@ -65,25 +65,6 @@ void main() {
       ]);
       expect(parseDockerPorts(''), isEmpty);
     });
-
-    test('prefers a loopback binding for the same container port', () {
-      const c = DockerContainer(
-        name: 'f',
-        image: 'floresta',
-        command: '',
-        state: 'running',
-        status: '',
-        ports: [
-          PublishedPort(hostAddress: '0.0.0.0', hostPort: 1, containerPort: 8),
-          PublishedPort(
-            hostAddress: '127.0.0.1',
-            hostPort: 2,
-            containerPort: 8,
-          ),
-        ],
-      );
-      expect(c.publishing(8)!.hostPort, 2);
-    });
   });
 
   group('DockerProbe', () {

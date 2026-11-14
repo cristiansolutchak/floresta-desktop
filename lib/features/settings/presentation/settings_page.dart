@@ -4,13 +4,13 @@ import 'package:fpdart/fpdart.dart' hide State;
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/format.dart';
 import '../../../shared/widgets/common.dart';
 import '../../installation/presentation/advanced_setup.dart';
 import '../../installation/presentation/setup_state_provider.dart';
 import '../../installation/presentation/updates_panel.dart';
 import '../../node/domain/swift_sync.dart';
 import '../../node/presentation/node_controller.dart';
-import '../../node/presentation/status_labels.dart';
 import '../domain/node_settings.dart';
 import '../domain/wallet_birthday.dart';
 import 'diagnostics.dart';
@@ -194,7 +194,7 @@ class _AdvancedPanelState extends State<_AdvancedPanel> {
   }
 }
 
-/// How the node gets to the tip (ADR-0011). The method is tied to the data
+/// How the node gets to the tip. The method is tied to the data
 /// folder: a folder that already holds a chain keeps going the way it
 /// started, which the panel says instead of pretending a switch applies.
 class SyncMethodPanel extends ConsumerStatefulWidget {
@@ -310,7 +310,7 @@ class _SyncMethodPanelState extends ConsumerState<SyncMethodPanel> {
   }
 }
 
-/// CFG-08: where wallet history searches (compact filters) begin.
+/// Where wallet history searches (compact filters) begin.
 class _WalletBirthdayField extends StatelessWidget {
   const _WalletBirthdayField({required this.settings, required this.onSave});
 

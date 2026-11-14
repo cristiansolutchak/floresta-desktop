@@ -10,7 +10,7 @@
 # pinned to the version the macOS artifacts were built with. Caches live in
 # ~/.cache/floresta-gui-tools/linux-<arch>; output defaults to
 # ~/.cache/floresta-gui-tools/release-artifacts. FLORESTA_TAG and
-# FLORESTA_COMMIT, and FLORESTA_MASTER_COMMIT (pinned master, UPS-01), pass
+# FLORESTA_COMMIT, and FLORESTA_MASTER_COMMIT (a pinned master commit), pass
 # through (see build_florestad_artifact.sh). Nothing is
 # signed here.
 set -euo pipefail

@@ -162,7 +162,7 @@ void main() {
     );
   });
 
-  group('SYNC-10: consensus tip', () {
+  group('Consensus tip', () {
     test('one peer on another chain does not set the tip (observed)', () {
       expect(
         consensusPeerTip([
@@ -189,8 +189,8 @@ void main() {
     });
   });
 
-  group('SYNC-06: never done while behind the network', () {
-    test('Mandacaru #63: "done" at 17,904 while peers report ~947k', () {
+  group('Never done while behind the network', () {
+    test('"done" at 17,904 while peers report ~947k', () {
       final s = _status(
         chain: _chain(headers: 17904, validated: 17904, ibd: false),
         peers: [_peer(initialHeight: 947000), _peer(initialHeight: 946990)],
@@ -241,7 +241,7 @@ void main() {
     });
   });
 
-  test('SYNC-08: "Synced" appears only when readiness is ready', () {
+  test('"Synced" appears only when readiness is ready', () {
     final snapshots = [
       _status(),
       _status(chain: _chain(headers: 0, validated: 0, ibd: true)),
@@ -270,7 +270,7 @@ void main() {
     }
   });
 
-  group('Swift Sync (ADR-0011)', () {
+  group('Swift Sync', () {
     const running = SwiftSyncProgress(
       phase: SwiftSyncPhase.running,
       processed: 176000,

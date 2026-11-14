@@ -12,8 +12,7 @@ import '../domain/peer.dart';
 import '../domain/peer_address.dart';
 import 'node_controller.dart';
 
-/// Figma "Peers" (1:14912), "Peers Empty" (1:14840) and "Add Peer"
-/// (1:15217). florestad's `getpeerinfo` has no ping or last-seen time, so
+/// Peers, with Add Peer. florestad's `getpeerinfo` has no ping or last-seen time, so
 /// those slots show the connection kind and the peer's software instead.
 class PeersPage extends ConsumerStatefulWidget {
   const PeersPage({super.key});

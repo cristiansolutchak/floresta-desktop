@@ -1,4 +1,4 @@
-/// Opt-in NODE-03: readiness signals from a REAL florestad on regtest.
+/// Opt-in: readiness signals from a REAL florestad on regtest.
 ///
 ///   FLORESTAD_PATH=/path/to/florestad flutter test test/integration/readiness_regtest_test.dart
 ///

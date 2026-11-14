@@ -19,7 +19,7 @@ final appResetServiceProvider = Provider<AppResetService>(
   ),
 );
 
-/// INS-12: three separate resets, plus what uninstalling the app leaves.
+/// Three separate resets, plus what uninstalling the app leaves.
 /// Every action needs the node stopped and an explicit confirmation.
 class ResetPanel extends ConsumerWidget {
   const ResetPanel({super.key});
