@@ -5,7 +5,7 @@
 ///   FLORESTA_ARTIFACT_DIR=DIR flutter test test/integration/installer_screen_test.dart
 ///
 /// DIR is the output of tool/release/build_florestad_artifact.sh. App data
-/// goes to a temp root (`FLORESTA_GUI_DATA_ROOT`), HOME is a temp dir, and
+/// goes to a temp root (`FLORESTA_DESKTOP_DATA_ROOT`), HOME is a temp dir, and
 /// PATH has no florestad, so the app starts with "Floresta not found".
 @Tags(['integration'])
 @TestOn('mac-os || linux')
@@ -14,13 +14,13 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:floresta_gui/app/app.dart';
-import 'package:floresta_gui/core/platform/host_platform.dart';
-import 'package:floresta_gui/core/providers.dart';
-import 'package:floresta_gui/features/installation/data/release_source.dart';
-import 'package:floresta_gui/features/installation/domain/release_manifest.dart';
-import 'package:floresta_gui/features/installation/presentation/install_controller.dart';
-import 'package:floresta_gui/features/installation/presentation/installation_providers.dart';
+import 'package:floresta_desktop/app/app.dart';
+import 'package:floresta_desktop/core/platform/host_platform.dart';
+import 'package:floresta_desktop/core/providers.dart';
+import 'package:floresta_desktop/features/installation/data/release_source.dart';
+import 'package:floresta_desktop/features/installation/domain/release_manifest.dart';
+import 'package:floresta_desktop/features/installation/presentation/install_controller.dart';
+import 'package:floresta_desktop/features/installation/presentation/installation_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -102,7 +102,7 @@ void main() {
             environmentProvider.overrideWithValue({
               'HOME': '${temp.path}/home',
               'PATH': '/usr/bin:/bin',
-              'FLORESTA_GUI_DATA_ROOT': '${temp.path}/data',
+              'FLORESTA_DESKTOP_DATA_ROOT': '${temp.path}/data',
             }),
             releaseSourceProvider.overrideWithValue(source),
           ],

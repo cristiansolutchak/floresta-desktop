@@ -24,7 +24,7 @@ class UpdatesPanel extends ConsumerWidget {
         ?.toNullable();
     final hasSource = ref.watch(appUpdaterProvider) != null;
     final kindNote = switch (u.kind) {
-      SelfUpdatable() => 'Floresta GUI updates itself in place.',
+      SelfUpdatable() => 'Floresta Desktop updates itself in place.',
       SystemPackage() =>
         'Installed as a system package: updates are downloaded and verified '
             'here, then installed by your system\'s package installer.',
@@ -44,7 +44,10 @@ class UpdatesPanel extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Floresta GUI $appVersionText', style: context.text.titleSmall),
+          Text(
+            'Floresta Desktop $appVersionText',
+            style: context.text.titleSmall,
+          ),
           Text(
             florestad == null
                 ? 'Floresta: not installed by this app'
@@ -60,7 +63,7 @@ class UpdatesPanel extends ConsumerWidget {
             subtitle: const Text(
               'Off: the app checks when it starts, then asks before '
               'installing. On: a new Floresta is installed right away (the '
-              'node switches at its next restart), and a new Floresta GUI '
+              'node switches at its next restart), and a new Floresta Desktop '
               'is installed when you quit it. Every update is verified '
               'against the signed release first.',
             ),

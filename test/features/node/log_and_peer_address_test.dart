@@ -1,5 +1,5 @@
-import 'package:floresta_gui/features/node/domain/log_category.dart';
-import 'package:floresta_gui/features/node/domain/peer_address.dart';
+import 'package:floresta_desktop/features/node/domain/log_category.dart';
+import 'package:floresta_desktop/features/node/domain/peer_address.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

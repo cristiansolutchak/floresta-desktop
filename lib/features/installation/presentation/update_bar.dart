@@ -39,7 +39,7 @@ class UpdateBar extends ConsumerWidget {
           ? Notice(
               tone: Tone.success,
               icon: Icons.check_circle_outline,
-              title: 'Floresta GUI was updated to ${r.version}',
+              title: 'Floresta Desktop was updated to ${r.version}',
               message:
                   'Your settings, wallets and node data were kept as they '
                   'were.',
@@ -67,7 +67,7 @@ class UpdateBar extends ConsumerWidget {
         return Notice(
           tone: Tone.info,
           icon: Icons.downloading,
-          title: 'Downloading Floresta GUI ${u.app?.version}',
+          title: 'Downloading Floresta Desktop ${u.app?.version}',
           message: total > 0
               ? '${formatBytes(got)} of ${formatBytes(total)}. It is checked '
                     'against the signed release before anything changes.'
@@ -97,10 +97,10 @@ class UpdateBar extends ConsumerWidget {
         return Notice(
           tone: Tone.info,
           icon: Icons.system_update_alt,
-          title: 'Floresta GUI ${u.app?.version} is ready',
+          title: 'Floresta Desktop ${u.app?.version} is ready',
           message:
               'Downloaded and verified. It is installed when you quit '
-              'Floresta GUI, or now if you restart. A running node is '
+              'Floresta Desktop, or now if you restart. A running node is '
               'stopped cleanly and started again.',
           action: actions(),
         );
@@ -117,9 +117,9 @@ class UpdateBar extends ConsumerWidget {
           icon: Icons.system_update_alt,
           title: 'Finish in your package installer',
           message:
-              'The verified package for Floresta GUI ${u.app?.version} is '
+              'The verified package for Floresta Desktop ${u.app?.version} is '
               'open in your system\'s installer, which asks for your '
-              'password. Restart Floresta GUI afterwards.',
+              'password. Restart Floresta Desktop afterwards.',
         );
       case AppUpdatePhase.idle:
         break;
@@ -148,7 +148,7 @@ class UpdateBar extends ConsumerWidget {
     if (app == null && node == null) return null;
     final lines = <String>[
       if (app != null)
-        'Floresta GUI ${app.version} is available (you have ${app.current}).'
+        'Floresta Desktop ${app.version} is available (you have ${app.current}).'
             '${app.manifest.notes.isEmpty ? '' : ' ${app.manifest.notes}'}',
       if (node != null)
         'Floresta ${node.label} is available (you have ${node.currentLabel}).',

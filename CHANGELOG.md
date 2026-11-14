@@ -28,7 +28,7 @@
 
 ## v0.0.1 (first public pre-release)
 
-Floresta GUI installs, configures, runs and monitors a [Floresta](https://github.com/getfloresta/Floresta) Bitcoin node (`florestad` v0.9.1) without the terminal, and follows watch-only wallets.
+Floresta Desktop installs, configures, runs and monitors a [Floresta](https://github.com/getfloresta/Floresta) Bitcoin node (`florestad` v0.9.1) without the terminal, and follows watch-only wallets.
 
 ### What it does
 

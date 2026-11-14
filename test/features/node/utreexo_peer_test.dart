@@ -1,11 +1,11 @@
 import 'dart:typed_data';
 
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/features/node/data/p2p_version_probe.dart';
-import 'package:floresta_gui/features/node/data/utreexo_peer_finder.dart';
-import 'package:floresta_gui/features/node/domain/node_rpc_repository.dart';
-import 'package:floresta_gui/features/node/domain/utreexo_peer.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/features/node/data/p2p_version_probe.dart';
+import 'package:floresta_desktop/features/node/data/utreexo_peer_finder.dart';
+import 'package:floresta_desktop/features/node/domain/node_rpc_repository.dart';
+import 'package:floresta_desktop/features/node/domain/utreexo_peer.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -398,7 +398,7 @@ void main() {
       final reply = P2pVersionProbe.versionMessage(BitcoinNetwork.bitcoin);
       final d = ByteData.sublistView(reply);
       d.setUint64(24 + 4, 0x340d, Endian.little);
-      final ua = '/floresta-gui-probe:0.1/'.length;
+      final ua = '/floresta-desktop-probe:0.1/'.length;
       d.setInt32(24 + 4 + 8 + 8 + 26 + 26 + 8 + 1 + ua, 970486, Endian.little);
       final p = P2pVersionProbe.parseVersionReply(
         reply,

@@ -19,9 +19,9 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:blockchain_utils/blockchain_utils.dart';
-import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
-import 'package:floresta_gui/features/installation/domain/app_update.dart';
-import 'package:floresta_gui/features/installation/domain/release_manifest.dart';
+import 'package:floresta_desktop/features/installation/data/signed_manifest.dart';
+import 'package:floresta_desktop/features/installation/domain/app_update.dart';
+import 'package:floresta_desktop/features/installation/domain/release_manifest.dart';
 
 Never _die(String message) {
   stderr.writeln('release_tool: $message');
@@ -233,8 +233,8 @@ void _check(Directory dir, String keyId, String publicKeyHex) {
 /// Writes `<dir>/payload.json` for an app release from the
 /// packages made by tool/package_macos.sh and tool/package_linux.sh:
 /// `Floresta-<v>-macos-<arch>[-unsigned].zip`,
-/// `floresta-gui-<v>-linux-<arm64|x64>.tar.gz`,
-/// `floresta-gui_<v>_<arm64|amd64>.deb`.
+/// `floresta-desktop-<v>-linux-<arm64|x64>.tar.gz`,
+/// `floresta-desktop_<v>_<arm64|amd64>.deb`.
 void _appManifest(Map<String, String> f) {
   final dir = Directory(_need(f, 'artifacts'));
   final version = _need(f, 'version');
@@ -248,12 +248,12 @@ void _appManifest(Map<String, String> f) {
       (m) => m[1]!,
     ),
     (
-      RegExp('^floresta-gui-$v-linux-(arm64|x64)\\.tar\\.gz\$'),
+      RegExp('^floresta-desktop-$v-linux-(arm64|x64)\\.tar\\.gz\$'),
       'linux-tar-gz',
       (m) => m[1]!,
     ),
     (
-      RegExp('^floresta-gui_${v}_(arm64|amd64)\\.deb\$'),
+      RegExp('^floresta-desktop_${v}_(arm64|amd64)\\.deb\$'),
       'linux-deb',
       (m) => m[1] == 'amd64' ? 'x64' : 'arm64',
     ),

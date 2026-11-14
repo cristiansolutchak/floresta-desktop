@@ -114,7 +114,8 @@ class PreflightProbe {
 
   /// Creates and deletes a uniquely named probe file in [dir].
   static Future<bool> canWrite(Directory dir) async {
-    final name = '.floresta-gui-write-test-${Random.secure().nextInt(1 << 32)}';
+    final name =
+        '.floresta-desktop-write-test-${Random.secure().nextInt(1 << 32)}';
     final probe = File('${dir.path}${Platform.pathSeparator}$name');
     try {
       await probe.writeAsString('ok', flush: true);

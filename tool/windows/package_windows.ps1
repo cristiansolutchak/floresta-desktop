@@ -13,11 +13,11 @@ $ErrorActionPreference = 'Stop'
 $root = Resolve-Path (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\..')
 if (-not $Out) { $Out = Join-Path $root 'dist' }
 $release = Join-Path $root 'build\windows\x64\runner\Release'
-if (-not (Test-Path (Join-Path $release 'floresta_gui.exe'))) {
+if (-not (Test-Path (Join-Path $release 'floresta_desktop.exe'))) {
   Write-Error "no release build at $release (run build_app.ps1 first)"; exit 1
 }
 $version = (Select-String -Path (Join-Path $root 'pubspec.yaml') -Pattern '^version:\s*([^+\s]+)').Matches[0].Groups[1].Value
-$name = "floresta-gui-$version-windows-x64"
+$name = "floresta-desktop-$version-windows-x64"
 New-Item -ItemType Directory -Force $Out | Out-Null
 $stage = Join-Path ([System.IO.Path]::GetTempPath()) $name
 Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue

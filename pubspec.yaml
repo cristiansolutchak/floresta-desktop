@@ -1,4 +1,4 @@
-name: floresta_gui
+name: floresta_desktop
 description: "Desktop GUI for running and managing a Floresta Bitcoin node."
 publish_to: 'none'
 

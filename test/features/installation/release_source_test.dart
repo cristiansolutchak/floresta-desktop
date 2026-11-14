@@ -5,15 +5,15 @@ import 'dart:io';
 
 import 'package:blockchain_utils/blockchain_utils.dart'
     hide Either, Left, Right;
-import 'package:floresta_gui/core/platform/app_paths.dart';
-import 'package:floresta_gui/core/platform/host_platform.dart';
-import 'package:floresta_gui/features/installation/data/artifact_downloader.dart';
-import 'package:floresta_gui/features/installation/data/release_source.dart';
-import 'package:floresta_gui/features/installation/data/release_trust_store.dart';
-import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
-import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
-import 'package:floresta_gui/features/installation/domain/installation.dart';
-import 'package:floresta_gui/features/installation/domain/release_manifest.dart';
+import 'package:floresta_desktop/core/platform/app_paths.dart';
+import 'package:floresta_desktop/core/platform/host_platform.dart';
+import 'package:floresta_desktop/features/installation/data/artifact_downloader.dart';
+import 'package:floresta_desktop/features/installation/data/release_source.dart';
+import 'package:floresta_desktop/features/installation/data/release_trust_store.dart';
+import 'package:floresta_desktop/features/installation/data/signed_manifest.dart';
+import 'package:floresta_desktop/features/installation/domain/floresta_version.dart';
+import 'package:floresta_desktop/features/installation/domain/installation.dart';
+import 'package:floresta_desktop/features/installation/domain/release_manifest.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/local_artifact_server.dart';

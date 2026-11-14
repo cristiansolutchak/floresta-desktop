@@ -1,4 +1,4 @@
-# Floresta GUI
+# Floresta Desktop
 
 A desktop app for running and managing a [Floresta](https://github.com/getfloresta/Floresta) Bitcoin node without the terminal. It installs `florestad` from signed builds, guides setup, starts and stops the node, shows sync, peers and logs, and follows watch-only wallets.
 
@@ -72,7 +72,7 @@ On Windows: `tool\windows\build_app.ps1 production`, then `tool\windows\package_
 ## Installing a packaged build
 
 - **macOS:** open the `.dmg` and drag Floresta to Applications. The app is not yet signed with an Apple Developer ID, so the first launch needs System Settings → Privacy & Security → **Open Anyway**.
-- **Linux:** run `sudo apt install ./floresta-gui_<version>_<arch>.deb`. Alternatively, unpack the `.tar.gz` into a folder you own and run `floresta-gui/floresta_gui`; that copy updates itself.
+- **Linux:** run `sudo apt install ./floresta-desktop_<version>_<arch>.deb`. Alternatively, unpack the `.tar.gz` into a folder you own and run `floresta-desktop/floresta_desktop`; that copy updates itself.
 
 Node data lives in `~/.floresta/` (one folder per network) unless you choose another folder. Removing the app never deletes it.
 

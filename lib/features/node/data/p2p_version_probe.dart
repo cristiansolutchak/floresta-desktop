@@ -19,7 +19,7 @@ class P2pVersionProbe {
   final Duration timeout;
 
   static const _protocolVersion = 70016;
-  static const _userAgent = '/floresta-gui-probe:0.1/';
+  static const _userAgent = '/floresta-desktop-probe:0.1/';
 
   /// Message start bytes per network (Bitcoin Core `chainparams.cpp`).
   static Uint8List magic(BitcoinNetwork n) => Uint8List.fromList(switch (n) {

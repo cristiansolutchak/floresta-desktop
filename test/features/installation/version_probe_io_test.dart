@@ -3,9 +3,9 @@ library;
 
 import 'dart:io';
 
-import 'package:floresta_gui/features/installation/data/executable_locator.dart';
-import 'package:floresta_gui/features/installation/data/version_probe.dart';
-import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
+import 'package:floresta_desktop/features/installation/data/executable_locator.dart';
+import 'package:floresta_desktop/features/installation/data/version_probe.dart';
+import 'package:floresta_desktop/features/installation/domain/floresta_version.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 

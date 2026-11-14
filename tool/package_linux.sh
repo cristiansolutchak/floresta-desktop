@@ -20,41 +20,41 @@ case "$(uname -m)" in
   *) die "unsupported architecture $(uname -m)" ;;
 esac
 bundle="$root/build/linux/$flutter_arch/release/bundle"
-[[ -x "$bundle/floresta_gui" ]] || die "no release build at $bundle"
+[[ -x "$bundle/floresta_desktop" ]] || die "no release build at $bundle"
 version="$(awk '/^version:/ { split($2, v, "+"); print v[1] }' "$root/pubspec.yaml")"
-name="floresta-gui_${version}_${deb_arch}"
+name="floresta-desktop_${version}_${deb_arch}"
 mkdir -p "$out"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 pkg="$work/$name"
-mkdir -p "$pkg/DEBIAN" "$pkg/opt/floresta-gui" "$pkg/usr/bin" \
+mkdir -p "$pkg/DEBIAN" "$pkg/opt/floresta-desktop" "$pkg/usr/bin" \
   "$pkg/usr/share/applications" "$pkg/usr/share/icons"
-cp -R "$bundle/." "$pkg/opt/floresta-gui/"
+cp -R "$bundle/." "$pkg/opt/floresta-desktop/"
 # The in-app updater checks this against the signed manifest.
-echo "$version" > "$pkg/opt/floresta-gui/VERSION"
-ln -s /opt/floresta-gui/floresta_gui "$pkg/usr/bin/floresta-gui"
+echo "$version" > "$pkg/opt/floresta-desktop/VERSION"
+ln -s /opt/floresta-desktop/floresta_desktop "$pkg/usr/bin/floresta-desktop"
 # Every size from tool/brand/render_app_icon.swift (16-512 px).
 cp -R "$root/linux/icons/hicolor" "$pkg/usr/share/icons/"
-mkdir -p "$pkg/usr/share/doc/floresta-gui"
+mkdir -p "$pkg/usr/share/doc/floresta-desktop"
 cp "$root/LICENSE-MIT" "$root/LICENSE-APACHE" "$root/README.md" \
-  "$pkg/usr/share/doc/floresta-gui/"
-cat > "$pkg/usr/share/applications/floresta-gui.desktop" <<DESKTOP
+  "$pkg/usr/share/doc/floresta-desktop/"
+cat > "$pkg/usr/share/applications/floresta-desktop.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
 Name=Floresta
 Comment=Run and monitor a Floresta Bitcoin node
-Exec=/opt/floresta-gui/floresta_gui
-Icon=floresta-gui
-StartupWMClass=io.github.cristiansolutchak.floresta_gui
+Exec=/opt/floresta-desktop/floresta_desktop
+Icon=floresta-desktop
+StartupWMClass=io.github.cristiansolutchak.floresta_desktop
 Categories=Network;Finance;
 Terminal=false
 DESKTOP
 cat > "$pkg/DEBIAN/control" <<CONTROL
-Package: floresta-gui
+Package: floresta-desktop
 Version: $version
 Architecture: $deb_arch
-Maintainer: Floresta GUI <noreply@localhost>
+Maintainer: Floresta Desktop <noreply@localhost>
 Depends: libgtk-3-0 | libgtk-3-0t64, libegl1, libgles2
 Section: net
 Priority: optional
@@ -64,14 +64,14 @@ Description: Desktop app to install, configure and run a Floresta node
 CONTROL
 dpkg-deb --root-owner-group --build "$pkg" "$out/$name.deb" >/dev/null
 # One top-level folder, unpacked anywhere the user owns (for example
-# ~/Applications/floresta-gui); the app then updates itself in place
+# ~/Applications/floresta-desktop); the app then updates itself in place
 #, and checks VERSION against the signed manifest.
-tarroot="$work/tar/floresta-gui"
+tarroot="$work/tar/floresta-desktop"
 mkdir -p "$tarroot"
 cp -R "$bundle/." "$tarroot/"
 echo "$version" > "$tarroot/VERSION"
 cp "$root/LICENSE-MIT" "$root/LICENSE-APACHE" "$root/README.md" "$tarroot/"
-tar -C "$work/tar" -czf "$out/floresta-gui-$version-linux-$flutter_arch.tar.gz" \
-  floresta-gui
-(cd "$out" && sha256sum "$name.deb" "floresta-gui-$version-linux-$flutter_arch.tar.gz" | tee SHA256SUMS-linux-$flutter_arch)
+tar -C "$work/tar" -czf "$out/floresta-desktop-$version-linux-$flutter_arch.tar.gz" \
+  floresta-desktop
+(cd "$out" && sha256sum "$name.deb" "floresta-desktop-$version-linux-$flutter_arch.tar.gz" | tee SHA256SUMS-linux-$flutter_arch)
 echo "package_linux: wrote $out/$name.deb"

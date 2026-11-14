@@ -1,19 +1,19 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:floresta_gui/core/electrum/electrum_client.dart';
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/features/wallet/data/bip32_address_deriver.dart';
-import 'package:floresta_gui/features/wallet/data/descriptor_checksum.dart';
-import 'package:floresta_gui/features/wallet/data/json_file_wallet_store.dart';
-import 'package:floresta_gui/features/wallet/data/single_sig_descriptor_parser.dart';
-import 'package:floresta_gui/features/wallet/data/transaction_verification.dart';
-import 'package:floresta_gui/features/wallet/data/wallet_sync_engine.dart';
-import 'package:floresta_gui/features/wallet/domain/balance_calculator.dart';
-import 'package:floresta_gui/features/wallet/domain/wallet_account.dart';
-import 'package:floresta_gui/features/wallet/domain/wallet_state.dart';
-import 'package:floresta_gui/features/wallet/domain/wallet_sync_ports.dart';
+import 'package:floresta_desktop/core/electrum/electrum_client.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/wallet/data/bip32_address_deriver.dart';
+import 'package:floresta_desktop/features/wallet/data/descriptor_checksum.dart';
+import 'package:floresta_desktop/features/wallet/data/json_file_wallet_store.dart';
+import 'package:floresta_desktop/features/wallet/data/single_sig_descriptor_parser.dart';
+import 'package:floresta_desktop/features/wallet/data/transaction_verification.dart';
+import 'package:floresta_desktop/features/wallet/data/wallet_sync_engine.dart';
+import 'package:floresta_desktop/features/wallet/domain/balance_calculator.dart';
+import 'package:floresta_desktop/features/wallet/domain/wallet_account.dart';
+import 'package:floresta_desktop/features/wallet/domain/wallet_state.dart';
+import 'package:floresta_desktop/features/wallet/domain/wallet_sync_ports.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/fake_process.dart';

@@ -1,5 +1,5 @@
-import 'package:floresta_gui/features/node/domain/verification_breakdown.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/node/domain/verification_breakdown.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 VerificationBreakdown _b(BitcoinNetwork n, {required int h, required int v}) =>

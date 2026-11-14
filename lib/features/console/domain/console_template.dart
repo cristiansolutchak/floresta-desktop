@@ -149,7 +149,7 @@ final electrumTemplates = <ConsoleTemplate>[
   ),
 ];
 
-List<Object?> _version(ConsoleContext _) => const ['Floresta GUI', '1.4'];
+List<Object?> _version(ConsoleContext _) => const ['Floresta Desktop', '1.4'];
 List<Object?> _six(ConsoleContext _) => const [6];
 List<Object?> _scripthash(ConsoleContext _) => const ['<scripthash>'];
 

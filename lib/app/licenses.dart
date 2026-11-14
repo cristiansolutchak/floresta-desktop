@@ -6,10 +6,10 @@ import 'package:flutter/services.dart';
 void registerLicenses() {
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks(const [
-      'Floresta GUI',
+      'Floresta Desktop',
     ], await rootBundle.loadString('LICENSE-MIT'));
     yield LicenseEntryWithLineBreaks(const [
-      'Floresta GUI',
+      'Floresta Desktop',
     ], await rootBundle.loadString('LICENSE-APACHE'));
     yield LicenseEntryWithLineBreaks(const [
       'florestad (Floresta)',

@@ -1,6 +1,6 @@
-import 'package:floresta_gui/app/theme/app_theme.dart';
-import 'package:floresta_gui/shared/widgets/dash.dart';
-import 'package:floresta_gui/shared/widgets/status_motion.dart';
+import 'package:floresta_desktop/app/theme/app_theme.dart';
+import 'package:floresta_desktop/shared/widgets/dash.dart';
+import 'package:floresta_desktop/shared/widgets/status_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -17,14 +17,14 @@
 @TestOn('mac-os || linux')
 library;
 
-import 'package:floresta_gui/core/providers.dart';
-import 'package:floresta_gui/core/rpc/json_rpc_client.dart';
-import 'package:floresta_gui/features/node/domain/node_readiness.dart';
-import 'package:floresta_gui/features/node/presentation/node_controller.dart';
-import 'package:floresta_gui/features/wallet/data/wallet_repository_impl.dart';
-import 'package:floresta_gui/features/wallet/domain/descriptor_input.dart';
-import 'package:floresta_gui/features/wallet/presentation/wallet_controller.dart';
-import 'package:floresta_gui/features/wallet/presentation/wallet_rescan_controller.dart';
+import 'package:floresta_desktop/core/providers.dart';
+import 'package:floresta_desktop/core/rpc/json_rpc_client.dart';
+import 'package:floresta_desktop/features/node/domain/node_readiness.dart';
+import 'package:floresta_desktop/features/node/presentation/node_controller.dart';
+import 'package:floresta_desktop/features/wallet/data/wallet_repository_impl.dart';
+import 'package:floresta_desktop/features/wallet/domain/descriptor_input.dart';
+import 'package:floresta_desktop/features/wallet/presentation/wallet_controller.dart';
+import 'package:floresta_desktop/features/wallet/presentation/wallet_rescan_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;

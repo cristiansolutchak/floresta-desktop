@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:floresta_gui/features/installation/data/capability_scan.dart';
+import 'package:floresta_desktop/features/installation/data/capability_scan.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

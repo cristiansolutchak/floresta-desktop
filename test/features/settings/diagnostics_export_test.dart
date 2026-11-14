@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:floresta_gui/core/logging/log_buffer.dart';
-import 'package:floresta_gui/features/settings/data/text_file_writer.dart';
-import 'package:floresta_gui/features/settings/presentation/diagnostics.dart';
+import 'package:floresta_desktop/core/logging/log_buffer.dart';
+import 'package:floresta_desktop/features/settings/data/text_file_writer.dart';
+import 'package:floresta_desktop/features/settings/presentation/diagnostics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/fake_process.dart';

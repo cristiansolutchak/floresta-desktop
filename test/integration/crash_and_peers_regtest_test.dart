@@ -15,9 +15,9 @@ library;
 
 import 'dart:io';
 
-import 'package:floresta_gui/features/node/domain/node_process_state.dart';
-import 'package:floresta_gui/features/node/domain/node_rpc_repository.dart';
-import 'package:floresta_gui/features/node/domain/peer_address.dart';
+import 'package:floresta_desktop/features/node/domain/node_process_state.dart';
+import 'package:floresta_desktop/features/node/domain/node_rpc_repository.dart';
+import 'package:floresta_desktop/features/node/domain/peer_address.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/regtest_cluster.dart';

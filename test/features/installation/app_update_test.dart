@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:blockchain_utils/blockchain_utils.dart'
     hide Either, Left, Right;
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/core/platform/app_paths.dart';
-import 'package:floresta_gui/core/platform/host_platform.dart';
-import 'package:floresta_gui/features/installation/data/app_updater.dart';
-import 'package:floresta_gui/features/installation/data/release_source.dart';
-import 'package:floresta_gui/features/installation/domain/app_update.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/core/platform/app_paths.dart';
+import 'package:floresta_desktop/core/platform/host_platform.dart';
+import 'package:floresta_desktop/features/installation/data/app_updater.dart';
+import 'package:floresta_desktop/features/installation/data/release_source.dart';
+import 'package:floresta_desktop/features/installation/domain/app_update.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/local_artifact_server.dart';
@@ -155,15 +155,18 @@ void main() {
 
     test('Linux: .deb under /opt goes through the system installer', () {
       expect(
-        classify(HostOs.linux, '/opt/floresta-gui/floresta_gui'),
+        classify(HostOs.linux, '/opt/floresta-desktop/floresta_desktop'),
         const SystemPackage(),
       );
       expect(
-        classify(HostOs.linux, '/home/a/Apps/floresta-gui/floresta_gui'),
+        classify(
+          HostOs.linux,
+          '/home/a/Apps/floresta-desktop/floresta_desktop',
+        ),
         const SelfUpdatable(
           AppPackageFormat.linuxTarGz,
-          '/home/a/Apps/floresta-gui',
-          executable: '/home/a/Apps/floresta-gui/floresta_gui',
+          '/home/a/Apps/floresta-desktop',
+          executable: '/home/a/Apps/floresta-desktop/floresta_desktop',
         ),
       );
     });
@@ -209,9 +212,9 @@ void main() {
 
     /// A Linux bundle tarball whose VERSION file says [says].
     Future<List<int>> tarball(String says) async {
-      final src = Directory('${root.path}/src-$says/floresta-gui')
+      final src = Directory('${root.path}/src-$says/floresta-desktop')
         ..createSync(recursive: true);
-      File('${src.path}/floresta_gui').writeAsStringSync('#!/bin/sh\n');
+      File('${src.path}/floresta_desktop').writeAsStringSync('#!/bin/sh\n');
       File('${src.path}/VERSION').writeAsStringSync('$says\n');
       final out = '${root.path}/pkg-$says.tar.gz';
       final r = await Process.run('tar', [
@@ -219,7 +222,7 @@ void main() {
         out,
         '-C',
         src.parent.path,
-        'floresta-gui',
+        'floresta-desktop',
       ]);
       expect(r.exitCode, 0, reason: '${r.stderr}');
       return File(out).readAsBytesSync();
@@ -246,12 +249,12 @@ void main() {
     }
 
     SelfUpdatable installed() {
-      final bundle = Directory('${apps.path}/floresta-gui')..createSync();
-      File('${bundle.path}/floresta_gui').writeAsStringSync('old');
+      final bundle = Directory('${apps.path}/floresta-desktop')..createSync();
+      File('${bundle.path}/floresta_desktop').writeAsStringSync('old');
       return SelfUpdatable(
         AppPackageFormat.linuxTarGz,
         bundle.path,
-        executable: '${bundle.path}/floresta_gui',
+        executable: '${bundle.path}/floresta_desktop',
       );
     }
 
@@ -383,7 +386,7 @@ void main() {
 
     test('replaces the bundle and keeps the old one aside', () async {
       final apps = Directory('${dir.path}/Apps')..createSync();
-      final target = Directory('${apps.path}/floresta-gui')..createSync();
+      final target = Directory('${apps.path}/floresta-desktop')..createSync();
       File('${target.path}/v').writeAsStringSync('old');
       final staged = Directory('${apps.path}/.floresta-update-0.0.2/b')
         ..createSync(recursive: true);
@@ -393,7 +396,7 @@ void main() {
       expect(File('${target.path}/v').readAsStringSync(), 'new');
       expect(
         File(
-          '${apps.path}/.floresta-previous-floresta-gui/v',
+          '${apps.path}/.floresta-previous-floresta-desktop/v',
         ).readAsStringSync(),
         'old',
       );
@@ -404,7 +407,7 @@ void main() {
     });
 
     test('a missing new version leaves the installed app in place', () async {
-      final target = Directory('${dir.path}/floresta-gui')..createSync();
+      final target = Directory('${dir.path}/floresta-desktop')..createSync();
       File('${target.path}/v').writeAsStringSync('old');
       final r = await run(
         target: target.path,

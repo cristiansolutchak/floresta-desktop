@@ -1,5 +1,5 @@
-import 'package:floresta_gui/features/node/domain/swift_sync.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/node/domain/swift_sync.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,16 +1,16 @@
 import 'dart:io';
 
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/core/platform/app_paths.dart';
-import 'package:floresta_gui/core/platform/host_platform.dart';
-import 'package:floresta_gui/core/providers.dart';
-import 'package:floresta_gui/features/installation/data/app_updater.dart';
-import 'package:floresta_gui/features/installation/data/artifact_downloader.dart';
-import 'package:floresta_gui/features/installation/data/release_source.dart';
-import 'package:floresta_gui/features/installation/domain/app_update.dart';
-import 'package:floresta_gui/features/installation/presentation/installation_providers.dart';
-import 'package:floresta_gui/features/installation/presentation/update_bar.dart';
-import 'package:floresta_gui/features/installation/presentation/update_controller.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/core/platform/app_paths.dart';
+import 'package:floresta_desktop/core/platform/host_platform.dart';
+import 'package:floresta_desktop/core/providers.dart';
+import 'package:floresta_desktop/features/installation/data/app_updater.dart';
+import 'package:floresta_desktop/features/installation/data/artifact_downloader.dart';
+import 'package:floresta_desktop/features/installation/data/release_source.dart';
+import 'package:floresta_desktop/features/installation/domain/app_update.dart';
+import 'package:floresta_desktop/features/installation/presentation/installation_providers.dart';
+import 'package:floresta_desktop/features/installation/presentation/update_bar.dart';
+import 'package:floresta_desktop/features/installation/presentation/update_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -127,7 +127,7 @@ void main() {
     await pump(tester);
     expect(find.text('An update is available'), findsOneWidget);
     expect(
-      find.textContaining('Floresta GUI 9.9.9 is available'),
+      find.textContaining('Floresta Desktop 9.9.9 is available'),
       findsOneWidget,
     );
     expect(find.textContaining('Faster sync.'), findsOneWidget);

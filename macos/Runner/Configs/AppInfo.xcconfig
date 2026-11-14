@@ -8,7 +8,7 @@
 PRODUCT_NAME = Floresta
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = io.github.cristiansolutchak.florestaGui
+PRODUCT_BUNDLE_IDENTIFIER = io.github.cristiansolutchak.florestaDesktop
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 The Floresta GUI contributors. MIT OR Apache-2.0.
+PRODUCT_COPYRIGHT = Copyright © 2026 The Floresta Desktop contributors. MIT OR Apache-2.0.

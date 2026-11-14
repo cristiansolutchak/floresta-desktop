@@ -1,4 +1,4 @@
-import 'package:floresta_gui/features/console/domain/console_template.dart';
+import 'package:floresta_desktop/features/console/domain/console_template.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Method names in florestad v0.9.1 (`crates/floresta-node/src/json_rpc/

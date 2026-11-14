@@ -14,7 +14,7 @@ labels: bug
 
 **Environment**
 
-- Floresta GUI version (Help):
+- Floresta Desktop version (Help):
 - Floresta version (Help):
 - Operating system and architecture:
 - Network (mainnet, signet, …):

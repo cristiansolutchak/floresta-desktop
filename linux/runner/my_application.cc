@@ -58,8 +58,8 @@ static void my_application_activate(GApplication* application) {
   // Window and taskbar icon. Installed (.deb): the hicolor theme icon from
   // linux/icons. Unpacked (.tar.gz): the copy bundled with the Flutter
   // assets, next to the executable.
-  if (gtk_icon_theme_has_icon(gtk_icon_theme_get_default(), "floresta-gui")) {
-    gtk_window_set_icon_name(window, "floresta-gui");
+  if (gtk_icon_theme_has_icon(gtk_icon_theme_get_default(), "floresta-desktop")) {
+    gtk_window_set_icon_name(window, "floresta-desktop");
   } else {
     g_autofree gchar* exe = g_file_read_link("/proc/self/exe", nullptr);
     if (exe != nullptr) {

@@ -6,23 +6,23 @@ import 'dart:io';
 
 import 'package:blockchain_utils/blockchain_utils.dart'
     hide Either, Left, Right;
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/core/platform/app_paths.dart';
-import 'package:floresta_gui/core/platform/host_platform.dart';
-import 'package:floresta_gui/core/security/file_hash.dart';
-import 'package:floresta_gui/features/installation/data/artifact_downloader.dart';
-import 'package:floresta_gui/features/installation/data/executable_locator.dart';
-import 'package:floresta_gui/features/installation/data/installation_repository_impl.dart';
-import 'package:floresta_gui/features/installation/data/managed_install_store.dart';
-import 'package:floresta_gui/features/installation/data/managed_installer.dart';
-import 'package:floresta_gui/features/installation/data/release_keys.dart';
-import 'package:floresta_gui/features/installation/data/release_source.dart';
-import 'package:floresta_gui/features/installation/data/release_trust_store.dart';
-import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
-import 'package:floresta_gui/features/installation/data/version_probe.dart';
-import 'package:floresta_gui/features/installation/domain/installation.dart';
-import 'package:floresta_gui/features/installation/domain/installer.dart';
-import 'package:floresta_gui/features/installation/domain/release_manifest.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/core/platform/app_paths.dart';
+import 'package:floresta_desktop/core/platform/host_platform.dart';
+import 'package:floresta_desktop/core/security/file_hash.dart';
+import 'package:floresta_desktop/features/installation/data/artifact_downloader.dart';
+import 'package:floresta_desktop/features/installation/data/executable_locator.dart';
+import 'package:floresta_desktop/features/installation/data/installation_repository_impl.dart';
+import 'package:floresta_desktop/features/installation/data/managed_install_store.dart';
+import 'package:floresta_desktop/features/installation/data/managed_installer.dart';
+import 'package:floresta_desktop/features/installation/data/release_keys.dart';
+import 'package:floresta_desktop/features/installation/data/release_source.dart';
+import 'package:floresta_desktop/features/installation/data/release_trust_store.dart';
+import 'package:floresta_desktop/features/installation/data/signed_manifest.dart';
+import 'package:floresta_desktop/features/installation/data/version_probe.dart';
+import 'package:floresta_desktop/features/installation/domain/installation.dart';
+import 'package:floresta_desktop/features/installation/domain/installer.dart';
+import 'package:floresta_desktop/features/installation/domain/release_manifest.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/local_artifact_server.dart';
@@ -263,25 +263,25 @@ void main() {
     test('uses per-OS user locations and the test override', () {
       expect(
         AppPaths.forPlatform(_platform, const {'HOME': '/Users/a'}).root.path,
-        '/Users/a/Library/Application Support/io.github.cristiansolutchak.florestaGui',
+        '/Users/a/Library/Application Support/io.github.cristiansolutchak.florestaDesktop',
       );
       expect(
         AppPaths.forPlatform(
           const HostPlatform(HostOs.linux, CpuArch.x64),
           const {'HOME': '/home/a'},
         ).root.path,
-        '/home/a/.local/share/floresta-gui',
+        '/home/a/.local/share/floresta-desktop',
       );
       expect(
         AppPaths.forPlatform(
           const HostPlatform(HostOs.linux, CpuArch.x64),
           const {'HOME': '/home/a', 'XDG_DATA_HOME': '/data'},
         ).root.path,
-        '/data/floresta-gui',
+        '/data/floresta-desktop',
       );
       expect(
         AppPaths.forPlatform(_platform, const {
-          'FLORESTA_GUI_DATA_ROOT': '/tmp/x',
+          'FLORESTA_DESKTOP_DATA_ROOT': '/tmp/x',
           'HOME': '/u',
         }).root.path,
         '/tmp/x',

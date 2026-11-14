@@ -48,7 +48,7 @@ class HelpPage extends ConsumerWidget {
               style: DashButtonStyle.secondary,
               onPressed: () => showLicensePage(
                 context: context,
-                applicationName: 'Floresta GUI',
+                applicationName: 'Floresta Desktop',
                 applicationVersion: appVersion,
                 applicationLegalese:
                     'MIT OR Apache-2.0. florestad is MIT OR Apache-2.0, '

@@ -11,14 +11,14 @@ library;
 
 import 'dart:io';
 
-import 'package:floresta_gui/core/rpc/json_rpc_client.dart';
-import 'package:floresta_gui/features/node/data/electrum_probe.dart';
-import 'package:floresta_gui/features/node/data/florestad_process_manager.dart';
-import 'package:floresta_gui/features/node/data/node_rpc_repository_impl.dart';
-import 'package:floresta_gui/features/node/domain/node_readiness.dart';
-import 'package:floresta_gui/features/node/domain/node_status.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/features/settings/domain/node_settings.dart';
+import 'package:floresta_desktop/core/rpc/json_rpc_client.dart';
+import 'package:floresta_desktop/features/node/data/electrum_probe.dart';
+import 'package:floresta_desktop/features/node/data/florestad_process_manager.dart';
+import 'package:floresta_desktop/features/node/data/node_rpc_repository_impl.dart';
+import 'package:floresta_desktop/features/node/domain/node_readiness.dart';
+import 'package:floresta_desktop/features/node/domain/node_status.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/settings/domain/node_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 

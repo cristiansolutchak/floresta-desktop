@@ -12,20 +12,20 @@ library;
 
 import 'dart:io';
 
-import 'package:floresta_gui/core/electrum/electrum_client.dart';
-import 'package:floresta_gui/core/electrum/electrum_transport.dart';
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/core/rpc/json_rpc_client.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/features/wallet/data/bip32_address_deriver.dart';
-import 'package:floresta_gui/features/wallet/data/floresta_watch_registrar.dart';
-import 'package:floresta_gui/features/wallet/data/json_file_wallet_store.dart';
-import 'package:floresta_gui/features/wallet/data/node_chain_view.dart';
-import 'package:floresta_gui/features/wallet/data/single_sig_descriptor_parser.dart';
-import 'package:floresta_gui/features/wallet/data/wallet_repository_impl.dart';
-import 'package:floresta_gui/features/wallet/data/wallet_sync_engine.dart';
-import 'package:floresta_gui/features/wallet/domain/wallet_account.dart';
-import 'package:floresta_gui/features/wallet/domain/wallet_state.dart';
+import 'package:floresta_desktop/core/electrum/electrum_client.dart';
+import 'package:floresta_desktop/core/electrum/electrum_transport.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/core/rpc/json_rpc_client.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/wallet/data/bip32_address_deriver.dart';
+import 'package:floresta_desktop/features/wallet/data/floresta_watch_registrar.dart';
+import 'package:floresta_desktop/features/wallet/data/json_file_wallet_store.dart';
+import 'package:floresta_desktop/features/wallet/data/node_chain_view.dart';
+import 'package:floresta_desktop/features/wallet/data/single_sig_descriptor_parser.dart';
+import 'package:floresta_desktop/features/wallet/data/wallet_repository_impl.dart';
+import 'package:floresta_desktop/features/wallet/data/wallet_sync_engine.dart';
+import 'package:floresta_desktop/features/wallet/domain/wallet_account.dart';
+import 'package:floresta_desktop/features/wallet/domain/wallet_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 

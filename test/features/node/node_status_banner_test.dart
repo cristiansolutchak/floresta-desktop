@@ -1,9 +1,9 @@
-import 'package:floresta_gui/features/node/domain/node_process_state.dart';
-import 'package:floresta_gui/features/node/domain/node_readiness.dart';
-import 'package:floresta_gui/features/node/domain/node_status.dart';
-import 'package:floresta_gui/features/node/presentation/node_status_banner.dart';
-import 'package:floresta_gui/features/node/presentation/status_labels.dart';
-import 'package:floresta_gui/shared/widgets/common.dart';
+import 'package:floresta_desktop/features/node/domain/node_process_state.dart';
+import 'package:floresta_desktop/features/node/domain/node_readiness.dart';
+import 'package:floresta_desktop/features/node/domain/node_status.dart';
+import 'package:floresta_desktop/features/node/presentation/node_status_banner.dart';
+import 'package:floresta_desktop/features/node/presentation/status_labels.dart';
+import 'package:floresta_desktop/shared/widgets/common.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 String _message(

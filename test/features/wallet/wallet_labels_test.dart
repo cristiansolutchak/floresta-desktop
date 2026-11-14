@@ -1,6 +1,6 @@
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/features/wallet/data/wallet_label_store.dart';
-import 'package:floresta_gui/features/wallet/domain/wallet_labels.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/features/wallet/data/wallet_label_store.dart';
+import 'package:floresta_desktop/features/wallet/domain/wallet_labels.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

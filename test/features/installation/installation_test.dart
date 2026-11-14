@@ -1,14 +1,14 @@
 import 'dart:io';
 
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/core/platform/host_platform.dart';
-import 'package:floresta_gui/core/processes/process_starter.dart';
-import 'package:floresta_gui/features/installation/data/executable_locator.dart';
-import 'package:floresta_gui/features/installation/data/installation_repository_impl.dart';
-import 'package:floresta_gui/features/installation/data/version_probe.dart';
-import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
-import 'package:floresta_gui/features/installation/domain/installation.dart';
-import 'package:floresta_gui/features/installation/domain/next_action.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/core/platform/host_platform.dart';
+import 'package:floresta_desktop/core/processes/process_starter.dart';
+import 'package:floresta_desktop/features/installation/data/executable_locator.dart';
+import 'package:floresta_desktop/features/installation/data/installation_repository_impl.dart';
+import 'package:floresta_desktop/features/installation/data/version_probe.dart';
+import 'package:floresta_desktop/features/installation/domain/floresta_version.dart';
+import 'package:floresta_desktop/features/installation/domain/installation.dart';
+import 'package:floresta_desktop/features/installation/domain/next_action.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 

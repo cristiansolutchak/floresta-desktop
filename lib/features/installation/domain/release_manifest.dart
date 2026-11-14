@@ -73,6 +73,8 @@ class ReleaseManifest extends Equatable {
 
   /// Inside the signed bytes, so a signature made for anything else can
   /// never pass as a release manifest.
+  // Part of the signed payload, so it keeps the project's first name
+  // (Floresta GUI): changing it would invalidate published manifests.
   static const type = 'floresta-gui/release-manifest';
   static const schema = 2;
   static final _hex64 = RegExp(r'^[0-9a-f]{64}$');

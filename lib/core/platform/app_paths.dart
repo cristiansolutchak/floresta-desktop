@@ -10,24 +10,24 @@ import 'host_platform.dart';
 class AppPaths {
   const AppPaths(this.root);
 
-  /// Resolves the per-OS default, or `FLORESTA_GUI_DATA_ROOT` when set (used
+  /// Resolves the per-OS default, or `FLORESTA_DESKTOP_DATA_ROOT` when set (used
   /// to isolate desktop installation tests from the real user data).
   factory AppPaths.forPlatform(
     HostPlatform platform,
     Map<String, String> environment,
   ) {
-    final override = environment['FLORESTA_GUI_DATA_ROOT'];
+    final override = environment['FLORESTA_DESKTOP_DATA_ROOT'];
     if (override != null && override.isNotEmpty) {
       return AppPaths(Directory(override));
     }
     final home = environment['HOME'] ?? environment['USERPROFILE'] ?? '.';
     final path = switch (platform.os) {
       HostOs.macos =>
-        '$home/Library/Application Support/io.github.cristiansolutchak.florestaGui',
+        '$home/Library/Application Support/io.github.cristiansolutchak.florestaDesktop',
       HostOs.windows =>
-        '${environment['LOCALAPPDATA'] ?? '$home\\AppData\\Local'}\\floresta-gui',
+        '${environment['LOCALAPPDATA'] ?? '$home\\AppData\\Local'}\\floresta-desktop',
       HostOs.linux || HostOs.other =>
-        '${environment['XDG_DATA_HOME'] ?? '$home/.local/share'}/floresta-gui',
+        '${environment['XDG_DATA_HOME'] ?? '$home/.local/share'}/floresta-desktop',
     };
     return AppPaths(Directory(path));
   }

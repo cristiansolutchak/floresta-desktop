@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:floresta_gui/features/node/data/wallet_store_repair.dart';
-import 'package:floresta_gui/features/node/domain/node_process_state.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/features/settings/domain/node_settings.dart';
+import 'package:floresta_desktop/features/node/data/wallet_store_repair.dart';
+import 'package:floresta_desktop/features/node/domain/node_process_state.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/settings/domain/node_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

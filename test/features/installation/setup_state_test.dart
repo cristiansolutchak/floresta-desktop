@@ -1,8 +1,8 @@
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/features/installation/domain/floresta_version.dart';
-import 'package:floresta_gui/features/installation/domain/installation.dart';
-import 'package:floresta_gui/features/installation/domain/installer.dart';
-import 'package:floresta_gui/features/installation/domain/setup_state.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/features/installation/domain/floresta_version.dart';
+import 'package:floresta_desktop/features/installation/domain/installation.dart';
+import 'package:floresta_desktop/features/installation/domain/installer.dart';
+import 'package:floresta_desktop/features/installation/domain/setup_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 

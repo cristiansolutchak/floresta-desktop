@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/core/rpc/json_rpc_client.dart';
-import 'package:floresta_gui/features/wallet/data/wallet_repository_impl.dart';
-import 'package:floresta_gui/features/wallet/domain/descriptor_input.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/core/rpc/json_rpc_client.dart';
+import 'package:floresta_desktop/features/wallet/data/wallet_repository_impl.dart';
+import 'package:floresta_desktop/features/wallet/domain/descriptor_input.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

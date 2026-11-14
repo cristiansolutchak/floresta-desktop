@@ -61,7 +61,7 @@ String diagnosticsFileText({
   required List<String> lines,
   required DateTime now,
 }) => [
-  'Floresta GUI diagnostics (${now.toIso8601String()})',
+  'Floresta Desktop diagnostics (${now.toIso8601String()})',
   'No wallet data. Extended keys in the log are redacted.',
   '',
   report,

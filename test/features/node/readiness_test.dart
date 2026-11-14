@@ -1,12 +1,12 @@
-import 'package:floresta_gui/features/node/domain/blockchain_info.dart';
-import 'package:floresta_gui/features/node/domain/node_process_state.dart';
-import 'package:floresta_gui/features/node/domain/node_readiness.dart';
-import 'package:floresta_gui/features/node/domain/node_status.dart';
-import 'package:floresta_gui/features/node/domain/peer.dart';
-import 'package:floresta_gui/features/node/domain/swift_sync.dart';
-import 'package:floresta_gui/features/node/domain/sync_progress.dart';
-import 'package:floresta_gui/features/node/presentation/status_labels.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/node/domain/blockchain_info.dart';
+import 'package:floresta_desktop/features/node/domain/node_process_state.dart';
+import 'package:floresta_desktop/features/node/domain/node_readiness.dart';
+import 'package:floresta_desktop/features/node/domain/node_status.dart';
+import 'package:floresta_desktop/features/node/domain/peer.dart';
+import 'package:floresta_desktop/features/node/domain/swift_sync.dart';
+import 'package:floresta_desktop/features/node/domain/sync_progress.dart';
+import 'package:floresta_desktop/features/node/presentation/status_labels.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _now = DateTime(2026, 10, 24, 22);

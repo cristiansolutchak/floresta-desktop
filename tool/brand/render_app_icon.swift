@@ -12,7 +12,7 @@
 //   assets/app-icon/app-icon-256.png    in-app/window icon
 //   macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_*.png
 //   windows/runner/resources/app_icon.ico (16-256, PNG-compressed)
-//   linux/icons/hicolor/<n>x<n>/apps/floresta-gui.png
+//   linux/icons/hicolor/<n>x<n>/apps/floresta-desktop.png
 // macOS-only tool (CoreGraphics); the outputs are committed.
 import CoreGraphics
 import Foundation
@@ -148,7 +148,7 @@ for n in [16, 32, 64, 128, 256, 512, 1024] {
 // Linux hicolor theme.
 for n in [16, 24, 32, 48, 64, 128, 256, 512] {
   try write(png(render(n, fullBleed: true)),
-            "linux/icons/hicolor/\(n)x\(n)/apps/floresta-gui.png")
+            "linux/icons/hicolor/\(n)x\(n)/apps/floresta-desktop.png")
 }
 
 // Windows ICO with PNG entries (supported since Vista).

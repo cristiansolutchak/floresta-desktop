@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:floresta_gui/features/settings/presentation/diagnostics.dart';
+import 'package:floresta_desktop/features/settings/presentation/diagnostics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -11,9 +11,9 @@ library;
 
 import 'dart:io';
 
-import 'package:floresta_gui/app/app.dart';
-import 'package:floresta_gui/core/providers.dart';
-import 'package:floresta_gui/features/wallet/presentation/amount_format.dart';
+import 'package:floresta_desktop/app/app.dart';
+import 'package:floresta_desktop/core/providers.dart';
+import 'package:floresta_desktop/features/wallet/presentation/amount_format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -65,7 +65,7 @@ void main() {
             environmentProvider.overrideWithValue({
               'HOME': appData.path,
               'PATH': '/usr/bin:/bin',
-              'FLORESTA_GUI_DATA_ROOT': '${appData.path}/app',
+              'FLORESTA_DESKTOP_DATA_ROOT': '${appData.path}/app',
             }),
           ],
           child: const FlorestaApp(),

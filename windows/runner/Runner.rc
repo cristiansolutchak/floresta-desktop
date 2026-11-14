@@ -89,12 +89,12 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "The Floresta GUI contributors" "\0"
-            VALUE "FileDescription", "Floresta GUI" "\0"
+            VALUE "CompanyName", "The Floresta Desktop contributors" "\0"
+            VALUE "FileDescription", "Floresta Desktop" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "floresta_gui" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 The Floresta GUI contributors. MIT OR Apache-2.0." "\0"
-            VALUE "OriginalFilename", "floresta_gui.exe" "\0"
+            VALUE "InternalName", "floresta_desktop" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 The Floresta Desktop contributors. MIT OR Apache-2.0." "\0"
+            VALUE "OriginalFilename", "floresta_desktop.exe" "\0"
             VALUE "ProductName", "Floresta" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END

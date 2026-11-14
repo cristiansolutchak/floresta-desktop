@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:floresta_gui/app/brand/startup_splash.dart';
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/features/installation/domain/installation.dart';
-import 'package:floresta_gui/features/installation/presentation/installation_providers.dart';
+import 'package:floresta_desktop/app/brand/startup_splash.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/features/installation/domain/installation.dart';
+import 'package:floresta_desktop/features/installation/presentation/installation_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

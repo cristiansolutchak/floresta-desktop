@@ -21,12 +21,12 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 
-import 'package:floresta_gui/app/app.dart';
-import 'package:floresta_gui/core/providers.dart';
-import 'package:floresta_gui/features/node/domain/node_process_state.dart';
-import 'package:floresta_gui/features/node/domain/node_readiness.dart';
-import 'package:floresta_gui/features/node/presentation/node_controller.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/app/app.dart';
+import 'package:floresta_desktop/core/providers.dart';
+import 'package:floresta_desktop/features/node/domain/node_process_state.dart';
+import 'package:floresta_desktop/features/node/domain/node_readiness.dart';
+import 'package:floresta_desktop/features/node/presentation/node_controller.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -135,7 +135,7 @@ void main() {
             environmentProvider.overrideWithValue({
               'HOME': '${temp.path}/home',
               'PATH': '/usr/bin:/bin',
-              'FLORESTA_GUI_DATA_ROOT': '${temp.path}/app',
+              'FLORESTA_DESKTOP_DATA_ROOT': '${temp.path}/app',
             }),
           ],
           child: const FlorestaApp(),

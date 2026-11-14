@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:floresta_gui/core/electrum/electrum_client.dart';
-import 'package:floresta_gui/core/electrum/electrum_transport.dart';
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/features/wallet/data/bip32_address_deriver.dart';
-import 'package:floresta_gui/features/wallet/data/transaction_verification.dart';
-import 'package:floresta_gui/features/wallet/domain/wallet_sync_ports.dart';
+import 'package:floresta_desktop/core/electrum/electrum_client.dart';
+import 'package:floresta_desktop/core/electrum/electrum_transport.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/features/wallet/data/bip32_address_deriver.dart';
+import 'package:floresta_desktop/features/wallet/data/transaction_verification.dart';
+import 'package:floresta_desktop/features/wallet/domain/wallet_sync_ports.dart';
 import 'package:fpdart/fpdart.dart';
 
 /// Public vectors produced by Bitcoin Core (tool/regtest/generate_test_fixtures.py).

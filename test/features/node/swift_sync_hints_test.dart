@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/features/node/data/swift_sync_hints.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/features/settings/domain/node_settings.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/features/node/data/swift_sync_hints.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/settings/domain/node_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// A signet-like hints body: the real header (stop 320 000) and filler.

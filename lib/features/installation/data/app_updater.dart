@@ -82,7 +82,7 @@ class SwapResult {
 ///    the running app's, the version the manifest's, and `codesign
 ///    --verify --deep --strict` must pass. Linux tarball: `tar`, then the
 ///    bundle's `VERSION` file must say the manifest's version. `.deb`:
-///    `dpkg-deb` must report package `floresta-gui` at that version.
+///    `dpkg-deb` must report package `floresta-desktop` at that version.
 /// 4. **Swap:** a small shell script written by this app (never a
 ///    downloaded one) waits until the app has quit, renames the installed
 ///    bundle aside, renames the new one into place, and puts the old one
@@ -117,8 +117,8 @@ class AppUpdater {
   final DetachedStarter _startDetached;
   final DateTime Function() _now;
 
-  static const bundleId = 'io.github.cristiansolutchak.florestaGui';
-  static const _debPackage = 'floresta-gui';
+  static const bundleId = 'io.github.cristiansolutchak.florestaDesktop';
+  static const _debPackage = 'floresta-desktop';
 
   String get _sep => Platform.pathSeparator;
   File get resultFile => File('${paths.updates.path}${_sep}result.json');
@@ -313,10 +313,10 @@ class AppUpdater {
         final dirs = staging.listSync().whereType<Directory>().toList();
         if (dirs.length != 1) return fail('expected one bundle folder');
         final bundle = dirs.single.path;
-        final exe = File('$bundle${_sep}floresta_gui');
+        final exe = File('$bundle${_sep}floresta_desktop');
         final versionFile = File('$bundle${_sep}VERSION');
         if (!exe.existsSync() || !versionFile.existsSync()) {
-          return fail('not a Floresta GUI bundle');
+          return fail('not a Floresta Desktop bundle');
         }
         final said = versionFile.readAsStringSync().trim();
         if (said != '$version') return fail('it says version $said');
@@ -364,7 +364,7 @@ class AppUpdater {
         InstallationFailure(
           stage: 'verify',
           message:
-              'The downloaded package is not Floresta GUI $version '
+              'The downloaded package is not Floresta Desktop $version '
               '(${fields['Package']} ${fields['Version']}).',
         ),
       );
@@ -483,7 +483,7 @@ class AppUpdater {
   /// The helper, as data. POSIX sh; arguments, not interpolation, carry
   /// every path. It only renames inside the folder that holds the app.
   static const swapScript = r'''#!/bin/sh
-# Written by Floresta GUI to replace itself after it quits.
+# Written by Floresta Desktop to replace itself after it quits.
 # Moves only the app bundle; settings, wallet and chain data live elsewhere.
 pid="$1"; new="$2"; target="$3"; exe="$4"; relaunch_flag="$5"
 result="$6"; version="$7"; os="$8"; pending="$9"

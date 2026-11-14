@@ -1,8 +1,8 @@
 import 'dart:ffi' show Abi;
 
-import 'package:floresta_gui/core/logging/log_buffer.dart';
-import 'package:floresta_gui/core/platform/host_platform.dart';
-import 'package:floresta_gui/core/security/sensitive_data.dart';
+import 'package:floresta_desktop/core/logging/log_buffer.dart';
+import 'package:floresta_desktop/core/platform/host_platform.dart';
+import 'package:floresta_desktop/core/security/sensitive_data.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/fake_process.dart';

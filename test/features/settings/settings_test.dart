@@ -1,10 +1,10 @@
-import 'package:floresta_gui/core/build_flavor.dart';
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/features/node/domain/swift_sync.dart';
-import 'package:floresta_gui/features/settings/data/shared_prefs_settings_repository.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/features/settings/domain/node_settings.dart';
-import 'package:floresta_gui/features/settings/presentation/settings_controller.dart';
+import 'package:floresta_desktop/core/build_flavor.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/features/node/domain/swift_sync.dart';
+import 'package:floresta_desktop/features/settings/data/shared_prefs_settings_repository.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/settings/domain/node_settings.dart';
+import 'package:floresta_desktop/features/settings/presentation/settings_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';

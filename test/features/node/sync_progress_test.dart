@@ -1,13 +1,13 @@
-import 'package:floresta_gui/features/node/data/rpc_models.dart';
-import 'package:floresta_gui/features/node/domain/node_process_state.dart';
-import 'package:floresta_gui/features/node/domain/node_readiness.dart';
-import 'package:floresta_gui/features/node/domain/node_status.dart';
-import 'package:floresta_gui/features/node/domain/peer.dart';
-import 'package:floresta_gui/features/node/domain/sync_progress.dart';
-import 'package:floresta_gui/features/node/domain/verification_breakdown.dart';
-import 'package:floresta_gui/features/node/presentation/status_labels.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/shared/format.dart';
+import 'package:floresta_desktop/features/node/data/rpc_models.dart';
+import 'package:floresta_desktop/features/node/domain/node_process_state.dart';
+import 'package:floresta_desktop/features/node/domain/node_readiness.dart';
+import 'package:floresta_desktop/features/node/domain/node_status.dart';
+import 'package:floresta_desktop/features/node/domain/peer.dart';
+import 'package:floresta_desktop/features/node/domain/sync_progress.dart';
+import 'package:floresta_desktop/features/node/domain/verification_breakdown.dart';
+import 'package:floresta_desktop/features/node/presentation/status_labels.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/shared/format.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'node_rpc_test.dart' show signetAfterSnapshot;

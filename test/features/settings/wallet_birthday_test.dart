@@ -1,7 +1,7 @@
-import 'package:floresta_gui/features/node/data/florestad_launch_args.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/features/settings/domain/node_settings.dart';
-import 'package:floresta_gui/features/settings/domain/wallet_birthday.dart';
+import 'package:floresta_desktop/features/node/data/florestad_launch_args.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/settings/domain/node_settings.dart';
+import 'package:floresta_desktop/features/settings/domain/wallet_birthday.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

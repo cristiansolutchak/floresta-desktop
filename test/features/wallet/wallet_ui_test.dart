@@ -1,12 +1,12 @@
 import 'package:blockchain_utils/blockchain_utils.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
-import 'package:floresta_gui/features/wallet/data/bip32_address_deriver.dart';
-import 'package:floresta_gui/features/wallet/data/script_address.dart';
-import 'package:floresta_gui/features/wallet/data/wallet_sync_engine.dart';
-import 'package:floresta_gui/features/wallet/data/watched_accounts.dart';
-import 'package:floresta_gui/features/wallet/domain/wallet_account.dart';
-import 'package:floresta_gui/features/wallet/domain/watched_list.dart';
-import 'package:floresta_gui/features/wallet/presentation/amount_format.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/features/wallet/data/bip32_address_deriver.dart';
+import 'package:floresta_desktop/features/wallet/data/script_address.dart';
+import 'package:floresta_desktop/features/wallet/data/wallet_sync_engine.dart';
+import 'package:floresta_desktop/features/wallet/data/watched_accounts.dart';
+import 'package:floresta_desktop/features/wallet/domain/wallet_account.dart';
+import 'package:floresta_desktop/features/wallet/domain/watched_list.dart';
+import 'package:floresta_desktop/features/wallet/presentation/amount_format.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/wallet_fixtures.dart';

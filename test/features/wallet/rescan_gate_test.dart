@@ -1,4 +1,4 @@
-import 'package:floresta_gui/features/wallet/domain/rescan_gate.dart';
+import 'package:floresta_desktop/features/wallet/domain/rescan_gate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Cases mirror Mandacaru's `WalletRescanGateTest` (MIT), adapted to what

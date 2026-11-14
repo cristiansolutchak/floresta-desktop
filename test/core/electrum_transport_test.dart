@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:floresta_gui/core/electrum/electrum_client.dart';
-import 'package:floresta_gui/core/electrum/electrum_transport.dart';
+import 'package:floresta_desktop/core/electrum/electrum_client.dart';
+import 'package:floresta_desktop/core/electrum/electrum_transport.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// In-process TCP server speaking newline-delimited JSON, scripted per test.

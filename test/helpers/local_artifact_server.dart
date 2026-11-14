@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:blockchain_utils/blockchain_utils.dart';
-import 'package:floresta_gui/features/installation/data/signed_manifest.dart';
+import 'package:floresta_desktop/features/installation/data/signed_manifest.dart';
 
 /// Release signing key created at test runtime (never stored or committed).
 class TestReleaseKey {

@@ -20,10 +20,10 @@ library;
 
 import 'dart:io';
 
-import 'package:floresta_gui/core/errors/failure.dart';
-import 'package:floresta_gui/core/platform/host_platform.dart';
-import 'package:floresta_gui/features/installation/data/existing_node_probe.dart';
-import 'package:floresta_gui/features/settings/domain/bitcoin_network.dart';
+import 'package:floresta_desktop/core/errors/failure.dart';
+import 'package:floresta_desktop/core/platform/host_platform.dart';
+import 'package:floresta_desktop/features/installation/data/existing_node_probe.dart';
+import 'package:floresta_desktop/features/settings/domain/bitcoin_network.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
@@ -122,7 +122,7 @@ void main() {
 
       Future<(String, int)> run(String bind) async {
         final port = await _freePort();
-        final container = 'floresta-gui-test-${bind.replaceAll('.', '')}';
+        final container = 'floresta-desktop-test-${bind.replaceAll('.', '')}';
         await Process.run(docker!, ['rm', '-f', container]);
         final r = await Process.run(docker, [
           'run',

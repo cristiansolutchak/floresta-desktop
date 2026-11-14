@@ -128,7 +128,7 @@ class TcpElectrumClient implements ElectrumClient {
   @override
   Future<ServerFeatures> handshake() async {
     final results = await _transport.batch([
-      ('server.version', ['floresta-gui', '1.4']),
+      ('server.version', ['floresta-desktop', '1.4']),
       ('server.features', const []),
     ]);
     final version = results[0];

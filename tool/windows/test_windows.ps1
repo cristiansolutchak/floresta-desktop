@@ -1,5 +1,5 @@
 <#
-Validates Floresta GUI on a real Windows 10/11 x64 machine, step by step:
+Validates Floresta Desktop on a real Windows 10/11 x64 machine, step by step:
 
   1. dart format check, flutter analyze, unit and widget tests;
   2. production build (build_app.ps1) and package (package_windows.ps1);

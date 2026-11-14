@@ -106,6 +106,8 @@ class AppReleaseManifest extends Equatable {
 
   /// Differs from the florestad manifest's type, so a signature made for
   /// one can never pass as the other.
+  // Part of the signed payload, so it keeps the project's first name
+  // (Floresta GUI): changing it would invalidate published manifests.
   static const type = 'floresta-gui/app-manifest';
   static const schema = 1;
   static final _hex64 = RegExp(r'^[0-9a-f]{64}$');
@@ -339,7 +341,7 @@ AppInstallKind classifyAppInstall({
             );
     case HostOs.linux:
       final bundle = parent(resolvedExecutable);
-      if (bundle.startsWith('/opt/floresta-gui') ||
+      if (bundle.startsWith('/opt/floresta-desktop') ||
           bundle.startsWith('/usr/')) {
         return const SystemPackage();
       }

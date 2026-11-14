@@ -1,6 +1,6 @@
 # Security policy
 
-Floresta GUI runs a Bitcoin node and installs and updates programs on your computer, so security reports are taken seriously.
+Floresta Desktop runs a Bitcoin node and installs and updates programs on your computer, so security reports are taken seriously.
 
 ## Reporting a vulnerability
 
